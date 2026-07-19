@@ -67,7 +67,7 @@ A.assetForm=function(id){
         </div>
         <div class="form-grid">
           <div class="field full"><label>Nome da Máquina <span class="req">*</span></label><input class="input" id="afNome" value="${esc(a.nome)}" placeholder="Ex.: Empilhadeira Toyota 8FG25"></div>
-          <div class="field"><label>TAG do Ativo</label><input class="input" id="afTag" value="${esc(a.tag)}" placeholder="Ex.: EMP-014"></div>
+          <div class="field"><label>Nº do Ativo</label><input class="input" id="afTag" value="${esc(a.tag)}" placeholder="Ex.: 014 / EMP-014"></div>
           <div class="field"><label>Categoria</label><select class="input" id="afCat"><option value="">Selecione…</option>${CATS.map(c=>opt(c,a.categoria)).join('')}</select></div>
           <div class="field"><label>Setor</label><select class="input" id="afSetor"><option value="">Selecione…</option>${setorOpts.map(c=>opt(c,a.setor)).join('')}</select></div>
           <div class="field full"><label>Status Operacional</label><select class="input" id="afStatus">
@@ -95,7 +95,7 @@ A.assetForm=function(id){
     else { // dedup por TAG
       const dup = rec.tag && DB.assets.find(x=>x.tag && x.tag.toLowerCase()===rec.tag.toLowerCase());
       rec.createdAt=new Date().toISOString(); rec.ultimaInspecao=null;
-      if(dup){ rec.id=dup.id; rec.createdAt=dup.createdAt; rec.ultimaInspecao=dup.ultimaInspecao; DB.assets[DB.assets.indexOf(dup)]=rec; toast('Ativo com esta TAG atualizado'); }
+      if(dup){ rec.id=dup.id; rec.createdAt=dup.createdAt; rec.ultimaInspecao=dup.ultimaInspecao; DB.assets[DB.assets.indexOf(dup)]=rec; toast('Ativo com este Nº atualizado'); }
       else DB.assets.push(rec);
     }
     save(); closeModal(); render(); toast(id?'Ativo atualizado':'Ativo cadastrado');
@@ -128,7 +128,7 @@ A.startInspection=function(assetId){
   state.insp={
     assetId: asset?asset.id:'', templateId: tpl?tpl.id:'',
     inspetor: DB.settings.inspetorPadrao||'', cargo: DB.settings.cargoPadrao||'',
-    registro: DB.settings.registroPadrao||'', data: todayISO(),
+    matricula: DB.settings.matriculaPadrao||'', data: todayISO(),
     aprovadoPor:'', parecer:'', statusOverride:'', assinatura:'',
     itens: buildItens(tpl),
   };
@@ -163,9 +163,9 @@ window.__CS_VIEWS.inspect={
           <div class="section-title" style="margin-top:0">${I.pen}<span>Responsável</span></div>
           <div class="field"><label>Inspetor</label><input class="input" id="inInsp" value="${esc(ins.inspetor)}" placeholder="Nome completo"></div>
           <div class="field" style="margin-top:10px"><label>Cargo</label><input class="input" id="inCargo" value="${esc(ins.cargo)}"></div>
-          <div class="field" style="margin-top:10px"><label>Registro Técnico (RE / CREA)</label><input class="input" id="inReg" value="${esc(ins.registro)}"></div>
+          <div class="field" style="margin-top:10px"><label>Matrícula</label><input class="input" id="inMat" inputmode="numeric" value="${esc(ins.matricula||'')}" placeholder="Somente números"></div>
           <div class="field" style="margin-top:10px"><label>Data da Inspeção</label><input class="input" type="date" id="inData" value="${esc(ins.data)}"></div>
-          <div class="field" style="margin-top:10px"><label>Aprovado Por (Gerência)</label><input class="input" id="inAprov" value="${esc(ins.aprovadoPor)}" placeholder="Opcional"></div>
+          <div class="field" style="margin-top:10px"><label>Aprovado Por (Coordenador)</label><input class="input" id="inAprov" value="${esc(ins.aprovadoPor)}" placeholder="Opcional"></div>
         </div>
         <div class="card pad">
           <div class="section-title" style="margin-top:0">${I.pen}<span>Assinatura do Inspetor</span></div>
@@ -199,8 +199,9 @@ window.__CS_VIEWS.inspect={
     if(selTpl) selTpl.onchange=()=>{ ins.templateId=selTpl.value; ins.itens=buildItens(DB.templates.find(t=>t.id===ins.templateId)); captureFields(); render(); };
     // text fields (no rerender, capture on change)
     const bind=(sel,key)=>{ const el=$(sel,root); if(el) el.oninput=()=>ins[key]=el.value; };
-    bind('#inInsp','inspetor'); bind('#inCargo','cargo'); bind('#inReg','registro'); bind('#inData','data');
+    bind('#inInsp','inspetor'); bind('#inCargo','cargo'); bind('#inData','data');
     bind('#inAprov','aprovadoPor'); bind('#inParecer','parecer');
+    const mat=$('#inMat',root); if(mat) mat.oninput=()=>{ mat.value=mat.value.replace(/\D/g,''); ins.matricula=mat.value; };
     const selS=$('#inStatus',root); if(selS) selS.onchange=()=>{ ins.statusOverride=selS.value; updateStatusBadge(); };
     // checklist
     renderChecklist(root);
@@ -211,7 +212,7 @@ window.__CS_VIEWS.inspect={
     // gerar
     $('#genLaudo',root).onclick=()=>{ captureFields(); A.finishInspection(); };
 
-    function captureFields(){ ['inInsp:inspetor','inCargo:cargo','inReg:registro','inData:data','inAprov:aprovadoPor','inParecer:parecer'].forEach(p=>{const[a,b]=p.split(':');const el=$('#'+a,root);if(el)ins[b]=el.value;}); const ss=$('#inStatus',root); if(ss)ins.statusOverride=ss.value; }
+    function captureFields(){ ['inInsp:inspetor','inCargo:cargo','inMat:matricula','inData:data','inAprov:aprovadoPor','inParecer:parecer'].forEach(p=>{const[a,b]=p.split(':');const el=$('#'+a,root);if(el)ins[b]=el.value;}); const ss=$('#inStatus',root); if(ss)ins.statusOverride=ss.value; }
     window.__CS_captureInsp=captureFields;
   }
 };
@@ -302,11 +303,11 @@ A.finishInspection=function(){
     id:uid(), numero, assetId:asset.id,
     assetSnapshot:{nome:asset.nome,tag:asset.tag,categoria:asset.categoria,setor:asset.setor,foto:asset.foto},
     templateNome:(DB.templates.find(t=>t.id===ins.templateId)||{}).nome||'',
-    inspetor:ins.inspetor.trim(), cargo:ins.cargo.trim(), registro:ins.registro.trim(),
+    inspetor:ins.inspetor.trim(), cargo:ins.cargo.trim(), matricula:(ins.matricula||'').trim(),
     data:ins.data||todayISO(), aprovadoPor:ins.aprovadoPor.trim(), parecer:ins.parecer.trim(),
     statusFinal: ins.statusOverride || finalFromItems(ins.itens),
     itens: ins.itens.map(it=>({secao:it.secao,item:it.item,status:it.status,obs:it.obs,fotos:(it.fotos||[]).slice()})),
-    assinatura: ins.assinatura, empresa:s.empresa, cnpj:s.cnpj, logo:s.logo,
+    assinatura: ins.assinatura, empresa:s.empresa, logo:s.logo,
     createdAt:new Date().toISOString(),
   };
   DB.laudos.push(laudo); DB.settings.seq=seq+1;
@@ -344,11 +345,11 @@ function sheetHTML(l){
     const cls=it.status||'NA'; const lbl=it.status?ITEM_ST[it.status]:'—';
     rows+=`<tr><td style="width:52%">${esc(it.item)}</td><td style="width:14%"><span class="ld-st ${it.status||''}">${esc(lbl)}</span></td><td>${esc(it.obs||'')}</td></tr>`;
   });
-  const logo=l.logo?`<img src="${esc(l.logo)}">`:'CS';
+  const logo=l.logo?`<img class="ld-logo-img" src="${esc(l.logo)}">`:`<div class="ld-logo">CS</div>`;
   return `<div id="laudo-sheet">
     <div class="ld-head">
-      <div class="ld-logo">${logo}</div>
-      <div><h1>CheckSync ETG</h1><div class="ld-co">${esc(l.empresa||'')} • CNPJ ${esc(l.cnpj||'')}</div></div>
+      ${logo}
+      <div><h1>CheckSync ETG</h1><div class="ld-co">${esc(l.empresa||'')}</div></div>
       <div class="ld-meta"><b>${esc(l.numero)}</b><br>Emitido: ${fmtDate(l.createdAt.slice(0,10))}<br>Conformidade: <b>${st.conf}%</b></div>
     </div>
     <div class="ld-title">Relatório de Inspeção Técnico-Operacional</div>
@@ -359,7 +360,7 @@ function sheetHTML(l){
       <div class="ld-sect" style="flex:1"><div class="h">Dados do Equipamento</div>
         <div class="ld-kv">
           ${kv('Equipamento', l.assetSnapshot.nome)}
-          ${kv('TAG', l.assetSnapshot.tag)}
+          ${kv('Nº Ativo', l.assetSnapshot.tag)}
           ${kv('Categoria', l.assetSnapshot.categoria)}
           ${kv('Setor', l.assetSnapshot.setor)}
           ${kv('Data da Vistoria', fmtDate(l.data))}
@@ -378,9 +379,9 @@ function sheetHTML(l){
     ${evidHTML(l)}
     <div class="ld-sign">
       <div class="box"><div class="sig-img">${l.assinatura?`<img src="${esc(l.assinatura)}">`:''}</div>
-        <div class="who">${esc(l.inspetor||'—')}</div><div class="role">${esc(l.cargo||'Inspetor')}${l.registro?' • '+esc(l.registro):''}</div></div>
+        <div class="who">${esc(l.inspetor||'—')}</div><div class="role">${esc(l.cargo||'Inspetor')}${l.matricula?' • Matrícula '+esc(l.matricula):''}</div></div>
       <div class="box"><div class="sig-img"></div>
-        <div class="who">${esc(l.aprovadoPor||'—')}</div><div class="role">Aprovado por (Gerência)</div></div>
+        <div class="who">${esc(l.aprovadoPor||'—')}</div><div class="role">Aprovado por (Coordenador)</div></div>
     </div>
     <div class="ld-foot"><span>CheckSync ETG System — Documento gerado eletronicamente</span><span>Laudo ${esc(l.numero)} • ${esc(l.assetSnapshot.nome)}</span></div>
   </div>`;
@@ -417,7 +418,8 @@ A.laudoDel=function(id){
 
 /* ================= IMPORT / EXPORT XLSX ================= */
 const IMPORT_COLS=['nome','tag','categoria','setor','status','descricao'];
-const HEADER=['Nome','TAG','Categoria','Setor','Status','Descricao'];
+const HEADER=['Nome','Nº Ativo','Categoria','Setor','Status','Descricao'];
+const COL_ALIAS={nome:['nome','maquina','equipamento'],tag:['n ativo','no ativo','num ativo','numero ativo','tag','ativo','numero','num'],categoria:['categoria','cat'],setor:['setor','area'],status:['status','situacao'],descricao:['descricao','observacao','obs']};
 function xmlEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])); }
 function xmlDec(s){ return String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(m,n)=>String.fromCharCode(+n)).replace(/&amp;/g,'&'); }
 function colName(i){ let s=''; i++; while(i){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26); } return s; }
@@ -561,7 +563,7 @@ window.__CS_handleImport=async function(file){
     // mapear cabeçalho
     const head=rows[0].map(h=>norm(h));
     const idx={};
-    IMPORT_COLS.forEach(c=>{ idx[c]=head.findIndex(h=>h===c || h.startsWith(c.slice(0,4))); });
+    IMPORT_COLS.forEach(c=>{ const al=COL_ALIAS[c]||[c]; idx[c]=head.findIndex(h=>al.includes(h)); if(idx[c]<0) idx[c]=head.findIndex(h=>al.some(a=>h.startsWith(a))); });
     if(idx.nome<0){ setBox(`<div class="badge b-bad" style="padding:8px 12px"><span class="dot"></span>Coluna "Nome" não encontrada. Use o modelo.</div>`); return; }
     const DB=DBref(); let added=0, updated=0, skipped=0;
     for(let r=1;r<rows.length;r++){
@@ -586,7 +588,7 @@ window.__CS_handleImport=async function(file){
     toast(`${added} adicionado(s), ${updated} atualizado(s)`);
   }catch(err){ console.error(err); setBox(`<div class="badge b-bad" style="padding:8px 12px"><span class="dot"></span>Erro ao ler o arquivo. Verifique se é um .xlsx/.csv válido.</div>`); }
 };
-function norm(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function norm(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[º°ª.]/g,'').replace(/\s+/g,' ').trim(); }
 function matchCat(v){ if(!v) return ''; const n=norm(v); const hit=CATS.find(c=>norm(c)===n||norm(c).startsWith(n.slice(0,5))); return hit||v; }
 function matchSetor(v){ if(!v) return ''; const n=norm(v); const hit=SETORES.find(s=>norm(s)===n); return hit||v.toUpperCase(); }
 
@@ -594,10 +596,9 @@ function matchSetor(v){ if(!v) return ''; const n=norm(v); const hit=SETORES.fin
 A.settingsSave=function(){
   const DB=DBref();
   DB.settings.empresa=$('#setEmpresa').value.trim();
-  DB.settings.cnpj=$('#setCnpj').value.trim();
   DB.settings.inspetorPadrao=$('#setInsp').value.trim();
   DB.settings.cargoPadrao=$('#setCargo').value.trim();
-  DB.settings.registroPadrao=$('#setReg').value.trim();
+  DB.settings.matriculaPadrao=($('#setMat')?$('#setMat').value:'').replace(/\D/g,'');
   save(); render(); toast('Configurações salvas');
 };
 A.backupExport=function(){ download('checksync_backup_'+todayISO()+'.json', JSON.stringify(DBref(),null,2),'application/json'); toast('Backup gerado'); };

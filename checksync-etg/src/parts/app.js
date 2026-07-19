@@ -58,6 +58,14 @@ async function shrinkImage(dataURL, max=1000, quality=0.8){
     const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
     res(cv.toDataURL('image/jpeg',quality)); }; img.onerror=()=>res(dataURL); img.src=dataURL; });
 }
+// redimensiona o logo preservando a proporção original (PNG, mantém transparência)
+async function resizeLogo(dataURL, max=420){
+  return new Promise(res=>{ const img=new Image(); img.onload=()=>{
+    let {width:w,height:h}=img; if(!w||!h){ res(dataURL); return; }
+    const sc=Math.min(1,max/Math.max(w,h)); w=Math.round(w*sc); h=Math.round(h*sc);
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
+    res(cv.toDataURL('image/png')); }; img.onerror=()=>res(dataURL); img.src=dataURL; });
+}
 function toast(msg, kind='ok'){
   const ic = kind==='err'?I.alert : kind==='info'?I.gauge : I.check;
   const t=document.createElement('div'); t.className='toast '+kind; t.innerHTML=ic+'<span>'+esc(msg)+'</span>';
@@ -289,8 +297,8 @@ function seedTemplates(){
 function seedDB(){
   return {
     meta:{version:1, tplSeedV:2, createdAt:new Date().toISOString()},
-    settings:{ empresa:'CheckSync ETG System', cnpj:'10.294.029/0001-90', logo:'',
-      inspetorPadrao:'', cargoPadrao:'Inspetor Técnico', registroPadrao:'', theme:'dark', seq:1 },
+    settings:{ empresa:'CheckSync ETG System', logo:'',
+      inspetorPadrao:'', cargoPadrao:'Inspetor Técnico', matriculaPadrao:'', theme:'dark', seq:1 },
     assets:[], laudos:[], templates: seedTemplates(),
   };
 }
@@ -363,7 +371,7 @@ function sidebar(){
   const s=DB.settings;
   return `<aside class="sidebar">
     <div class="brand">
-      <div class="logo">${s.logo?`<img src="${esc(s.logo)}" style="width:100%;height:100%;object-fit:contain;border-radius:11px">`:'CS'}</div>
+      ${s.logo?`<img class="brand-logo-img" src="${esc(s.logo)}" alt="logo">`:`<div class="logo">CS</div>`}
       <div><h1>CheckSync ETG</h1><span>INSPEÇÃO INDUSTRIAL</span></div>
     </div>
     <nav class="nav">
@@ -377,7 +385,7 @@ function sidebar(){
     <div class="side-foot">
       ${connBadge()}
       <button class="btn ghost sm" data-act="toggleTheme" style="justify-content:center">${DB.settings.theme==='light'?I.moon:I.sun}<span>Tema ${DB.settings.theme==='light'?'Escuro':'Claro'}</span></button>
-      <small>${esc(s.empresa||'')}<br>CNPJ ${esc(s.cnpj||'—')}</small>
+      <small>${esc(s.empresa||'')}</small>
     </div>
   </aside>`;
 }
@@ -476,7 +484,7 @@ VIEWS.assets = {
           <div class="body">
             <h4>${esc(a.nome)}</h4>
             <div class="meta">
-              ${a.tag?`<span>TAG <b>${esc(a.tag)}</b></span>`:''}
+              ${a.tag?`<span>Nº <b>${esc(a.tag)}</b></span>`:''}
               ${a.categoria?`<span>${esc(a.categoria)}</span>`:''}
               ${a.setor?`<span>${esc(a.setor)}</span>`:''}
             </div>
@@ -489,7 +497,7 @@ VIEWS.assets = {
           </div></div>`; }).join('')+`</div>`;
     }
     return topbar('Ativos Cadastrados', DB.assets.length+' equipamento(s) no sistema', actions)+
-      `<div class="topbar" style="margin-bottom:16px"><div class="search">${I.search}<input class="input" id="assetSearch" placeholder="Buscar por nome, TAG, setor..." value="${esc(state.assetSearch)}"></div></div>`+
+      `<div class="topbar" style="margin-bottom:16px"><div class="search">${I.search}<input class="input" id="assetSearch" placeholder="Buscar por nome, Nº Ativo, setor..." value="${esc(state.assetSearch)}"></div></div>`+
       body;
   },
   mount(root){
@@ -500,7 +508,7 @@ VIEWS.assets = {
 
 /* ---------- IMPORTAR (xlsx/csv) — Ativos e Checklists ---------- */
 const IMPORT_COLS=['nome','tag','categoria','setor','status','descricao'];
-const COL_LABELS={nome:'Nome da Máquina*',tag:'TAG',categoria:'Categoria',setor:'Setor (FND/USI/MMO/MSC)',status:'Status',descricao:'Descrição'};
+const COL_LABELS={nome:'Nome da Máquina*',tag:'Nº Ativo',categoria:'Categoria',setor:'Setor (FND/USI/MMO/MSC)',status:'Status',descricao:'Descrição'};
 const CHK_COLS=['template','categoria','secao','item'];
 const CHK_LABELS={template:'Template*',categoria:'Categoria',secao:'Seção',item:'Item de Verificação*'};
 function importCard(cfg){
@@ -556,7 +564,7 @@ VIEWS.import = {
         tplActs:`<button class="btn primary" data-act="tplXlsx">${I.file}Modelo (.xlsx)</button><button class="btn" data-act="tplCsv">${I.file}Modelo (.csv)</button>`,
         expActs:`<button class="btn primary" data-act="expXlsx" ${n?'':'disabled'}>${I.download}Exportar (.xlsx)</button><button class="btn" data-act="expCsv" ${n?'':'disabled'}>${I.download}Exportar (.csv)</button>`,
         cols:IMPORT_COLS, colLabels:COL_LABELS,
-        hint:'Status aceitos: <b>operacional</b>, <b>manutencao</b>, <b>interditado</b>. Ativos com a mesma <b>TAG</b> (ou nome) são <b>atualizados</b> em vez de duplicados.',
+        hint:'Status aceitos: <b>operacional</b>, <b>manutencao</b>, <b>interditado</b>. Ativos com o mesmo <b>Nº Ativo</b> (ou nome) são <b>atualizados</b> em vez de duplicados.',
         uploadHint:'Novos ativos são <b>cadastrados</b> e os existentes (mesma TAG/nome) são <b>atualizados</b> automaticamente.'
       });
     }
@@ -623,14 +631,13 @@ VIEWS.settings = {
         <div class="section-title" style="margin-top:0">${I.shield}<span>Identificação da Empresa</span></div>
         <div class="form-grid">
           <div class="field full"><label>Nome / Razão Social</label><input class="input" id="setEmpresa" value="${esc(s.empresa||'')}"></div>
-          <div class="field"><label>CNPJ</label><input class="input" id="setCnpj" value="${esc(s.cnpj||'')}"></div>
           <div class="field"><label>Logo (aparece no laudo)</label><input type="file" id="setLogo" accept="image/*" class="input"></div>
           <div class="field"><label>Inspetor padrão</label><input class="input" id="setInsp" value="${esc(s.inspetorPadrao||'')}" placeholder="Nome do inspetor"></div>
           <div class="field"><label>Cargo padrão</label><input class="input" id="setCargo" value="${esc(s.cargoPadrao||'')}"></div>
-          <div class="field full"><label>Registro Técnico padrão (RE / CREA)</label><input class="input" id="setReg" value="${esc(s.registroPadrao||'')}"></div>
+          <div class="field"><label>Matrícula padrão</label><input class="input" id="setMat" inputmode="numeric" value="${esc(s.matriculaPadrao||'')}" placeholder="Somente números"></div>
         </div>
         <div class="pill-row" style="margin-top:14px">
-          ${s.logo?`<div class="photo-box" style="width:90px;aspect-ratio:1"><img src="${esc(s.logo)}"></div><button class="btn sm danger" data-act="setLogoDel">Remover logo</button>`:''}
+          ${s.logo?`<img src="${esc(s.logo)}" alt="logo" style="height:56px;width:auto;max-width:220px;object-fit:contain;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:5px"><button class="btn sm danger" data-act="setLogoDel">Remover logo</button>`:''}
           <span class="sp" style="flex:1"></span>
           <button class="btn primary" data-act="setSave">${I.save}Salvar</button>
         </div>
@@ -654,7 +661,9 @@ VIEWS.settings = {
   },
   mount(root){
     const lf=$('#setLogo',root);
-    if(lf) lf.onchange=async()=>{ const f=lf.files[0]; if(!f) return; const d=await readFileData(f); DB.settings.logo=await shrinkImage(d,300,0.9); save(); render(); toast('Logo atualizado'); };
+    if(lf) lf.onchange=async()=>{ const f=lf.files[0]; if(!f) return; const d=await readFileData(f); DB.settings.logo=await resizeLogo(d,420); save(); render(); toast('Logo atualizado'); };
+    const mt=$('#setMat',root);
+    if(mt) mt.oninput=()=>{ mt.value=mt.value.replace(/\D/g,''); };
     const rf=$('#restoreFile',root);
     if(rf) rf.onchange=()=>{ if(rf.files[0]) window.__CS_restore(rf.files[0]); };
   }

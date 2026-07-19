@@ -19,11 +19,17 @@ function buildDoc(l){
   const navy=[18,32,60], ink=[13,21,38], mut=[107,122,149], line=[201,212,230];
   let y=15;
   // ---- Cabeçalho ----
-  if(l.logo){ try{ doc.addImage(l.logo,'PNG',M,y-3,14,14); }catch(e){} }
-  const tx=l.logo?M+18:M;
+  let logoW=0;
+  if(l.logo){ try{
+    const fmt=/^data:image\/png/i.test(l.logo)?'PNG':'JPEG';
+    let ratio=1; try{ const pr=doc.getImageProperties(l.logo); if(pr&&pr.width&&pr.height) ratio=pr.width/pr.height; }catch(e){}
+    const h=14, w=Math.min(46, h*ratio);            // altura fixa, largura conforme a logo
+    doc.addImage(l.logo,fmt,M,y-3,w,h); logoW=w+4;
+  }catch(e){} }
+  const tx=M+logoW;
   doc.setTextColor(...navy); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('CheckSync ETG',tx,y+3);
   doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...mut);
-  doc.text(((l.empresa||'')+'  •  CNPJ '+(l.cnpj||'')).slice(0,70),tx,y+8);
+  doc.text(String(l.empresa||'').slice(0,70),tx,y+8);
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...navy); doc.text(String(l.numero),R,y-1,{align:'right'});
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...mut);
   doc.text('Emitido: '+fmtDate(l.createdAt.slice(0,10)),R,y+3.5,{align:'right'});
@@ -40,7 +46,7 @@ function buildDoc(l){
   const boxY=y, boxH=27, hasFoto=!!l.assetSnapshot.foto, photoW=hasFoto?34:0;
   doc.setDrawColor(...line); doc.setLineWidth(0.3); doc.roundedRect(M,boxY,cw,boxH,1.5,1.5);
   if(hasFoto){ try{ doc.addImage(l.assetSnapshot.foto,'JPEG',R-photoW-2,boxY+2.5,photoW,boxH-5);}catch(e){} }
-  const kv=[['Equipamento',l.assetSnapshot.nome],['TAG',l.assetSnapshot.tag],['Categoria',l.assetSnapshot.categoria],['Setor',l.assetSnapshot.setor],['Data da Vistoria',fmtDate(l.data)],['Inspetor',l.inspetor]];
+  const kv=[['Equipamento',l.assetSnapshot.nome],['Nº Ativo',l.assetSnapshot.tag],['Categoria',l.assetSnapshot.categoria],['Setor',l.assetSnapshot.setor],['Data da Vistoria',fmtDate(l.data)],['Inspetor',l.inspetor]];
   const leftW=cw-photoW-6, colW=leftW/2, rowH=(boxH-4)/3;
   kv.forEach((p,i)=>{ const col=i%2,row=Math.floor(i/2); const cx=M+3+col*colW, cy=boxY+5.5+row*rowH;
     doc.setFont('helvetica','bold'); doc.setFontSize(6.4); doc.setTextColor(...mut); doc.text(String(p[0]).toUpperCase(),cx,cy);
@@ -80,8 +86,8 @@ function buildDoc(l){
   doc.text(String(l.inspetor||'—'),M+sw/2,y+18.5,{align:'center'});
   doc.text(String(l.aprovadoPor||'—'),M+sw+4+sw/2,y+18.5,{align:'center'});
   doc.setFont('helvetica','normal'); doc.setFontSize(6.6); doc.setTextColor(...mut);
-  doc.text(((l.cargo||'Inspetor')+(l.registro?' • '+l.registro:'')).slice(0,44),M+sw/2,y+21,{align:'center'});
-  doc.text('Aprovado por (Gerência)',M+sw+4+sw/2,y+21,{align:'center'});
+  doc.text(((l.cargo||'Inspetor')+(l.matricula?' • Matrícula '+l.matricula:'')).slice(0,44),M+sw/2,y+21,{align:'center'});
+  doc.text('Aprovado por (Coordenador)',M+sw+4+sw/2,y+21,{align:'center'});
   // ---- Evidências fotográficas (páginas próprias) ----
   const shots=[];
   (l.itens||[]).forEach(it=>{ if(it.fotos&&it.fotos.length) it.fotos.forEach(f=>shots.push({cap:it.item+(it.status?(' — '+(IST[it.status]||'')):''), img:f})); });
