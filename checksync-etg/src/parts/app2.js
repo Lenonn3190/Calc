@@ -38,6 +38,7 @@ function openModal(html){ const root=$('#modal-root'); root.innerHTML=`<div clas
   document.body.style.overflow='hidden'; return root.querySelector('.modal'); }
 function closeModal(){ $('#modal-root').innerHTML=''; document.body.style.overflow=''; }
 window.__CS_closeModal=closeModal;
+window.__CS_photoView=function(src){ const r=$('#modal-root'); r.innerHTML=`<div class="modal-bg" style="place-items:center;padding:20px"><img src="${src}" style="max-width:96vw;max-height:92vh;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6)"></div>`; document.body.style.overflow='hidden'; r.querySelector('.modal-bg').onclick=closeModal; };
 
 /* ================= ACTIONS ================= */
 const A={};
@@ -133,7 +134,7 @@ A.startInspection=function(assetId){
   };
   go('inspect');
 };
-function buildItens(tpl){ if(!tpl) return []; const out=[]; tpl.secoes.forEach(se=>se.itens.forEach(it=>out.push({secao:se.nome,item:it,status:'',obs:''}))); return out; }
+function buildItens(tpl){ if(!tpl) return []; const out=[]; tpl.secoes.forEach(se=>se.itens.forEach(it=>out.push({secao:se.nome,item:it,status:'',obs:'',fotos:[]}))); return out; }
 
 window.__CS_VIEWS.inspect={
   html(){
@@ -229,13 +230,25 @@ function renderChecklist(root){
     updateProgress(root); updateStatusBadge();
   }; });
   box.querySelectorAll('textarea[data-obs]').forEach(t=>{ t.oninput=()=>{ ins.itens[+t.dataset.obs].obs=t.value; }; });
+  // adicionar foto ao item (usa câmera no celular)
+  box.querySelectorAll('button[data-addph]').forEach(btn=>{ btn.onclick=()=>{
+    const idx=+btn.dataset.addph;
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+    inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; const d=await shrink(await readData(f),1000,0.72); (ins.itens[idx].fotos ||= []).push(d); renderChecklist(root); updateProgress(root); };
+    inp.click();
+  }; });
+  box.querySelectorAll('button[data-rmph]').forEach(btn=>{ btn.onclick=()=>{ const [i,j]=btn.dataset.rmph.split(':').map(Number); ins.itens[i].fotos.splice(j,1); renderChecklist(root); }; });
+  box.querySelectorAll('.thumb-sm img[data-view]').forEach(im=>{ im.onclick=()=>window.__CS_photoView(im.src); });
 }
 function segRow(it,idx){
   const seg=v=>`<button data-on="${v}" data-idx="${idx}" class="${it.status===v?'on':''}">${v==='NA'?'N/A':ITEM_ST[v].split(' ')[0]+(v==='NC'?' Conf.':'')}</button>`;
+  const fotos=it.fotos||[];
+  const phs=fotos.map((f,j)=>`<div class="thumb-sm"><img src="${f}" data-view><button class="rm" data-rmph="${idx}:${j}" title="Remover">×</button></div>`).join('');
   return `<div class="chk-item">
     <div class="it-name">${esc(it.item)}</div>
     <div class="seg">${seg('C')}${seg('R')}${seg('NC')}${seg('NA')}</div>
     <textarea class="input obs" data-obs="${idx}" placeholder="Observação / constatação (opcional)" style="min-height:0;padding:7px 10px;font-size:12.5px">${esc(it.obs)}</textarea>
+    <div class="chk-photos">${phs}<button class="btn sm addph" data-addph="${idx}">${I.image} Foto${fotos.length?' ('+fotos.length+')':''}</button></div>
   </div>`;
 }
 function updateProgress(root){
@@ -292,7 +305,7 @@ A.finishInspection=function(){
     inspetor:ins.inspetor.trim(), cargo:ins.cargo.trim(), registro:ins.registro.trim(),
     data:ins.data||todayISO(), aprovadoPor:ins.aprovadoPor.trim(), parecer:ins.parecer.trim(),
     statusFinal: ins.statusOverride || finalFromItems(ins.itens),
-    itens: ins.itens.map(it=>({secao:it.secao,item:it.item,status:it.status,obs:it.obs})),
+    itens: ins.itens.map(it=>({secao:it.secao,item:it.item,status:it.status,obs:it.obs,fotos:(it.fotos||[]).slice()})),
     assinatura: ins.assinatura, empresa:s.empresa, cnpj:s.cnpj, logo:s.logo,
     createdAt:new Date().toISOString(),
   };
@@ -315,6 +328,12 @@ A.finishInspection=function(){
 };
 
 /* ================= LAUDO SHEET / PDF ================= */
+function evidHTML(l){
+  const its=(l.itens||[]).filter(it=>it.fotos&&it.fotos.length);
+  if(!its.length) return '';
+  const blocks=its.map(it=>`<div class="ld-ev-item"><div class="ld-ev-cap">${esc(it.item)}${it.status?` — <b>${esc(ITEM_ST[it.status]||'')}</b>`:''}</div><div class="ld-ev-imgs">${it.fotos.map(f=>`<img src="${esc(f)}">`).join('')}</div></div>`).join('');
+  return `<div class="ld-sect ld-ev"><div class="h">Evidências Fotográficas</div><div class="ld-ev-body">${blocks}</div></div>`;
+}
 function sheetHTML(l){
   const st=laudoStats(l); const f=FINAL_ST[l.statusFinal]||FINAL_ST['APROVADO'];
   const kv=(k,v)=>`<div><div class="k">${esc(k)}</div><div class="v">${esc(v||'—')}</div></div>`;
@@ -356,7 +375,7 @@ function sheetHTML(l){
     <div class="ld-sect"><div class="h">Parecer Técnico e Recomendações</div>
       <div class="ld-parecer">${esc(l.parecer||'Sem observações adicionais.')}</div>
     </div>
-
+    ${evidHTML(l)}
     <div class="ld-sign">
       <div class="box"><div class="sig-img">${l.assinatura?`<img src="${esc(l.assinatura)}">`:''}</div>
         <div class="who">${esc(l.inspetor||'—')}</div><div class="role">${esc(l.cargo||'Inspetor')}${l.registro?' • '+esc(l.registro):''}</div></div>
@@ -437,6 +456,62 @@ function assetRows(){ return [ HEADER ].concat(DBref().assets.map(a=>[a.nome||''
 function rowsToCsv(rows){ return rows.map(r=>r.map(c=>/[";\n\r]/.test(c)?'"'+String(c).replace(/"/g,'""')+'"':c).join(';')).join('\r\n'); }
 A.exportAssetsXlsx=function(){ const n=DBref().assets.length; if(!n){ toast('Nenhum ativo para exportar','err'); return; } download('ativos_checksync_'+todayISO()+'.xlsx', buildXlsx(assetRows())); toast(n+' ativo(s) exportado(s) em Excel'); };
 A.exportAssetsCsv=function(){ const n=DBref().assets.length; if(!n){ toast('Nenhum ativo para exportar','err'); return; } download('ativos_checksync_'+todayISO()+'.csv','﻿'+rowsToCsv(assetRows()),'text/csv'); toast(n+' ativo(s) exportado(s) em CSV'); };
+
+/* ---------- CHECKLISTS (templates) via planilha ---------- */
+const CHK_HEADER=['Template','Categoria','Secao','Item'];
+function errBox(m){ return `<div class="badge b-bad" style="padding:8px 12px"><span class="dot"></span>${esc(m)}</div>`; }
+function chkModelRows(){
+  return [ CHK_HEADER,
+    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Movimentação de Carga','Garfos de Carga'],
+    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Movimentação de Carga','Freio de Carga (Içamento)'],
+    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Segurança do Operador','Sistema de Freio (Serviço e Estacionamento)'],
+    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Equipamentos e Painel','Aterramento Elétrico'],
+    ['Prensa / Injetora','Prensa','Proteções de Segurança','Barreira Fotoelétrica (Cortina de Luz)'],
+    ['Prensa / Injetora','Prensa','Proteções de Segurança','Sensor da Porta de Proteção'],
+  ];
+}
+function chkRows(){ const out=[CHK_HEADER]; DBref().templates.forEach(t=>t.secoes.forEach(s=>s.itens.forEach(it=>out.push([t.nome, t.categoria||'', s.nome, it])))); return out; }
+A.downloadChkTemplateXlsx=function(){ download('modelo_checklists_checksync.xlsx', buildXlsx(chkModelRows())); toast('Modelo Excel baixado'); };
+A.downloadChkTemplateCsv=function(){ download('modelo_checklists_checksync.csv','﻿'+rowsToCsv(chkModelRows()),'text/csv'); toast('Modelo CSV baixado'); };
+A.exportChkXlsx=function(){ if(!DBref().templates.length){ toast('Nenhum checklist','err'); return; } download('checklists_checksync_'+todayISO()+'.xlsx', buildXlsx(chkRows())); toast('Checklists exportados em Excel'); };
+A.exportChkCsv=function(){ if(!DBref().templates.length){ toast('Nenhum checklist','err'); return; } download('checklists_checksync_'+todayISO()+'.csv','﻿'+rowsToCsv(chkRows()),'text/csv'); toast('Checklists exportados em CSV'); };
+A.templateDel=function(id){ const DB=DBref(); const t=DB.templates.find(x=>x.id===id); if(!t) return; confirmModal('Excluir checklist?',`O template <b>${esc(t.nome)}</b> e seus itens serão removidos.`,'Excluir',()=>{ DB.templates=DB.templates.filter(x=>x.id!==id); save(); closeModal(); render(); toast('Checklist excluído'); }); };
+window.__CS_handleImportChk=async function(file){
+  const box=$('#impResult'); const setBox=h=>{ if(box) box.innerHTML=h; };
+  try{
+    setBox('<p class="mut sm">Lendo arquivo…</p>');
+    let rows; if(/\.csv$/i.test(file.name)) rows=parseCsv(await readText(file)); else rows=parseXlsx(await readBuf(file));
+    rows=rows.filter(r=>r&&r.some(c=>(c||'').trim()!==''));
+    if(rows.length<2){ setBox(errBox('Nenhuma linha de dados encontrada')); return; }
+    const head=rows[0].map(h=>norm(h)); const idx={};
+    ['template','categoria','secao','item'].forEach(c=>{ idx[c]=head.findIndex(h=>h===c||h.startsWith(c.slice(0,4))); });
+    if(idx.template<0 || idx.item<0){ setBox(errBox('Colunas "Template" e "Item" são obrigatórias. Use o modelo.')); return; }
+    const order=[], map={};
+    for(let r=1;r<rows.length;r++){
+      const g=k=>idx[k]>=0?(rows[r][idx[k]]||'').trim():'';
+      const tname=g('template'), item=g('item'); if(!tname||!item) continue;
+      const key=tname.toLowerCase();
+      if(!map[key]){ map[key]={nome:tname, categoria:g('categoria'), secOrder:[], sec:{}}; order.push(key); }
+      const T=map[key]; if(!T.categoria && g('categoria')) T.categoria=g('categoria');
+      const sname=g('secao')||'Verificações Gerais';
+      if(!T.sec[sname]){ T.sec[sname]=[]; T.secOrder.push(sname); }
+      T.sec[sname].push(item);
+    }
+    if(!order.length){ setBox(errBox('Nenhum item válido (precisa de Template + Item).')); return; }
+    const DB=DBref(); let created=0, updated=0, items=0;
+    order.forEach(key=>{ const T=map[key];
+      const secoes=T.secOrder.map(sn=>({nome:sn, itens:T.sec[sn]})); items+=secoes.reduce((a,s)=>a+s.itens.length,0);
+      const rec={ id:uid(), nome:T.nome, categoria:matchCat(T.categoria), secoes };
+      const dup=DB.templates.find(x=>x.nome.toLowerCase()===T.nome.toLowerCase());
+      if(dup){ rec.id=dup.id; DB.templates[DB.templates.indexOf(dup)]=rec; updated++; } else { DB.templates.push(rec); created++; }
+    });
+    save();
+    setBox(`<div class="card pad" style="border-color:var(--ok)"><div class="section-title" style="margin-top:0;color:var(--ok)">${I.check}<span>Importação concluída</span></div>
+      <div class="pill-row"><span class="badge b-ok"><span class="dot"></span>${created} novo(s)</span><span class="badge b-info"><span class="dot"></span>${updated} atualizado(s)</span><span class="badge b-muted"><span class="dot"></span>${items} itens</span></div>
+      <button class="btn primary" data-act="go" data-view="inspect" style="margin-top:14px">${I.clipboard}Nova Inspeção</button></div>`);
+    toast(`${created} criado(s), ${updated} atualizado(s)`);
+  }catch(err){ console.error(err); setBox(errBox('Erro ao ler o arquivo. Verifique se é um .xlsx/.csv válido.')); }
+};
 
 function parseXlsx(buf){
   const files=fflate.unzipSync(new Uint8Array(buf)); const dec=fflate.strFromU8;

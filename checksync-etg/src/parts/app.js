@@ -166,7 +166,12 @@ const Backend = {
   },
 };
 function dbHash(db){ try{ return db.assets.length+'/'+db.laudos.length+'/'+(db.settings.seq||0)+'/'+db.assets.reduce((a,x)=>a+(x.updatedAt||''),'')+'/'+db.laudos.reduce((a,x)=>a+x.id,''); }catch(e){ return String(Math.random()); } }
-function ensureShape(){ DB.assets ||= []; DB.laudos ||= []; DB.templates ||= []; DB.settings ||= {}; seedTemplates().forEach(s=>{ if(!DB.templates.some(t=>t.categoria===s.categoria)) DB.templates.push(s); }); }
+function ensureShape(){ DB.assets ||= []; DB.laudos ||= []; DB.templates ||= []; DB.settings ||= {}; DB.meta ||= {}; }
+function seedTemplatesOnce(){ // roda só uma vez por versão; não desfaz exclusões do usuário
+  if(DB.meta.tplSeedV===2) return;
+  seedTemplates().forEach(s=>{ if(!DB.templates.some(t=>t.categoria===s.categoria)) DB.templates.push(s); });
+  DB.meta.tplSeedV=2;
+}
 function adopt(remote){ Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB,remote); ensureShape(); Backend.lastHash=dbHash(DB); }
 let _saveTimer=null;
 function save(){
@@ -196,6 +201,7 @@ async function load(){
   }
   if(!DB || !DB.meta){ DB = seedDB(); }
   ensureShape();
+  seedTemplatesOnce();
   save();
   Backend.lastHash=dbHash(DB);
   if(Backend.isRemote()) startSync();
@@ -282,7 +288,7 @@ function seedTemplates(){
 }
 function seedDB(){
   return {
-    meta:{version:1, createdAt:new Date().toISOString()},
+    meta:{version:1, tplSeedV:2, createdAt:new Date().toISOString()},
     settings:{ empresa:'CheckSync ETG System', cnpj:'10.294.029/0001-90', logo:'',
       inspetorPadrao:'', cargoPadrao:'Inspetor Técnico', registroPadrao:'', theme:'dark', seq:1 },
     assets:[], laudos:[], templates: seedTemplates(),
@@ -291,7 +297,7 @@ function seedDB(){
 const CATS = ['Empilhadeira','Ponte Rolante','Prensa','Usinagem','Motor / Bomba','Vaso de Pressão','Ferramentaria','Leak Teste','Lavadoras','Nutrunner','Forno Fusor','Máquina Especial','Geral'];
 
 /* ---------- Router / estado UI ---------- */
-const state = { view:'dashboard', assetSearch:'', laudoSearch:'', navOpen:false };
+const state = { view:'dashboard', assetSearch:'', laudoSearch:'', navOpen:false, importTab:'ativos' };
 const app = $('#app');
 
 function render(){
@@ -492,58 +498,78 @@ VIEWS.assets = {
   }
 };
 
-/* ---------- IMPORTAR (xlsx/csv) ---------- */
+/* ---------- IMPORTAR (xlsx/csv) — Ativos e Checklists ---------- */
 const IMPORT_COLS=['nome','tag','categoria','setor','status','descricao'];
 const COL_LABELS={nome:'Nome da Máquina*',tag:'TAG',categoria:'Categoria',setor:'Setor (FND/USI/MMO/MSC)',status:'Status',descricao:'Descrição'};
-VIEWS.import = {
-  html(){
-    const n=DB.assets.length;
-    return topbar('Alimentar Base via Planilha','Baixe, edite e envie um arquivo .xlsx ou .csv para cadastrar ou atualizar ativos em lote')+
-    `<div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
+const CHK_COLS=['template','categoria','secao','item'];
+const CHK_LABELS={template:'Template*',categoria:'Categoria',secao:'Seção',item:'Item de Verificação*'};
+function importCard(cfg){
+  // cfg: {countLabel, tplActs, expActs, cols, colLabels, hint, uploadHint}
+  return `<div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
       <div class="card pad">
         <div class="section-title" style="margin-top:0">${I.download}<span>1. Baixar Planilha</span></div>
         <div class="card pad" style="background:var(--panel-2);box-shadow:none;margin-bottom:12px">
           <b style="font-size:13px">Modelo em branco</b>
-          <p class="mut sm" style="margin:4px 0 10px">Planilha com as colunas e alguns exemplos — use para o <b>primeiro cadastro</b>.</p>
-          <div class="pill-row">
-            <button class="btn primary" data-act="tplXlsx">${I.file}Modelo (.xlsx)</button>
-            <button class="btn" data-act="tplCsv">${I.file}Modelo (.csv)</button>
-          </div>
+          <p class="mut sm" style="margin:4px 0 10px">Planilha com as colunas e exemplos — use para começar.</p>
+          <div class="pill-row">${cfg.tplActs}</div>
         </div>
         <div class="card pad" style="background:var(--panel-2);box-shadow:none">
-          <b style="font-size:13px">Base atual ${n?`<span class="tag-chip" style="margin-left:4px">${n} ativo(s)</span>`:''}</b>
-          <p class="mut sm" style="margin:4px 0 10px">Exporta os ativos <b>já cadastrados</b> para você editar no Excel e reenviar com as <b>novas informações</b>.</p>
-          <div class="pill-row">
-            <button class="btn primary" data-act="expXlsx" ${n?'':'disabled'}>${I.download}Exportar base (.xlsx)</button>
-            <button class="btn" data-act="expCsv" ${n?'':'disabled'}>${I.download}Exportar (.csv)</button>
-          </div>
-          ${n?'':'<p class="hint" style="margin-top:8px">Nenhum ativo cadastrado ainda — comece pelo modelo em branco.</p>'}
+          <b style="font-size:13px">${cfg.countLabel}</b>
+          <p class="mut sm" style="margin:4px 0 10px">Exporta o que <b>já está cadastrado</b> para editar no Excel e reenviar.</p>
+          <div class="pill-row">${cfg.expActs}</div>
         </div>
         <div class="divider"></div>
         <div class="section-title" style="margin-top:0">${I.clipboard}<span>Colunas</span></div>
-        <div class="pill-row">${IMPORT_COLS.map(c=>`<span class="tag-chip">${esc(COL_LABELS[c])}</span>`).join('')}</div>
-        <p class="hint" style="margin-top:10px">Status aceitos: <b>operacional</b>, <b>manutencao</b>, <b>interditado</b>. Ativos com a mesma <b>TAG</b> (ou mesmo nome) são <b>atualizados</b> em vez de duplicados — por isso o ciclo exportar → editar → reenviar funciona sem gerar cópias.</p>
+        <div class="pill-row">${cfg.cols.map(c=>`<span class="tag-chip">${esc(cfg.colLabels[c])}</span>`).join('')}</div>
+        <p class="hint" style="margin-top:10px">${cfg.hint}</p>
       </div>
       <div class="card pad">
         <div class="section-title" style="margin-top:0">${I.upload}<span>2. Enviar Planilha Preenchida</span></div>
-        <p class="mut sm" style="margin-bottom:12px">Novos ativos são <b>cadastrados</b> e os existentes (mesma TAG/nome) são <b>atualizados</b> automaticamente.</p>
-        <div class="dropzone" id="dz">
-          ${I.upload}
-          <b>Arraste seu arquivo aqui</b>
-          <small>ou clique para selecionar — .xlsx, .xls ou .csv</small>
-          <input type="file" id="fileImp" accept=".xlsx,.xls,.csv" class="hidden">
-        </div>
+        <p class="mut sm" style="margin-bottom:12px">${cfg.uploadHint}</p>
+        <div class="dropzone" id="dz">${I.upload}<b>Arraste seu arquivo aqui</b><small>ou clique para selecionar — .xlsx, .xls ou .csv</small>
+          <input type="file" id="fileImp" accept=".xlsx,.xls,.csv" class="hidden"></div>
         <div id="impResult" style="margin-top:16px"></div>
       </div>
     </div>`;
+}
+VIEWS.import = {
+  html(){
+    const tab=state.importTab;
+    const toggle=`<div class="pill-row" style="margin-bottom:18px">
+      <button class="btn ${tab==='ativos'?'primary':''}" data-act="impTab" data-tab="ativos">${I.box}Ativos</button>
+      <button class="btn ${tab==='checklists'?'primary':''}" data-act="impTab" data-tab="checklists">${I.clipboard}Checklists</button></div>`;
+    let body;
+    if(tab==='checklists'){
+      const nt=DB.templates.length, ni=DB.templates.reduce((a,t)=>a+t.secoes.reduce((n,s)=>n+s.itens.length,0),0);
+      body=importCard({
+        countLabel:`Checklists atuais <span class="tag-chip" style="margin-left:4px">${nt} template(s) • ${ni} itens</span>`,
+        tplActs:`<button class="btn primary" data-act="tplChkXlsx">${I.file}Modelo (.xlsx)</button><button class="btn" data-act="tplChkCsv">${I.file}Modelo (.csv)</button>`,
+        expActs:`<button class="btn primary" data-act="expChkXlsx" ${nt?'':'disabled'}>${I.download}Exportar (.xlsx)</button><button class="btn" data-act="expChkCsv" ${nt?'':'disabled'}>${I.download}Exportar (.csv)</button>`,
+        cols:CHK_COLS, colLabels:CHK_LABELS,
+        hint:'Cada <b>linha</b> é um item. Itens do mesmo <b>Template</b> + <b>Seção</b> são agrupados na ordem da planilha. Um template com o mesmo <b>nome</b> é <b>substituído</b> pelos itens do arquivo.',
+        uploadHint:'Os templates do arquivo são <b>criados ou atualizados</b>. Você usa esses checklists na tela de Nova Inspeção, por categoria.'
+      });
+    } else {
+      const n=DB.assets.length;
+      body=importCard({
+        countLabel:`Base atual ${n?`<span class="tag-chip" style="margin-left:4px">${n} ativo(s)</span>`:''}`,
+        tplActs:`<button class="btn primary" data-act="tplXlsx">${I.file}Modelo (.xlsx)</button><button class="btn" data-act="tplCsv">${I.file}Modelo (.csv)</button>`,
+        expActs:`<button class="btn primary" data-act="expXlsx" ${n?'':'disabled'}>${I.download}Exportar (.xlsx)</button><button class="btn" data-act="expCsv" ${n?'':'disabled'}>${I.download}Exportar (.csv)</button>`,
+        cols:IMPORT_COLS, colLabels:COL_LABELS,
+        hint:'Status aceitos: <b>operacional</b>, <b>manutencao</b>, <b>interditado</b>. Ativos com a mesma <b>TAG</b> (ou nome) são <b>atualizados</b> em vez de duplicados.',
+        uploadHint:'Novos ativos são <b>cadastrados</b> e os existentes (mesma TAG/nome) são <b>atualizados</b> automaticamente.'
+      });
+    }
+    return topbar('Alimentar via Planilha','Cadastre ativos e checklists em lote por .xlsx ou .csv')+toggle+body;
   },
   mount(root){
-    const dz=$('#dz',root), inp=$('#fileImp',root);
+    const dz=$('#dz',root), inp=$('#fileImp',root); if(!dz) return;
+    const handler = state.importTab==='checklists'? window.__CS_handleImportChk : window.__CS_handleImport;
     dz.onclick=()=>inp.click();
     dz.ondragover=e=>{e.preventDefault();dz.classList.add('drag');};
     dz.ondragleave=()=>dz.classList.remove('drag');
-    dz.ondrop=e=>{e.preventDefault();dz.classList.remove('drag'); if(e.dataTransfer.files[0]) window.__CS_handleImport(e.dataTransfer.files[0]); };
-    inp.onchange=()=>{ if(inp.files[0]) window.__CS_handleImport(inp.files[0]); };
+    dz.ondrop=e=>{e.preventDefault();dz.classList.remove('drag'); if(e.dataTransfer.files[0]) handler(e.dataTransfer.files[0]); };
+    inp.onchange=()=>{ if(inp.files[0]) handler(inp.files[0]); };
   }
 };
 
@@ -618,8 +644,8 @@ VIEWS.settings = {
           <input type="file" id="restoreFile" accept=".json" class="hidden">
         </div>
         <div class="divider"></div>
-        <div class="section-title" style="margin-top:0">${I.clipboard}<span>Templates de Checklist</span></div>
-        <div class="mini-list">${DB.templates.map(t=>`<div class="stat-row"><span class="nm">${esc(t.nome)}</span><span class="tag-chip">${t.secoes.reduce((n,se)=>n+se.itens.length,0)} itens</span></div>`).join('')||'<p class="mut sm">Nenhum template.</p>'}</div>
+        <div class="section-title" style="margin-top:0">${I.clipboard}<span>Templates de Checklist</span><span class="sp"></span><button class="btn sm ghost" data-act="go" data-view="import">${I.upload}Importar</button></div>
+        <div class="mini-list">${DB.templates.map(t=>`<div class="stat-row"><span class="nm">${esc(t.nome)}</span><span class="tag-chip">${t.secoes.reduce((n,se)=>n+se.itens.length,0)} itens</span><button class="btn sm icon danger" title="Excluir template" data-act="tplDel" data-id="${t.id}">${I.trash}</button></div>`).join('')||'<p class="mut sm">Nenhum template.</p>'}</div>
         <div class="divider"></div>
         <div class="section-title" style="margin-top:0;color:var(--bad)">${I.alert}<span>Zona de Risco</span></div>
         <button class="btn danger" data-act="wipe">${I.trash}Apagar todos os dados</button>
@@ -679,6 +705,12 @@ function wireGlobalEvents(){
       case 'tplCsv': A.downloadTemplateCsv(); break;
       case 'expXlsx': A.exportAssetsXlsx(); break;
       case 'expCsv': A.exportAssetsCsv(); break;
+      case 'impTab': state.importTab=t.dataset.tab; render(); break;
+      case 'tplChkXlsx': A.downloadChkTemplateXlsx(); break;
+      case 'tplChkCsv': A.downloadChkTemplateCsv(); break;
+      case 'expChkXlsx': A.exportChkXlsx(); break;
+      case 'expChkCsv': A.exportChkCsv(); break;
+      case 'tplDel': A.templateDel(id); break;
       case 'setSave': A.settingsSave(); break;
       case 'setLogoDel': DB.settings.logo=''; save(); render(); break;
       case 'backupExport': A.backupExport(); break;
