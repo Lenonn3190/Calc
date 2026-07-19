@@ -1,0 +1,6 @@
+# dados gerados em runtime pelo servidor
+app/dados/
+dados/
+# artefatos
+*.log
+node_modules/
