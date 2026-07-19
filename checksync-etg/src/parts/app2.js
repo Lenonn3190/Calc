@@ -25,6 +25,7 @@ function readText(f){ return new Promise((res,rej)=>{const r=new FileReader();r.
 async function shrink(dataURL,max=1000,q=0.8){ return new Promise(res=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;const sc=Math.min(1,max/Math.max(w,h));w=Math.round(w*sc);h=Math.round(h*sc);const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);res(cv.toDataURL('image/jpeg',q));};img.onerror=()=>res(dataURL);img.src=dataURL;}); }
 
 const ITEM_ST={C:'Conforme',R:'Restrição',NC:'Não Conforme',NA:'N/A'};
+const NIV=window.__CS_NIVEIS||{1:{nome:'Básico',desc:''},2:{nome:'Funcional',desc:''},3:{nome:'Integral',desc:''}};
 const FINAL_ST={'APROVADO':{bg:'#dcfce7',fg:'#15803d'},'APROVADO COM RESTRIÇÕES':{bg:'#fef3c7',fg:'#b45309'},'REPROVADO / INTERDITADO':{bg:'#fee2e2',fg:'#b91c1c'}};
 function finalFromItems(itens){let nc=false,r=false,any=false;itens.forEach(it=>{if(it.status==='NC'){nc=true;any=true;}else if(it.status==='R'){r=true;any=true;}else if(it.status==='C')any=true;});if(!any)return'APROVADO';if(nc)return'REPROVADO / INTERDITADO';if(r)return'APROVADO COM RESTRIÇÕES';return'APROVADO';}
 function laudoStats(l){let C=0,R=0,NC=0,NA=0,a=0;l.itens.forEach(it=>{if(it.status==='C'){C++;a++;}else if(it.status==='R'){R++;a++;}else if(it.status==='NC'){NC++;a++;}else if(it.status==='NA')NA++;});return{C,R,NC,NA,aval:a,conf:a?Math.round(C/a*100):0,acoes:R+NC};}
@@ -126,15 +127,23 @@ A.startInspection=function(assetId){
   let tpl=DB.templates[0];
   if(asset){ const m=DB.templates.find(t=>t.categoria===asset.categoria); if(m) tpl=m; }
   state.insp={
-    assetId: asset?asset.id:'', templateId: tpl?tpl.id:'',
+    assetId: asset?asset.id:'', templateId: tpl?tpl.id:'', nivel:1,
     inspetor: DB.settings.inspetorPadrao||'', cargo: DB.settings.cargoPadrao||'',
     matricula: DB.settings.matriculaPadrao||'', data: todayISO(),
     aprovadoPor:'', parecer:'', statusOverride:'', assinatura:'',
-    itens: buildItens(tpl),
+    itens: buildItens(tpl,1),
   };
   go('inspect');
 };
-function buildItens(tpl){ if(!tpl) return []; const out=[]; tpl.secoes.forEach(se=>se.itens.forEach(it=>out.push({secao:se.nome,item:it,status:'',obs:'',fotos:[]}))); return out; }
+// Constrói os itens do checklist filtrando pelo nível (cumulativo: mostra o nível
+// escolhido e os anteriores). 'old' preserva status/obs/fotos já preenchidos.
+function buildItens(tpl, level, old){
+  if(!tpl) return [];
+  const L=(level===2||level===3)?level:1; const out=[];
+  tpl.secoes.forEach(se=>se.itens.forEach(it=>{ const nv=(it&&it.nivel)||1; if(nv<=L) out.push({secao:se.nome, item:(it&&it.nome)||String(it), nivel:nv, status:'', obs:'', fotos:[]}); }));
+  if(old&&old.length) out.forEach(b=>{ const m=old.find(o=>o.secao===b.secao&&o.item===b.item); if(m){ b.status=m.status||''; b.obs=m.obs||''; b.fotos=m.fotos||[]; } });
+  return out;
+}
 
 window.__CS_VIEWS.inspect={
   html(){
@@ -158,6 +167,9 @@ window.__CS_VIEWS.inspect={
           <div class="field"><label>Ativo a inspecionar</label><select class="input" id="inAsset">${optA}</select></div>
           ${asset&&asset.foto?`<div class="photo-box" style="margin-top:12px"><img src="${esc(asset.foto)}"></div>`:''}
           <div class="field" style="margin-top:12px"><label>Template de Checklist</label><select class="input" id="inTpl">${optT}</select></div>
+          <div class="field" style="margin-top:12px"><label>Nível de Inspeção</label>
+            <select class="input" id="inNivel">${[1,2,3].map(n=>`<option value="${n}" ${ins.nivel===n?'selected':''}>Nível ${n} — ${NIV[n].nome}</option>`).join('')}</select>
+            <div class="hint" id="inNivelDesc" style="margin-top:6px">${esc(NIV[ins.nivel]?NIV[ins.nivel].desc:'')}</div></div>
         </div>
         <div class="card pad">
           <div class="section-title" style="margin-top:0">${I.pen}<span>Responsável</span></div>
@@ -195,8 +207,9 @@ window.__CS_VIEWS.inspect={
     const DB=DBref();
     // selects
     const selAsset=$('#inAsset',root), selTpl=$('#inTpl',root);
-    if(selAsset) selAsset.onchange=()=>{ ins.assetId=selAsset.value; const a=DB.assets.find(x=>x.id===ins.assetId); const m=a&&DB.templates.find(t=>t.categoria===a.categoria); if(m){ ins.templateId=m.id; ins.itens=buildItens(m); } captureFields(); render(); };
-    if(selTpl) selTpl.onchange=()=>{ ins.templateId=selTpl.value; ins.itens=buildItens(DB.templates.find(t=>t.id===ins.templateId)); captureFields(); render(); };
+    if(selAsset) selAsset.onchange=()=>{ ins.assetId=selAsset.value; const a=DB.assets.find(x=>x.id===ins.assetId); const m=a&&DB.templates.find(t=>t.categoria===a.categoria); if(m){ ins.templateId=m.id; ins.itens=buildItens(m,ins.nivel,ins.itens); } captureFields(); render(); };
+    if(selTpl) selTpl.onchange=()=>{ ins.templateId=selTpl.value; ins.itens=buildItens(DB.templates.find(t=>t.id===ins.templateId),ins.nivel,ins.itens); captureFields(); render(); };
+    const selN=$('#inNivel',root); if(selN) selN.onchange=()=>{ ins.nivel=+selN.value||1; ins.itens=buildItens(DB.templates.find(t=>t.id===ins.templateId),ins.nivel,ins.itens); captureFields(); render(); };
     // text fields (no rerender, capture on change)
     const bind=(sel,key)=>{ const el=$(sel,root); if(el) el.oninput=()=>ins[key]=el.value; };
     bind('#inInsp','inspetor'); bind('#inCargo','cargo'); bind('#inData','data');
@@ -246,7 +259,7 @@ function segRow(it,idx){
   const fotos=it.fotos||[];
   const phs=fotos.map((f,j)=>`<div class="thumb-sm"><img src="${f}" data-view><button class="rm" data-rmph="${idx}:${j}" title="Remover">×</button></div>`).join('');
   return `<div class="chk-item">
-    <div class="it-name">${esc(it.item)}</div>
+    <div class="it-name">${it.nivel?`<span class="niv-tag n${it.nivel}">N${it.nivel}</span> `:''}${esc(it.item)}</div>
     <div class="seg">${seg('C')}${seg('R')}${seg('NC')}${seg('NA')}</div>
     <textarea class="input obs" data-obs="${idx}" placeholder="Observação / constatação (opcional)" style="min-height:0;padding:7px 10px;font-size:12.5px">${esc(it.obs)}</textarea>
     <div class="chk-photos">${phs}<button class="btn sm addph" data-addph="${idx}">${I.image} Foto${fotos.length?' ('+fotos.length+')':''}</button></div>
@@ -303,6 +316,7 @@ A.finishInspection=function(){
     id:uid(), numero, assetId:asset.id,
     assetSnapshot:{nome:asset.nome,tag:asset.tag,categoria:asset.categoria,setor:asset.setor,foto:asset.foto},
     templateNome:(DB.templates.find(t=>t.id===ins.templateId)||{}).nome||'',
+    nivel:ins.nivel||1, nivelNome:(NIV[ins.nivel]||NIV[1]).nome,
     inspetor:ins.inspetor.trim(), cargo:ins.cargo.trim(), matricula:(ins.matricula||'').trim(),
     data:ins.data||todayISO(), aprovadoPor:ins.aprovadoPor.trim(), parecer:ins.parecer.trim(),
     statusFinal: ins.statusOverride || finalFromItems(ins.itens),
@@ -364,12 +378,12 @@ function sheetHTML(l){
           ${kv('Categoria', l.assetSnapshot.categoria)}
           ${kv('Setor', l.assetSnapshot.setor)}
           ${kv('Data da Vistoria', fmtDate(l.data))}
-          ${kv('Inspetor', l.inspetor)}
+          ${kv('Nível de Inspeção', l.nivel?('Nível '+l.nivel+' — '+(l.nivelNome||''))+'':'—')}
         </div>
       </div>
     </div>
 
-    <div class="ld-sect"><div class="h">Checklist — ${esc(l.templateNome||'Inspeção')} (${st.aval} avaliados • ${st.C} conformes • ${st.R} restrições • ${st.NC} não conf.)</div>
+    <div class="ld-sect"><div class="h">Checklist — ${esc(l.templateNome||'Inspeção')}${l.nivel?` • Nível ${l.nivel} (${esc(l.nivelNome||'')})`:''} (${st.aval} avaliados • ${st.C} conformes • ${st.R} restrições • ${st.NC} não conf.)</div>
       <table class="ld-tbl"><thead><tr><th>Item de Verificação</th><th>Status</th><th>Observação / Constatação</th></tr></thead><tbody>${rows}</tbody></table>
     </div>
 
@@ -460,19 +474,20 @@ A.exportAssetsXlsx=function(){ const n=DBref().assets.length; if(!n){ toast('Nen
 A.exportAssetsCsv=function(){ const n=DBref().assets.length; if(!n){ toast('Nenhum ativo para exportar','err'); return; } download('ativos_checksync_'+todayISO()+'.csv','﻿'+rowsToCsv(assetRows()),'text/csv'); toast(n+' ativo(s) exportado(s) em CSV'); };
 
 /* ---------- CHECKLISTS (templates) via planilha ---------- */
-const CHK_HEADER=['Template','Categoria','Secao','Item'];
+const CHK_HEADER=['Template','Categoria','Secao','Item','Nivel'];
+const CHK_ALIAS={template:['template','checklist'],categoria:['categoria','cat'],secao:['secao','seccao','sessao','sec'],item:['item','verificacao'],nivel:['nivel','level','n']};
 function errBox(m){ return `<div class="badge b-bad" style="padding:8px 12px"><span class="dot"></span>${esc(m)}</div>`; }
 function chkModelRows(){
   return [ CHK_HEADER,
-    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Movimentação de Carga','Garfos de Carga'],
-    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Movimentação de Carga','Freio de Carga (Içamento)'],
-    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Segurança do Operador','Sistema de Freio (Serviço e Estacionamento)'],
-    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Equipamentos e Painel','Aterramento Elétrico'],
-    ['Prensa / Injetora','Prensa','Proteções de Segurança','Barreira Fotoelétrica (Cortina de Luz)'],
-    ['Prensa / Injetora','Prensa','Proteções de Segurança','Sensor da Porta de Proteção'],
+    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Segurança do Operador','Sistema de Freio (Serviço e Estacionamento)','2'],
+    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Segurança do Operador','Iluminação Interna da Cabine','1'],
+    ['Empilhadeira (Combustão / Elétrica)','Empilhadeira','Equipamentos e Painel','Aterramento Elétrico','1'],
+    ['Prensa / Injetora','Prensa','Instrumentação e Pressão','Válvula de Segurança Hidráulica (Duplo Canal)','3'],
+    ['Prensa / Injetora','Prensa','Proteções de Segurança','Barreira Fotoelétrica (Cortina de Luz)','2'],
+    ['Prensa / Injetora','Prensa','Controle Elétrico','Aterramento Elétrico','1'],
   ];
 }
-function chkRows(){ const out=[CHK_HEADER]; DBref().templates.forEach(t=>t.secoes.forEach(s=>s.itens.forEach(it=>out.push([t.nome, t.categoria||'', s.nome, it])))); return out; }
+function chkRows(){ const out=[CHK_HEADER]; DBref().templates.forEach(t=>t.secoes.forEach(s=>s.itens.forEach(it=>out.push([t.nome, t.categoria||'', s.nome, (it&&it.nome)||String(it), String((it&&it.nivel)||1)])))); return out; }
 A.downloadChkTemplateXlsx=function(){ download('modelo_checklists_checksync.xlsx', buildXlsx(chkModelRows())); toast('Modelo Excel baixado'); };
 A.downloadChkTemplateCsv=function(){ download('modelo_checklists_checksync.csv','﻿'+rowsToCsv(chkModelRows()),'text/csv'); toast('Modelo CSV baixado'); };
 A.exportChkXlsx=function(){ if(!DBref().templates.length){ toast('Nenhum checklist','err'); return; } download('checklists_checksync_'+todayISO()+'.xlsx', buildXlsx(chkRows())); toast('Checklists exportados em Excel'); };
@@ -486,18 +501,19 @@ window.__CS_handleImportChk=async function(file){
     rows=rows.filter(r=>r&&r.some(c=>(c||'').trim()!==''));
     if(rows.length<2){ setBox(errBox('Nenhuma linha de dados encontrada')); return; }
     const head=rows[0].map(h=>norm(h)); const idx={};
-    ['template','categoria','secao','item'].forEach(c=>{ idx[c]=head.findIndex(h=>h===c||h.startsWith(c.slice(0,4))); });
+    ['template','categoria','secao','item','nivel'].forEach(c=>{ const al=CHK_ALIAS[c]||[c]; idx[c]=head.findIndex(h=>al.includes(h)); if(idx[c]<0) idx[c]=head.findIndex(h=>al.some(a=>h.startsWith(a))); });
     if(idx.template<0 || idx.item<0){ setBox(errBox('Colunas "Template" e "Item" são obrigatórias. Use o modelo.')); return; }
     const order=[], map={};
     for(let r=1;r<rows.length;r++){
       const g=k=>idx[k]>=0?(rows[r][idx[k]]||'').trim():'';
       const tname=g('template'), item=g('item'); if(!tname||!item) continue;
+      const nv=(function(x){x=parseInt(x,10);return(x===2||x===3)?x:1;})(g('nivel'));
       const key=tname.toLowerCase();
       if(!map[key]){ map[key]={nome:tname, categoria:g('categoria'), secOrder:[], sec:{}}; order.push(key); }
       const T=map[key]; if(!T.categoria && g('categoria')) T.categoria=g('categoria');
       const sname=g('secao')||'Verificações Gerais';
       if(!T.sec[sname]){ T.sec[sname]=[]; T.secOrder.push(sname); }
-      T.sec[sname].push(item);
+      T.sec[sname].push({nome:item, nivel:nv});
     }
     if(!order.length){ setBox(errBox('Nenhum item válido (precisa de Template + Item).')); return; }
     const DB=DBref(); let created=0, updated=0, items=0;

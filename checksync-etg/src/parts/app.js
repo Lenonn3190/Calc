@@ -180,7 +180,7 @@ function seedTemplatesOnce(){ // roda só uma vez por versão; não desfaz exclu
   seedTemplates().forEach(s=>{ if(!DB.templates.some(t=>t.categoria===s.categoria)) DB.templates.push(s); });
   DB.meta.tplSeedV=2;
 }
-function adopt(remote){ Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB,remote); ensureShape(); Backend.lastHash=dbHash(DB); }
+function adopt(remote){ Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB,remote); ensureShape(); normalizeTemplates(); Backend.lastHash=dbHash(DB); }
 let _saveTimer=null;
 function save(){
   if(IDB.ok){ IDB.set("db",DB).catch(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(_){}}); }  // cache local sempre
@@ -210,6 +210,7 @@ async function load(){
   if(!DB || !DB.meta){ DB = seedDB(); }
   ensureShape();
   seedTemplatesOnce();
+  normalizeTemplates();
   save();
   Backend.lastHash=dbHash(DB);
   if(Backend.isRemote()) startSync();
@@ -242,58 +243,72 @@ async function doSync(manual){
 }
 function startSync(){ if(startSync._t) return; startSync._t=setInterval(()=>{ if(document.hidden||state.view==='inspect') return; const mr=document.getElementById('modal-root'); if(mr && mr.innerHTML) return; doSync(false); }, 20000); }
 
-/* ---------- Templates de checklist (semente) ---------- */
+/* ---------- Templates de checklist (semente) ----------
+   S(nome, nivel, itens): cria uma seção cujos itens recebem o nível informado
+   (1 Básico, 2 Funcional, 3 Integral). O nível é por item; aqui a semente usa
+   um nível por seção só para facilitar. */
 function seedTemplates(){
+  const S=(nome,nivel,itens)=>({nome, itens:itens.map(i=>({nome:i, nivel}))});
   return [
     { id:uid(), nome:'Empilhadeira (Combustão / Elétrica)', categoria:'Empilhadeira', secoes:[
-      { nome:'Movimentação de Carga', itens:['Garfos de Carga','Torre de Elevação e Garfos','Correntes de Elevação','Cilindros de Inclinação e Elevação','Freio de Carga (Içamento)'] },
-      { nome:'Segurança do Operador', itens:['Estrutura de Proteção do Operador (ROPS)','Sistema de Freio (Serviço e Estacionamento)','Sirene de Movimentação e Giroflex','Iluminação Interna da Cabine'] },
-      { nome:'Equipamentos e Painel', itens:['Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico','Nível do Óleo do Motor (Combustão)','Filtro de Ar de Admissão'] },
+      S('Movimentação de Carga',2,['Garfos de Carga','Torre de Elevação e Garfos','Correntes de Elevação','Cilindros de Inclinação e Elevação','Freio de Carga (Içamento)']),
+      S('Segurança do Operador',2,['Estrutura de Proteção do Operador (ROPS)','Sistema de Freio (Serviço e Estacionamento)','Sirene de Movimentação e Giroflex','Iluminação Interna da Cabine']),
+      S('Equipamentos e Painel',1,['Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico','Nível do Óleo do Motor (Combustão)','Filtro de Ar de Admissão']),
     ]},
     { id:uid(), nome:'Ponte Rolante / Guindaste', categoria:'Ponte Rolante', secoes:[
-      { nome:'Içamento e Carga', itens:['Anéis de Carga e Manilhas','Freio de Carga (Içamento)','Correntes de Elevação','Pintura de Identificação de Carga Máxima'] },
-      { nome:'Fim de Curso e Sensores', itens:['Batentes de Fim de Curso de Translação','Dispositivo Fim de Curso de Elevação','Barreira Fotoelétrica (Cortina de Luz)'] },
-      { nome:'Elétrica e Sinalização', itens:['Cabo Festoon (Alimentação)','Aterramento Elétrico','Sirene de Movimentação e Giroflex'] },
+      S('Içamento e Carga',2,['Anéis de Carga e Manilhas','Freio de Carga (Içamento)','Correntes de Elevação','Pintura de Identificação de Carga Máxima']),
+      S('Fim de Curso e Sensores',2,['Batentes de Fim de Curso de Translação','Dispositivo Fim de Curso de Elevação','Barreira Fotoelétrica (Cortina de Luz)']),
+      S('Elétrica e Sinalização',1,['Cabo Festoon (Alimentação)','Aterramento Elétrico','Sirene de Movimentação e Giroflex']),
     ]},
     { id:uid(), nome:'Prensa / Injetora', categoria:'Prensa', secoes:[
-      { nome:'Instrumentação e Vaso de Pressão', itens:['Válvula de Segurança Hidráulica (Duplo Canal)','Válvula de Segurança de Pressão','Válvula Reguladora de Fluxo Proporcional','Estanqueidade das Linhas de Ar'] },
-      { nome:'Proteções de Segurança', itens:['Barreira Fotoelétrica (Cortina de Luz)','Fechadura de Segurança Elétrica','Sensor da Porta de Proteção'] },
-      { nome:'Controle e Estrutura Elétrica', itens:['Fixação da Placa (Castanhas)','Visor do Painel Digital (Controlador)','Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico'] },
+      S('Instrumentação e Vaso de Pressão',3,['Válvula de Segurança Hidráulica (Duplo Canal)','Válvula de Segurança de Pressão','Válvula Reguladora de Fluxo Proporcional','Estanqueidade das Linhas de Ar']),
+      S('Proteções de Segurança',2,['Barreira Fotoelétrica (Cortina de Luz)','Fechadura de Segurança Elétrica','Sensor da Porta de Proteção']),
+      S('Controle e Estrutura Elétrica',1,['Fixação da Placa (Castanhas)','Visor do Painel Digital (Controlador)','Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico']),
     ]},
     { id:uid(), nome:'Torno / Centro de Usinagem', categoria:'Usinagem', secoes:[
-      { nome:'Sistemas de Manutenção', itens:['Fixação da Placa (Castanhas)','Lubrificação das Guias Lineares','Unidade de Lubrificação Automática','Acúmulo de Lodo / Filtro de Retorno'] },
-      { nome:'Pneumático e Elétrico', itens:['Filtro Regulador de Ar (Pneumático)','Controle e Estrutura Elétrica','Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico'] },
+      S('Sistemas de Manutenção',1,['Fixação da Placa (Castanhas)','Lubrificação das Guias Lineares','Unidade de Lubrificação Automática','Acúmulo de Lodo / Filtro de Retorno']),
+      S('Pneumático e Elétrico',2,['Filtro Regulador de Ar (Pneumático)','Controle e Estrutura Elétrica','Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico']),
     ]},
     { id:uid(), nome:'Máquina de Leak Teste (Estanqueidade)', categoria:'Leak Teste', secoes:[
-      { nome:'Instrumentação e Pressão', itens:['Transdutor / Sensor de Pressão','Válvulas Solenoides de Enchimento','Regulador de Pressão de Entrada','Manômetro de Referência (Calibração)','Estanqueidade das Linhas Pneumáticas'] },
-      { nome:'Vedação e Fixação da Peça', itens:['Vedações do Dispositivo (Selos / O-Rings)','Fixação / Clamps da Peça','Peça Master de Calibração','Conexões e Engates Rápidos'] },
-      { nome:'Elétrica e Segurança', itens:['Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico','Botão de Emergência','Proteção de Acesso / Intertravamento'] },
+      S('Instrumentação e Pressão',3,['Transdutor / Sensor de Pressão','Válvulas Solenoides de Enchimento','Regulador de Pressão de Entrada','Manômetro de Referência (Calibração)','Estanqueidade das Linhas Pneumáticas']),
+      S('Vedação e Fixação da Peça',1,['Vedações do Dispositivo (Selos / O-Rings)','Fixação / Clamps da Peça','Peça Master de Calibração','Conexões e Engates Rápidos']),
+      S('Elétrica e Segurança',2,['Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico','Botão de Emergência','Proteção de Acesso / Intertravamento']),
     ]},
     { id:uid(), nome:'Lavadora Industrial de Peças', categoria:'Lavadoras', secoes:[
-      { nome:'Sistema Hidráulico', itens:['Bomba de Recirculação','Bicos de Aspersão (Jatos)','Filtro de Retorno / Decantação','Nível e Qualidade da Solução','Vazamentos / Estanqueidade'] },
-      { nome:'Aquecimento e Secagem', itens:['Resistência de Aquecimento','Termostato / Controle de Temperatura','Sistema de Secagem (Soprador)','Exaustão de Vapores'] },
-      { nome:'Elétrica e Segurança', itens:['Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico','Intertravamento da Porta','Botão de Emergência'] },
+      S('Sistema Hidráulico',1,['Bomba de Recirculação','Bicos de Aspersão (Jatos)','Filtro de Retorno / Decantação','Nível e Qualidade da Solução','Vazamentos / Estanqueidade']),
+      S('Aquecimento e Secagem',2,['Resistência de Aquecimento','Termostato / Controle de Temperatura','Sistema de Secagem (Soprador)','Exaustão de Vapores']),
+      S('Elétrica e Segurança',2,['Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico','Intertravamento da Porta','Botão de Emergência']),
     ]},
     { id:uid(), nome:'Nutrunner (Apertadeira Controlada)', categoria:'Nutrunner', secoes:[
-      { nome:'Ferramenta e Aperto', itens:['Fuso / Soquete de Aperto','Transdutor de Torque','Verificação de Torque (Calibração)','Repetibilidade / Ângulo de Aperto'] },
-      { nome:'Alimentação e Cabos', itens:['Cabo de Alimentação / Sinal','Conectores e Fixação','Mangueira Pneumática (se aplicável)'] },
-      { nome:'Controlador e Segurança', itens:['Controlador / Visor Digital','Sinalização de OK / NOK','Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico'] },
+      S('Ferramenta e Aperto',3,['Fuso / Soquete de Aperto','Transdutor de Torque','Verificação de Torque (Calibração)','Repetibilidade / Ângulo de Aperto']),
+      S('Alimentação e Cabos',1,['Cabo de Alimentação / Sinal','Conectores e Fixação','Mangueira Pneumática (se aplicável)']),
+      S('Controlador e Segurança',2,['Controlador / Visor Digital','Sinalização de OK / NOK','Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico']),
     ]},
     { id:uid(), nome:'Forno Fusor (Fusão)', categoria:'Forno Fusor', secoes:[
-      { nome:'Câmara e Aquecimento', itens:['Revestimento Refratário / Cadinho','Resistências / Queimadores','Termopar / Controle de Temperatura','Isolamento Térmico e Vedação da Porta'] },
-      { nome:'Exaustão e Gases', itens:['Sistema de Exaustão / Coifa','Válvulas de Gás e Estanqueidade','Detecção de Gás (se aplicável)'] },
-      { nome:'Elétrica e Segurança', itens:['Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico','Proteção Térmica de Acesso','Botão de Emergência','Sinalização de Alta Temperatura'] },
+      S('Câmara e Aquecimento',2,['Revestimento Refratário / Cadinho','Resistências / Queimadores','Termopar / Controle de Temperatura','Isolamento Térmico e Vedação da Porta']),
+      S('Exaustão e Gases',2,['Sistema de Exaustão / Coifa','Válvulas de Gás e Estanqueidade','Detecção de Gás (se aplicável)']),
+      S('Elétrica e Segurança',1,['Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico','Proteção Térmica de Acesso','Botão de Emergência','Sinalização de Alta Temperatura']),
     ]},
     { id:uid(), nome:'Máquina Especial / Dedicada', categoria:'Máquina Especial', secoes:[
-      { nome:'Estrutura e Movimentação', itens:['Estrutura e Fixação da Base','Guias / Atuadores Lineares','Sistema Pneumático / Hidráulico','Sensores de Posição'] },
-      { nome:'Controle e Automação', itens:['CLP / Controlador','Interface (IHM / Visor)','Sensores e Fim de Curso'] },
-      { nome:'Proteções de Segurança', itens:['Grades / Proteções de Segurança','Barreira Fotoelétrica (Cortina de Luz)','Botão de Emergência','Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico'] },
+      S('Estrutura e Movimentação',2,['Estrutura e Fixação da Base','Guias / Atuadores Lineares','Sistema Pneumático / Hidráulico','Sensores de Posição']),
+      S('Controle e Automação',3,['CLP / Controlador','Interface (IHM / Visor)','Sensores e Fim de Curso']),
+      S('Proteções de Segurança',1,['Grades / Proteções de Segurança','Barreira Fotoelétrica (Cortina de Luz)','Botão de Emergência','Fixação e Fechamento do Painel Elétrico','Aterramento Elétrico']),
     ]},
     { id:uid(), nome:'Checklist Genérico', categoria:'Geral', secoes:[
-      { nome:'Verificações Gerais', itens:['Estrutura e Fixação','Aterramento Elétrico','Sistema de Freio / Parada de Emergência','Sinalização e Identificação','Proteções de Segurança','Vazamentos / Lubrificação'] },
+      S('Verificações Gerais',1,['Estrutura e Fixação','Aterramento Elétrico','Sistema de Freio / Parada de Emergência','Sinalização e Identificação','Proteções de Segurança','Vazamentos / Lubrificação']),
     ]},
   ];
 }
+function clampNivel(n){ n=parseInt(n,10); return (n===2||n===3)?n:1; }
+function normalizeTemplates(){ (DB.templates||[]).forEach(t=>{ (t.secoes||[]).forEach(s=>{ s.itens=(s.itens||[]).map(x=>{
+  if(x&&typeof x==='object'&&!Array.isArray(x)) return {nome:String(x.nome||x.item||''), nivel:clampNivel(x.nivel)};
+  if(Array.isArray(x)) return {nome:String(x[0]||''), nivel:clampNivel(x[1])};
+  return {nome:String(x), nivel:1};
+}); }); }); }
+const NIVEIS={1:{nome:'Básico',desc:'Inspeção visual, checklist de turno ou após pequenos ajustes (ex.: setup de ferramenta, troca de um sensor fotoelétrico simples).'},
+  2:{nome:'Funcional',desc:'Teste de movimentos e segurança após manutenção corretiva média (ex.: troca de servomotor, reaperto de painel, troca de ilha de válvulas).'},
+  3:{nome:'Integral',desc:'Validação completa de parâmetros, I/O e segurança após grande intervenção (ex.: substituição de IHM/CLP, crash de robô, reforma da máquina ou tryout).'}};
+window.__CS_NIVEIS=NIVEIS;
 function seedDB(){
   return {
     meta:{version:1, tplSeedV:2, createdAt:new Date().toISOString()},
@@ -509,8 +524,8 @@ VIEWS.assets = {
 /* ---------- IMPORTAR (xlsx/csv) — Ativos e Checklists ---------- */
 const IMPORT_COLS=['nome','tag','categoria','setor','status','descricao'];
 const COL_LABELS={nome:'Nome da Máquina*',tag:'Nº Ativo',categoria:'Categoria',setor:'Setor (FND/USI/MMO/MSC)',status:'Status',descricao:'Descrição'};
-const CHK_COLS=['template','categoria','secao','item'];
-const CHK_LABELS={template:'Template*',categoria:'Categoria',secao:'Seção',item:'Item de Verificação*'};
+const CHK_COLS=['template','categoria','secao','item','nivel'];
+const CHK_LABELS={template:'Template*',categoria:'Categoria',secao:'Seção',item:'Item de Verificação*',nivel:'Nível (1/2/3)'};
 function importCard(cfg){
   // cfg: {countLabel, tplActs, expActs, cols, colLabels, hint, uploadHint}
   return `<div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
@@ -554,7 +569,7 @@ VIEWS.import = {
         tplActs:`<button class="btn primary" data-act="tplChkXlsx">${I.file}Modelo (.xlsx)</button><button class="btn" data-act="tplChkCsv">${I.file}Modelo (.csv)</button>`,
         expActs:`<button class="btn primary" data-act="expChkXlsx" ${nt?'':'disabled'}>${I.download}Exportar (.xlsx)</button><button class="btn" data-act="expChkCsv" ${nt?'':'disabled'}>${I.download}Exportar (.csv)</button>`,
         cols:CHK_COLS, colLabels:CHK_LABELS,
-        hint:'Cada <b>linha</b> é um item. Itens do mesmo <b>Template</b> + <b>Seção</b> são agrupados na ordem da planilha. Um template com o mesmo <b>nome</b> é <b>substituído</b> pelos itens do arquivo.',
+        hint:'Cada <b>linha</b> é um item. <b>Nível</b>: 1 Básico, 2 Funcional, 3 Integral (vazio = 1). Itens do mesmo <b>Template</b> + <b>Seção</b> são agrupados na ordem da planilha. Um template com o mesmo <b>nome</b> é <b>substituído</b> pelos itens do arquivo.',
         uploadHint:'Os templates do arquivo são <b>criados ou atualizados</b>. Você usa esses checklists na tela de Nova Inspeção, por categoria.'
       });
     } else {

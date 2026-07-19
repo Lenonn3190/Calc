@@ -46,7 +46,7 @@ function buildDoc(l){
   const boxY=y, boxH=27, hasFoto=!!l.assetSnapshot.foto, photoW=hasFoto?34:0;
   doc.setDrawColor(...line); doc.setLineWidth(0.3); doc.roundedRect(M,boxY,cw,boxH,1.5,1.5);
   if(hasFoto){ try{ doc.addImage(l.assetSnapshot.foto,'JPEG',R-photoW-2,boxY+2.5,photoW,boxH-5);}catch(e){} }
-  const kv=[['Equipamento',l.assetSnapshot.nome],['Nº Ativo',l.assetSnapshot.tag],['Categoria',l.assetSnapshot.categoria],['Setor',l.assetSnapshot.setor],['Data da Vistoria',fmtDate(l.data)],['Inspetor',l.inspetor]];
+  const kv=[['Equipamento',l.assetSnapshot.nome],['Nº Ativo',l.assetSnapshot.tag],['Categoria',l.assetSnapshot.categoria],['Setor',l.assetSnapshot.setor],['Data da Vistoria',fmtDate(l.data)],['Nível de Inspeção', l.nivel?('Nível '+l.nivel+' - '+(l.nivelNome||'')):'—']];
   const leftW=cw-photoW-6, colW=leftW/2, rowH=(boxH-4)/3;
   kv.forEach((p,i)=>{ const col=i%2,row=Math.floor(i/2); const cx=M+3+col*colW, cy=boxY+5.5+row*rowH;
     doc.setFont('helvetica','bold'); doc.setFontSize(6.4); doc.setTextColor(...mut); doc.text(String(p[0]).toUpperCase(),cx,cy);
