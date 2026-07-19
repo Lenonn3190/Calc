@@ -1,6 +1,5 @@
-# dados gerados em runtime pelo servidor
-app/dados/
 dados/
-# artefatos
+servidor/dados/
 *.log
 node_modules/
+config-pasta.txt

@@ -24,6 +24,15 @@ param(
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+# Pasta de dados: -DataDir > config-pasta.txt > <Root>\dados
+if ([string]::IsNullOrWhiteSpace($DataDir)) {
+  $cfg = Join-Path $Root "config-pasta.txt"
+  if (Test-Path $cfg) {
+    $linha = (Get-Content $cfg -Raw -ErrorAction SilentlyContinue)
+    if ($linha) { $linha = $linha.Trim().Trim('"') }
+    if ($linha) { $DataDir = $linha }
+  }
+}
 if ([string]::IsNullOrWhiteSpace($DataDir)) { $DataDir = Join-Path $Root "dados" }
 $BackupDir = Join-Path $DataDir "backups"
 $LaudoDir  = Join-Path $DataDir "laudos"

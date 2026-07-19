@@ -109,70 +109,124 @@ const IDB = {
   get(k){return new Promise((res,rej)=>{ if(!IDB.db)return res(null); const t=IDB.db.transaction("kv","readonly"); const q=t.objectStore("kv").get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>rej(q.error); });},
   del(k){return new Promise((res,rej)=>{ if(!IDB.db)return res(); const t=IDB.db.transaction("kv","readwrite"); t.objectStore("kv").delete(k); t.oncomplete=res; t.onerror=()=>rej(t.error); });},
 };
-/* ---------- Base compartilhada (servidor de rede) ----------
-   Se o app for servido por http(s) e houver um servidor CheckSync (rota /api/ping),
-   entra em modo "servidor": lê e grava a base em pasta compartilhada e salva PDFs.
-   Caso contrário, modo "local" (IndexedDB neste aparelho). */
+/* ---------- Base de dados em PASTA (SharePoint / OneDrive) ----------
+   File System Access API: no 1º acesso o usuário escolhe a pasta base; o app
+   passa a gravar base.json, laudos/ e backups/ dentro dela. O handle da pasta
+   fica salvo (IndexedDB) para reconectar. Sem suporte (Firefox/Safari/celular)
+   ou sem pasta conectada: modo "local" (IndexedDB neste aparelho). */
+async function fsPerm(handle, request){
+  try{ const o={mode:'readwrite'};
+    if(await handle.queryPermission(o)==='granted') return true;
+    if(request && await handle.requestPermission(o)==='granted') return true;
+  }catch(e){}
+  return false;
+}
+async function fsReadJSON(dir,name){ try{ const fh=await dir.getFileHandle(name); const f=await fh.getFile(); const t=await f.text(); return t?JSON.parse(t):null; }catch(e){ return null; } }
+const _wq={};
+function fsWrite(dir,name,blob){ const prev=_wq[name]||Promise.resolve(); const next=prev.catch(()=>{}).then(async()=>{ const fh=await dir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); }); _wq[name]=next; return next; }
+async function fsWriteSub(dir,sub,name,blob){ const sd=await dir.getDirectoryHandle(sub,{create:true}); const fh=await sd.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); }
+
 const Backend = {
-  mode:'local', server:null, lastHash:'',
+  mode:'local', dir:null, server:null, pending:false, lastHash:'', lastBackup:0,
+  supported(){ return typeof window.showDirectoryPicker==='function'; },   // seletor de pasta (desktop Chrome/Edge)
+  isRemote(){ return Backend.mode==='server' || Backend.mode==='folder'; },
   async init(){
+    // 1) Servidor de rede: quando servido por http(s) e a rota /api/ping responde
     if(/^https?:$/.test(location.protocol)){
-      try{ const r=await fetch('api/ping',{cache:'no-store'}); if(r.ok){ Backend.server=await r.json(); Backend.mode='server'; } }catch(e){}
+      try{ const r=await fetch('api/ping',{cache:'no-store'}); if(r.ok){ Backend.server=await r.json(); Backend.mode='server'; return; } }catch(e){}
+    }
+    // 2) Pasta salva anteriormente (desktop, arquivo aberto direto)
+    if(Backend.supported() && IDB.ok){
+      try{ const h=await IDB.get('dirHandle'); if(h){ Backend.dir=h; if(await fsPerm(h,false)) Backend.mode='folder'; else Backend.pending=true; } }catch(e){}
     }
   },
-  async fetchDB(){ const r=await fetch('api/base?t='+Date.now(),{cache:'no-store'}); if(!r.ok) throw new Error('http '+r.status); const j=await r.json(); return (j&&j.meta)?j:null; },
-  postDB(db){ return fetch('api/base',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(db)}); },
-  postPDF(name,blob){ return fetch('api/laudo?name='+encodeURIComponent(name),{method:'POST',headers:{'content-type':'application/pdf'},body:blob}); },
+  // ---- pasta (File System Access) ----
+  async connect(){ const dir=await window.showDirectoryPicker({mode:'readwrite'}); if(!await fsPerm(dir,true)) throw new Error('perm'); Backend.dir=dir; Backend.server=null; Backend.mode='folder'; Backend.pending=false; try{ await IDB.set('dirHandle',dir); }catch(e){} return dir; },
+  async reconnect(){ if(!Backend.dir) return false; if(await fsPerm(Backend.dir,true)){ Backend.mode='folder'; Backend.pending=false; return true; } return false; },
+  disconnect(){ Backend.dir=null; Backend.mode='local'; Backend.pending=false; try{ IDB.del('dirHandle'); }catch(e){} },
+  folderName(){ return Backend.dir? Backend.dir.name : ''; },
+  async writeDBFolder(db){
+    await fsWrite(Backend.dir,'base.json', new Blob([JSON.stringify(db)],{type:'application/json'}));
+    const now=Date.now();
+    if(now-Backend.lastBackup>600000){ Backend.lastBackup=now; const st=new Date().toISOString().replace(/[:]/g,'-').slice(0,16); try{ await fsWriteSub(Backend.dir,'backups','base_'+st+'.json', new Blob([JSON.stringify(db)])); }catch(e){} }
+  },
+  // ---- servidor de rede ----
+  async fetchDB(){ const r=await fetch('api/base?t='+Date.now(),{cache:'no-store'}); if(!r.ok) throw new Error('http'); const j=await r.json(); return (j&&j.meta)?j:null; },
+  // ---- interface unificada ----
+  remoteLoad(){ return Backend.mode==='server'? Backend.fetchDB() : Backend.mode==='folder'? fsReadJSON(Backend.dir,'base.json') : Promise.resolve(null); },
+  remoteWrite(db){
+    if(Backend.mode==='server') return fetch('api/base',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(db)}).then(r=>{ if(!r.ok) throw 0; });
+    if(Backend.mode==='folder') return Backend.writeDBFolder(db);
+    return Promise.resolve();
+  },
+  remotePDF(name,blob){
+    if(Backend.mode==='server') return fetch('api/laudo?name='+encodeURIComponent(name),{method:'POST',headers:{'content-type':'application/pdf'},body:blob});
+    if(Backend.mode==='folder') return fsWriteSub(Backend.dir,'laudos',name,blob);
+    return Promise.resolve();
+  },
 };
 function dbHash(db){ try{ return db.assets.length+'/'+db.laudos.length+'/'+(db.settings.seq||0)+'/'+db.assets.reduce((a,x)=>a+(x.updatedAt||''),'')+'/'+db.laudos.reduce((a,x)=>a+x.id,''); }catch(e){ return String(Math.random()); } }
+function ensureShape(){ DB.assets ||= []; DB.laudos ||= []; DB.templates ||= []; DB.settings ||= {}; seedTemplates().forEach(s=>{ if(!DB.templates.some(t=>t.categoria===s.categoria)) DB.templates.push(s); }); }
+function adopt(remote){ Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB,remote); ensureShape(); Backend.lastHash=dbHash(DB); }
 let _saveTimer=null;
 function save(){
-  if(Backend.mode==='server'){
-    if(IDB.ok) IDB.set("db",DB).catch(()=>{});                 // espelho local (cache)
+  if(IDB.ok){ IDB.set("db",DB).catch(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(_){}}); }  // cache local sempre
+  else { try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){ toast('Falha ao salvar (armazenamento cheio?)','err'); } }
+  if(Backend.isRemote()){
     clearTimeout(_saveTimer);
-    _saveTimer=setTimeout(()=>{ Backend.postDB(DB).then(r=>{ if(!r.ok) throw 0; Backend.lastHash=dbHash(DB); }).catch(()=>toast('Falha ao gravar na base compartilhada','err')); }, 300);
-  } else {
-    if(IDB.ok){ IDB.set("db",DB).catch(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(_){}}); }
-    else { try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){ toast('Falha ao salvar (armazenamento cheio?)','err'); } }
+    _saveTimer=setTimeout(()=>{ Backend.remoteWrite(DB).then(()=>{ Backend.lastHash=dbHash(DB); }).catch(()=>toast('Falha ao gravar na base compartilhada','err')); }, 400);
   }
 }
 function clearStore(){
   try{ localStorage.removeItem(KEY); }catch(e){}
-  if(Backend.mode==='server'){ DB=seedDB(); return Backend.postDB(DB).catch(()=>{}); }
-  return IDB.ok? IDB.del("db").catch(()=>{}) : Promise.resolve();
+  const p = IDB.ok? IDB.del("db").catch(()=>{}) : Promise.resolve();
+  if(Backend.isRemote()){ DB=seedDB(); return p.then(()=>Backend.remoteWrite(DB)).catch(()=>{}); }
+  return p;
 }
 async function load(){
-  await Backend.init();
   await IDB.open();
+  await Backend.init();
   DB=null;
-  if(Backend.mode==='server'){
-    try{ DB=await Backend.fetchDB(); }
-    catch(e){ toast('Sem conexão com a base — usando cópia local','err'); if(IDB.ok){ try{ DB=await IDB.get("db"); }catch(_){}} }
+  if(Backend.isRemote()){
+    try{ DB=await Backend.remoteLoad(); }catch(e){ if(Backend.mode==='server') toast('Sem conexão com o servidor — usando cópia local','err'); }
+    if(!DB || !DB.meta){ if(IDB.ok){ try{ DB=await IDB.get("db"); }catch(_){}} }   // vazio: usa cache local
   } else {
     if(IDB.ok){ try{ DB=await IDB.get("db"); }catch(e){ DB=null; } }
     if(!DB || !DB.meta){ try{ const raw=localStorage.getItem(KEY); if(raw){ const old=JSON.parse(raw); if(old&&old.meta) DB=old; } }catch(e){} }
   }
   if(!DB || !DB.meta){ DB = seedDB(); }
-  DB.assets ||= []; DB.laudos ||= []; DB.templates ||= []; DB.settings ||= {};
-  seedTemplates().forEach(s=>{ if(!DB.templates.some(t=>t.categoria===s.categoria)) DB.templates.push(s); });
+  ensureShape();
   save();
   Backend.lastHash=dbHash(DB);
-  if(Backend.mode==='server') startSync();
+  if(Backend.isRemote()) startSync();
 }
-function startSync(){
-  setInterval(async()=>{
-    if(document.hidden) return;
-    if(state.view==='inspect') return;                              // não interrompe preenchimento
-    const mr=document.getElementById('modal-root'); if(mr && mr.innerHTML) return; // nem com modal aberto
-    try{
-      const rem=await Backend.fetchDB(); if(!rem) return;
-      const rh=dbHash(rem), ch=dbHash(DB);
-      if(rh===ch){ Backend.lastHash=rh; return; }                   // já sincronizado
-      if(ch!==Backend.lastHash) return;                             // temos alterações locais pendentes — não sobrescreve
-      Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB,rem); Backend.lastHash=rh; render();
-    }catch(e){}
-  }, 15000);
+/* --- Ações de conexão da pasta base (disparadas por clique = user gesture) --- */
+async function doConnectFolder(){
+  try{
+    await Backend.connect();
+    const remote=await Backend.remoteLoad();
+    if(remote && remote.meta){ adopt(remote); toast('Conectado — base da pasta carregada'); }
+    else { await Backend.remoteWrite(DB); Backend.lastHash=dbHash(DB); toast('Conectado — base criada na pasta'); }
+    startSync(); render();
+  }catch(e){ if(e && e.name==='AbortError') return; toast('Não foi possível conectar a pasta','err'); }
 }
+async function doReconnectFolder(){
+  try{ if(await Backend.reconnect()){ const r=await Backend.remoteLoad(); if(r&&r.meta) adopt(r); startSync(); render(); toast('Pasta reconectada'); }
+    else toast('Permissão negada para a pasta','err'); }catch(e){ toast('Falha ao reconectar','err'); }
+}
+function doDisconnectFolder(){ Backend.disconnect(); render(); toast('Desconectado (modo local neste aparelho)'); }
+async function doSync(manual){
+  if(!Backend.isRemote()){ if(manual) toast('Conecte uma pasta ou use o servidor','info'); return; }
+  try{
+    const rem=await Backend.remoteLoad();
+    if(!rem || !rem.meta){ if(manual) toast('A base ainda está vazia','info'); return; }
+    const rh=dbHash(rem), ch=dbHash(DB);
+    if(rh===ch){ Backend.lastHash=rh; if(manual) toast('Já está atualizado'); return; }
+    if(!manual && ch!==Backend.lastHash) return;                    // não sobrescreve alterações locais pendentes
+    adopt(rem); render(); if(manual) toast('Base atualizada');
+  }catch(e){ if(manual) toast('Falha ao atualizar a base','err'); }
+}
+function startSync(){ if(startSync._t) return; startSync._t=setInterval(()=>{ if(document.hidden||state.view==='inspect') return; const mr=document.getElementById('modal-root'); if(mr && mr.innerHTML) return; doSync(false); }, 20000); }
 
 /* ---------- Templates de checklist (semente) ---------- */
 function seedTemplates(){
@@ -259,10 +313,45 @@ function navItem(id, icon, label, count){
 }
 function connBadge(){
   if(Backend.mode==='server'){
-    const f=(Backend.server&&(Backend.server.data||Backend.server.folder))||'';
-    return `<button class="btn ghost sm" data-act="syncNow" title="Base: ${esc(f)}\n(clique para atualizar agora)" style="justify-content:center"><span class="badge b-ok" style="border:none;background:none;padding:0;gap:6px"><span class="dot"></span></span><span style="color:var(--ok);font-weight:700">Base compartilhada</span></button>`;
+    return `<button class="btn ghost sm" data-act="syncNow" title="Servidor (base compartilhada) — clique para atualizar" style="justify-content:center;gap:7px">
+      <span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none"></span>
+      <span style="color:var(--ok);font-weight:700">Base compartilhada</span></button>`;
+  }
+  if(Backend.mode==='folder'){
+    return `<button class="btn ghost sm" data-act="syncNow" title="Pasta base: ${esc(Backend.folderName())} — clique para atualizar da pasta" style="justify-content:center;gap:7px">
+      <span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none"></span>
+      <span style="color:var(--ok);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px">Pasta: ${esc(Backend.folderName())}</span></button>`;
+  }
+  if(Backend.pending){
+    return `<button class="btn sm primary" data-act="reconnectFolder" style="justify-content:center">${I.refresh}Reconectar pasta</button>`;
+  }
+  if(Backend.supported()){
+    return `<button class="btn sm primary" data-act="connectFolder" style="justify-content:center">${I.save}Conectar pasta base</button>`;
   }
   return `<div class="pill-row" style="justify-content:center;padding:2px 0"><span class="badge b-info"><span class="dot"></span>Local (este aparelho)</span></div>`;
+}
+function baseCard(){
+  const sup=Backend.supported(); let inner;
+  if(Backend.mode==='server'){
+    const f=(Backend.server&&(Backend.server.data||Backend.server.folder))||'';
+    inner=`<div class="pill-row" style="margin-bottom:10px"><span class="badge b-ok"><span class="dot"></span>Servidor</span>${f?`<span class="tag-chip" title="pasta de dados no servidor">${esc(f)}</span>`:''}</div>
+      <p class="mut sm" style="margin-bottom:12px">Conectado ao <b>servidor da rede</b>. A base fica na pasta de dados do servidor (aponte-a para a pasta do <b>OneDrive/SharePoint</b> para subir na nuvem). <b>Celulares e PCs</b> na mesma rede que abrem o endereço do servidor usam esta base.</p>
+      <button class="btn" data-act="syncNow">${I.refresh}Atualizar da base</button>`;
+  } else if(Backend.mode==='folder'){
+    inner=`<div class="pill-row" style="margin-bottom:10px"><span class="badge b-ok"><span class="dot"></span>Conectado</span><span class="tag-chip">${esc(Backend.folderName())}</span></div>
+      <p class="mut sm" style="margin-bottom:12px">Gravando <b>base.json</b>, <b>laudos/</b> e <b>backups/</b> dentro desta pasta. Se ela for uma pasta do <b>SharePoint sincronizada pelo OneDrive</b>, todos que apontarem para a mesma pasta usam a <b>mesma base</b>.</p>
+      <div class="pill-row"><button class="btn" data-act="syncNow">${I.refresh}Atualizar da pasta</button><button class="btn" data-act="connectFolder">${I.save}Trocar pasta</button><button class="btn danger" data-act="disconnectFolder">Desconectar</button></div>`;
+  } else if(Backend.pending){
+    inner=`<p class="mut sm" style="margin-bottom:12px">Já existe uma pasta base configurada, mas o navegador precisa da sua permissão para acessá-la de novo (por segurança, a cada sessão).</p>
+      <button class="btn primary" data-act="reconnectFolder">${I.refresh}Reconectar pasta base</button>`;
+  } else if(sup){
+    inner=`<p class="mut sm" style="margin-bottom:12px">Conecte a <b>pasta base</b> (por exemplo, uma pasta do <b>SharePoint</b> sincronizada pelo <b>OneDrive</b> no seu PC). A partir daí, ativos, laudos em PDF e backups são gravados <b>dentro dela</b> — e todos que apontarem para a mesma pasta compartilham a base.</p>
+      <button class="btn primary" data-act="connectFolder">${I.save}Conectar pasta base</button>
+      <p class="hint" style="margin-top:8px">Agora: <b>Local (este aparelho)</b>. Sem conectar, os dados ficam só neste navegador.</p>`;
+  } else {
+    inner=`<p class="mut sm">Para conectar uma pasta, use <b>Chrome</b> ou <b>Edge</b> no computador (o Firefox/Safari e celulares não permitem escolher pasta). Neste navegador os dados ficam <b>locais neste aparelho</b>; use Backup/Restaurar para mover entre máquinas.</p>`;
+  }
+  return `<div class="card pad" style="border-color:${Backend.mode==='folder'?'var(--ok)':'var(--line-2)'}"><div class="section-title" style="margin-top:0">${I.box}<span>Base de Dados (SharePoint / OneDrive)</span></div>${inner}</div>`;
 }
 function sidebar(){
   const s=DB.settings;
@@ -501,8 +590,9 @@ VIEWS.laudos = {
 VIEWS.settings = {
   html(){
     const s=DB.settings;
-    return topbar('Configurações','Dados da empresa, backup e templates')+
-    `<div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
+    return topbar('Configurações','Base de dados, empresa, backup e templates')+
+    baseCard()+
+    `<div class="grid" style="grid-template-columns:1fr 1fr;align-items:start;margin-top:16px">
       <div class="card pad">
         <div class="section-title" style="margin-top:0">${I.shield}<span>Identificação da Empresa</span></div>
         <div class="form-grid">
@@ -521,7 +611,7 @@ VIEWS.settings = {
       </div>
       <div class="card pad">
         <div class="section-title" style="margin-top:0">${I.save}<span>Backup & Restauração</span></div>
-        <p class="mut sm" style="margin-bottom:12px">Os dados ficam salvos no navegador via <b>IndexedDB</b> (suporta muitas fotos). Faça backup para não perder e para migrar de computador.</p>
+        <p class="mut sm" style="margin-bottom:12px">Backup manual em <b>.json</b> (além da pasta base, se conectada). Útil para arquivar ou migrar. As fotos e assinaturas vão junto.</p>
         <div class="pill-row">
           <button class="btn primary" data-act="backupExport">${I.download}Baixar Backup (.json)</button>
           <button class="btn" data-act="backupImport">${I.upload}Restaurar Backup</button>
@@ -573,7 +663,10 @@ function wireGlobalEvents(){
       case 'openNav': app.classList.add('nav-open'); break;
       case 'closeNav': app.classList.remove('nav-open'); break;
       case 'toggleTheme': DB.settings.theme = DB.settings.theme==='light'?'dark':'light'; save(); render(); break;
-      case 'syncNow': (async()=>{ try{ const rem=await Backend.fetchDB(); if(rem){ Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB,rem); Backend.lastHash=dbHash(DB); render(); toast('Base atualizada'); } else toast('Base vazia'); }catch(e){ toast('Não foi possível atualizar a base','err'); } })(); break;
+      case 'syncNow': doSync(true); break;
+      case 'connectFolder': doConnectFolder(); break;
+      case 'reconnectFolder': doReconnectFolder(); break;
+      case 'disconnectFolder': doDisconnectFolder(); break;
       case 'assetNew': A.assetForm(); break;
       case 'assetEdit': A.assetForm(id); break;
       case 'assetDel': A.assetDel(id); break;

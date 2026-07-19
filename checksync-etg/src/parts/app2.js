@@ -303,11 +303,12 @@ A.finishInspection=function(){
   else if(laudo.statusFinal==='APROVADO COM RESTRIÇÕES' && asset.status==='interditado') asset.status='manutencao';
   else if(laudo.statusFinal==='APROVADO') asset.status='operacional';
   save(); state.insp=null; go('laudos'); toast('Laudo '+numero+' gerado com sucesso');
-  // Gera o PDF e, na base compartilhada, salva na pasta /laudos do servidor
+  // Gera o PDF e, com base compartilhada (servidor ou pasta), salva em laudos/
   try{
-    if(window.__CS_makeLaudoBlob && window.__CS.backend && window.__CS.backend.mode==='server'){
+    const B=window.__CS.backend;
+    if(window.__CS_makeLaudoBlob && B && B.isRemote && B.isRemote()){
       const blob=window.__CS_makeLaudoBlob(laudo);
-      if(blob) window.__CS.backend.postPDF(numero+'.pdf',blob).then(r=>{ if(r&&r.ok) toast('PDF salvo na pasta /laudos'); }).catch(()=>{});
+      if(blob) Promise.resolve(B.remotePDF(numero+'.pdf',blob)).then(()=>toast('PDF salvo em laudos/')).catch(()=>{});
     }
   }catch(e){}
   setTimeout(()=>A.viewLaudo(laudo.id),350);
