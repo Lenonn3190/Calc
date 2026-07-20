@@ -1778,8 +1778,11 @@ function renderChecklist(root){
   // adicionar foto ao item (usa câmera no celular)
   box.querySelectorAll('button[data-addph]').forEach(btn=>{ btn.onclick=()=>{
     const idx=+btn.dataset.addph;
-    const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.capture='environment';
-    inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; const d=await shrink(await readData(f),1000,0.72); (ins.itens[idx].fotos ||= []).push(d); renderChecklist(root); updateProgress(root); };
+    // sem 'capture': o navegador oferece Câmera OU Galeria; multiple permite várias de uma vez
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+    inp.onchange=async()=>{ const files=[...inp.files]; if(!files.length) return; ins.itens[idx].fotos ||= [];
+      for(const f of files){ if(!/^image\//.test(f.type||'')) continue; const d=await shrink(await readData(f),1000,0.72); ins.itens[idx].fotos.push(d); }
+      renderChecklist(root); updateProgress(root); };
     inp.click();
   }; });
   box.querySelectorAll('button[data-rmph]').forEach(btn=>{ btn.onclick=()=>{ const [i,j]=btn.dataset.rmph.split(':').map(Number); ins.itens[i].fotos.splice(j,1); renderChecklist(root); }; });
