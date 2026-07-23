@@ -20,6 +20,30 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   com a distribuição do estoque por local (FND / MMO / USI / DR).
 - Sempre mostra: **última atualização** (data/hora) e **próxima atualização**
   (contagem regressiva).
+
+## Metas (🎯) e alertas
+
+Clique no botão **🎯** (ou tecla **M**) para abrir o **Cadastro de Metas**. Defina,
+por peça **e por local**:
+
+- **Meta (alvo)** — quanto se quer ter em estoque;
+- **Mínimo** — abaixo dele o card **pisca em vermelho** (alerta na TV);
+- **DR máx.** — quantidade de rejeitados aceitável (acima disso marca ⚠).
+
+O que o painel passa a mostrar:
+
+- **Barra de progresso** em cada card (verde = meta atingida, amarelo = abaixo da
+  meta, vermelho = abaixo do mínimo) e um selo de status.
+- **Alerta visual** (card piscando) quando o disponível fica abaixo do mínimo.
+- **Mini-gráfico de tendência** (sparkline) por peça, com a variação desde a
+  leitura anterior (▲/▼).
+- Marca de **meta por local** (linha tracejada) no gráfico de barras.
+
+**Salvar / carregar parâmetros:** as metas ficam salvas neste navegador e podem ser
+**exportadas** (`⬇ Exportar .json`) e **importadas** (`⬆ Importar .json`). Para o
+modo quiosque, basta colocar o arquivo **`metas.json`** (o exportado) na **mesma
+pasta** do `index.html` — o painel carrega as metas automaticamente na primeira
+abertura. Um `metas.json` de exemplo já acompanha o projeto.
 - **Reabre já conectado:** depois que a base é lida uma vez, ela fica salva no
   próprio navegador. Ao reabrir a página (ou se o servidor/planilha ficar
   indisponível no momento), o painel mostra **na hora a última base** — sem pedir

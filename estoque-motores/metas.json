@@ -1,0 +1,28 @@
+{
+  "intervaloMin": 60,
+  "metas": {
+    "Cabeçote": {
+      "meta": 5000, "minimo": 3000, "drMax": 30,
+      "locais": {
+        "FND": { "meta": 3000, "minimo": 2000 },
+        "MMO": { "meta": 600, "minimo": 300 },
+        "USI": { "meta": 1600, "minimo": 1000 }
+      }
+    },
+    "Bloco": {
+      "meta": 5000, "minimo": 3000, "drMax": 20,
+      "locais": {
+        "FND": { "meta": 2200, "minimo": 1500 },
+        "MMO": { "meta": 700, "minimo": 300 },
+        "USI": { "meta": 2100, "minimo": 1500 }
+      }
+    },
+    "Cilindro": {
+      "meta": 15000, "minimo": 10000, "drMax": 50,
+      "locais": {
+        "FND": { "meta": 9000, "minimo": 6000 },
+        "USI": { "meta": 11000, "minimo": 8000 }
+      }
+    }
+  }
+}
