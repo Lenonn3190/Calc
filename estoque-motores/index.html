@@ -123,7 +123,7 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 /* chips por local dentro do card */
 .locs{ display:flex; flex-wrap:wrap; gap:9px; margin-top:4px; align-items:center; }
 .locs.modelos{ margin-top:8px; padding-top:8px; border-top:1px dashed var(--line-2); }
-.modlab{ color:var(--faint); font-weight:800; font-size:clamp(11px,.9vw,15px); text-transform:uppercase; letter-spacing:.4px; margin-right:2px; }
+.modlab{ flex:0 0 100%; color:var(--faint); font-weight:800; font-size:clamp(11px,.9vw,15px); text-transform:uppercase; letter-spacing:.6px; margin:0 0 2px; }
 .locchip{ display:inline-flex; align-items:center; gap:9px; padding:8px 14px; border-radius:11px; background:var(--panel); border:1px solid var(--line);
   font-size:clamp(13px,1.1vw,19px); font-weight:800; font-variant-numeric:tabular-nums; }
 .locchip .sw{ width:12px; height:12px; border-radius:3px; flex:0 0 auto; }
@@ -661,11 +661,13 @@ function renderCards(data){
     let modelChips='', modAlarm=false;
     if(cat.modelo && g && g.modeloOrdem && g.modeloOrdem.length){
       modelChips=g.modeloOrdem.map(mod=>{
-        const v=(g.modelos[mod]&&g.modelos[mod].disp)||0;
+        const mm=g.modelos[mod]||{disp:0,rej:0};
+        const v=mm.disp||0, mrej=mm.rej||0;
         const mMeta=(m.modelos&&m.modelos[mod])||{}; const mst=statusClass(v,mMeta.meta||0,mMeta.minimo||0);
         if(mMeta.minimo>0 && v<mMeta.minimo) modAlarm=true;
         const alvo=(mMeta.meta>0)?` <span style="color:var(--faint);font-weight:600">/ ${fmtInt(mMeta.meta)}</span>`:'';
-        return `<span class="locchip ${mst}"><span class="sw" style="background:${modeloColor(cat,mod)}"></span><span class="lk">${xmlEsc(mod)}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>`;
+        const drTag=(mrej>0)?` <span style="color:var(--bad);font-weight:800">· DR ${fmtInt(mrej)}</span>`:'';
+        return `<span class="locchip ${mst}"><span class="sw" style="background:${modeloColor(cat,mod)}"></span><span class="lk">${xmlEsc(mod)}</span><span class="lv">${fmtInt(v)}${alvo}${drTag}</span></span>`;
       }).join('');
     }
     const alarm=(m.minimo>0 && disp<m.minimo) || locAlarm || modAlarm;
