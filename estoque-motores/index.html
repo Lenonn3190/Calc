@@ -74,7 +74,7 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
   border:1px solid var(--line); border-radius:var(--radius); padding:clamp(10px,1.4vh,18px) clamp(16px,1.8vw,26px);
   box-shadow:var(--shadow);
 }
-.chip{ display:flex; align-items:center; gap:10px; font-size:clamp(12px,1.15vw,18px); font-weight:600; color:var(--muted); }
+.chip{ display:flex; align-items:center; gap:10px; font-size:clamp(14px,1.3vw,21px); font-weight:600; color:var(--muted); }
 .chip b{ color:var(--txt); font-weight:800; }
 .chip .ic{ font-size:1.25em; }
 .dot{ width:11px; height:11px; border-radius:50%; background:var(--faint); flex:0 0 auto; }
@@ -98,31 +98,33 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
   box-shadow:var(--shadow); padding:clamp(14px,1.9vh,26px) clamp(16px,1.6vw,30px);
   display:flex; flex-direction:column; gap:clamp(6px,1vh,12px);
 }
-.card::before{ content:""; position:absolute; inset:0 auto 0 0; width:8px; background:var(--c,var(--brand)); }
+.card::before{ content:""; position:absolute; inset:0 auto 0 0; width:9px; background:var(--c,var(--brand)); }
 .card .card-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.card .name{ display:flex; align-items:center; gap:12px; font-size:clamp(17px,1.7vw,30px); font-weight:800; letter-spacing:-.5px; }
+.card .name{ display:flex; align-items:center; gap:14px; font-size:clamp(21px,2.1vw,40px); font-weight:800; letter-spacing:-.5px; }
 .card .name .pic{
-  width:clamp(38px,3.2vw,56px); height:clamp(38px,3.2vw,56px); border-radius:14px; display:grid; place-items:center;
-  font-size:clamp(20px,2vw,32px); background:color-mix(in srgb, var(--c) 20%, transparent); color:var(--c);
+  width:clamp(48px,4vw,74px); height:clamp(48px,4vw,74px); border-radius:16px; display:grid; place-items:center;
+  background:color-mix(in srgb, var(--c) 18%, transparent); color:var(--c);
   border:1px solid color-mix(in srgb, var(--c) 45%, transparent);
 }
+.card .name .pic svg{ width:66%; height:66%; display:block; }
 .card .qty-wrap{ display:flex; align-items:baseline; gap:10px; }
-.card .qty{ font-size:clamp(46px,6.6vw,104px); font-weight:900; line-height:.9; letter-spacing:-3px; font-variant-numeric:tabular-nums; color:var(--txt); }
-.card .unit{ font-size:clamp(13px,1.2vw,20px); font-weight:700; color:var(--muted); }
-.card .sub{ color:var(--muted); font-size:clamp(11px,.95vw,15px); font-weight:600; margin-top:-2px; }
+.card .qty{ font-size:clamp(52px,6.4vw,116px); font-weight:900; line-height:.9; letter-spacing:-2px; font-variant-numeric:tabular-nums; color:var(--txt); }
+.card .unit{ font-size:clamp(15px,1.4vw,24px); font-weight:800; color:var(--muted); white-space:nowrap; }
+.card .sub{ color:var(--muted); font-size:clamp(13px,1.15vw,20px); font-weight:600; margin-top:0; }
+.card .sub b{ color:var(--txt); }
 .card .meta{ display:flex; gap:clamp(8px,.8vw,14px); flex-wrap:wrap; }
-.badge{ display:inline-flex; align-items:center; gap:7px; padding:6px 12px; border-radius:999px; font-size:clamp(11px,.95vw,15px); font-weight:700; border:1px solid var(--line-2); background:var(--panel); color:var(--muted); }
-.badge .dot{ width:9px; height:9px; }
+.badge{ display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px; font-size:clamp(13px,1.1vw,19px); font-weight:700; border:1px solid var(--line-2); background:var(--panel); color:var(--muted); }
+.badge .dot{ width:10px; height:10px; }
 .b-ok{ color:var(--ok); border-color:color-mix(in srgb,var(--ok) 40%,transparent); background:var(--ok-bg); }
 .b-warn{ color:var(--warn); border-color:color-mix(in srgb,var(--warn) 40%,transparent); background:var(--warn-bg); }
 .b-bad{ color:var(--bad); border-color:color-mix(in srgb,var(--bad) 40%,transparent); background:var(--bad-bg); }
 .b-info{ color:var(--info); border-color:color-mix(in srgb,var(--info) 40%,transparent); background:rgba(56,189,248,.12); }
 
 /* chips por local dentro do card */
-.locs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:2px; }
-.locchip{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:10px; background:var(--panel); border:1px solid var(--line);
-  font-size:clamp(11px,.95vw,15px); font-weight:700; font-variant-numeric:tabular-nums; }
-.locchip .sw{ width:10px; height:10px; border-radius:3px; flex:0 0 auto; }
+.locs{ display:flex; flex-wrap:wrap; gap:9px; margin-top:4px; }
+.locchip{ display:inline-flex; align-items:center; gap:9px; padding:8px 14px; border-radius:11px; background:var(--panel); border:1px solid var(--line);
+  font-size:clamp(13px,1.1vw,19px); font-weight:800; font-variant-numeric:tabular-nums; }
+.locchip .sw{ width:12px; height:12px; border-radius:3px; flex:0 0 auto; }
 .locchip .lk{ color:var(--muted); font-weight:600; }
 .locchip.rej{ border-color:color-mix(in srgb,var(--bad) 45%,transparent); }
 .locchip.rej .lv{ color:var(--bad); }
@@ -132,16 +134,17 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .chart-card{ position:relative; border-radius:var(--radius); border:1px solid var(--line);
   background:linear-gradient(180deg,var(--panel-2),var(--panel)); box-shadow:var(--shadow);
   padding:clamp(12px,1.6vh,22px) clamp(14px,1.6vw,26px); display:flex; flex-direction:column; min-height:0; }
-.chart-card h3{ font-size:clamp(14px,1.3vw,21px); font-weight:800; letter-spacing:-.3px; display:flex; align-items:center; gap:10px; }
-.chart-card .legend{ display:flex; flex-wrap:wrap; gap:12px; margin:8px 0 4px; }
-.chart-card .legend span{ display:inline-flex; align-items:center; gap:7px; font-size:clamp(11px,.95vw,15px); font-weight:700; color:var(--muted); }
-.chart-card .legend .sw{ width:12px; height:12px; border-radius:4px; }
+.chart-card h3{ font-size:clamp(16px,1.5vw,26px); font-weight:800; letter-spacing:-.3px; display:flex; align-items:center; gap:10px; }
+.chart-card h3 svg{ width:1.15em; height:1.15em; flex:0 0 auto; color:var(--brand-2); }
+.chart-card .legend{ display:flex; flex-wrap:wrap; gap:14px; margin:10px 0 4px; }
+.chart-card .legend span{ display:inline-flex; align-items:center; gap:8px; font-size:clamp(13px,1.1vw,19px); font-weight:700; color:var(--muted); }
+.chart-card .legend .sw{ width:14px; height:14px; border-radius:4px; }
 .chart-card .plot{ flex:1 1 auto; min-height:0; display:flex; align-items:stretch; justify-content:center; }
 .chart-card svg{ width:100%; height:100%; display:block; }
-.chart-card .axis{ fill:var(--faint); font-size:13px; font-weight:600; }
-.chart-card .axislab{ fill:var(--muted); font-size:15px; font-weight:800; }
+.chart-card .axis{ fill:var(--faint); font-size:16px; font-weight:600; }
+.chart-card .axislab{ fill:var(--muted); font-size:20px; font-weight:800; }
 .chart-card .grid{ stroke:var(--line-2); stroke-width:1; }
-.chart-card .vlab{ fill:var(--txt); font-size:12px; font-weight:800; }
+.chart-card .vlab{ fill:var(--txt); font-size:16px; font-weight:800; }
 .chart-card .donutTotal{ fill:var(--txt); font-weight:900; }
 .chart-card .donutCap{ fill:var(--muted); font-weight:700; }
 
@@ -275,6 +278,24 @@ footer b{ color:var(--muted); }
 
 <script>
 /* ============================================================
+   ÍCONES (SVG das peças de motor — usam a cor da categoria)
+   ============================================================ */
+const SVG_CABECOTE = `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M14 21 l4-9 h12 l4 9" fill="currentColor" fill-opacity=".16"/>
+  <rect x="7" y="21" width="34" height="16" rx="2.5" fill="currentColor" fill-opacity=".16"/>
+  <path d="M17 37 v-8 M31 37 v-8"/>
+  <circle cx="17" cy="26" r="1.8" fill="currentColor" stroke="none"/>
+  <circle cx="31" cy="26" r="1.8" fill="currentColor" stroke="none"/></svg>`;
+const SVG_BLOCO = `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="7" y="13" width="34" height="27" rx="3" fill="currentColor" fill-opacity=".16"/>
+  <path d="M7 23 H41"/>
+  <circle cx="15" cy="18.5" r="3"/><circle cx="24" cy="18.5" r="3"/><circle cx="33" cy="18.5" r="3"/>
+  <path d="M13 40 v-6 M24 40 v-6 M35 40 v-6"/></svg>`;
+const SVG_CILINDRO = `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="17" y="9" width="14" height="31" rx="2" fill="currentColor" fill-opacity=".16"/>
+  <path d="M10 16 H38 M10 22 H38 M10 28 H38 M10 34 H38"/></svg>`;
+
+/* ============================================================
    CONFIGURAÇÃO
    ============================================================ */
 const CONFIG = {
@@ -285,9 +306,9 @@ const CONFIG = {
   // Peças acompanhadas (classificadas pela descrição IMDSC1).
   // ORDEM IMPORTA: "BLOCO DO CILINDRO"/"CABECOTE CILINDRO" batem antes de "Cilindro".
   categorias: [
-    { nome:'Cabeçote', icone:'🔧', cor:'#3b82f6', chaves:['cabecote'] },
-    { nome:'Bloco',    icone:'🧱', cor:'#14b8a6', chaves:['bloco'] },
-    { nome:'Cilindro', icone:'⚙️', cor:'#f59e0b', chaves:['cilindro'] },
+    { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'] },
+    { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'] },
+    { nome:'Cilindro', svg:SVG_CILINDRO, cor:'#f59e0b', chaves:['cilindro'] },
   ],
 
   // Locais (LILOCN). label = nome curto; rejeitado = desconta do disponível (DR).
@@ -491,11 +512,11 @@ function renderCards(data){
     card.className='card'; card.style.setProperty('--c',cat.cor);
     card.innerHTML=`
       <div class="card-top">
-        <div class="name"><span class="pic">${cat.icone}</span>${xmlEsc(cat.nome)}</div>
+        <div class="name"><span class="pic">${cat.svg}</span>${xmlEsc(cat.nome)}</div>
         ${badge}
       </div>
-      <div class="qty-wrap"><span class="qty">${fmtInt(disp)}</span><span class="unit">${CONFIG.unidade} disponível</span></div>
-      <div class="sub">Estoque bom ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} rejeitado (DR)`:''}</div>
+      <div class="qty-wrap"><span class="qty">${fmtInt(disp)}</span><span class="unit">${CONFIG.unidade}</span></div>
+      <div class="sub"><b>disponível</b> · estoque bom ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} rejeitado (DR)`:''}</div>
       <div class="locs">${chips}${drChip}</div>`;
     el.appendChild(card);
   });
@@ -552,7 +573,7 @@ function renderBarChart(data){
         if(h>18) g+=svgEl('text',{x:(x+barW/2).toFixed(1),y:(yy-6).toFixed(1),'text-anchor':'middle',class:'vlab'},fmtInt(v));
       }
     });
-    g+=svgEl('text',{x:(gx+groupW/2).toFixed(1),y:(H-mB+30).toFixed(1),'text-anchor':'middle',class:'axislab'},`${c.icone} ${c.nome}`);
+    g+=svgEl('text',{x:(gx+groupW/2).toFixed(1),y:(H-mB+30).toFixed(1),'text-anchor':'middle',class:'axislab'},c.nome);
   });
   $('#barPlot').innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
 }
