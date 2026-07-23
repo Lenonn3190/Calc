@@ -80,6 +80,7 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .dot{ width:11px; height:11px; border-radius:50%; background:var(--faint); flex:0 0 auto; }
 .dot.live{ background:var(--ok); box-shadow:0 0 0 0 rgba(34,197,94,.55); animation:pulse 2s infinite; }
 .dot.err{ background:var(--bad); }
+.dot.warn{ background:var(--warn); }
 .dot.load{ background:var(--warn); animation:pulse 1.1s infinite; }
 @keyframes pulse{ 0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)} 70%{box-shadow:0 0 0 12px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
 .sep{ width:1px; align-self:stretch; background:var(--line-2); }
@@ -417,10 +418,34 @@ function renderCards(data){
 let lastUpdate=null;
 let nextAt=0;
 let refreshTimer=null;
+let currentSource='server';                 // 'server' | 'manual'
+let currentFileName=CONFIG.arquivo;
 
 function setStatus(kind,text){
-  const dot=$('#stDot'); dot.className='dot'+(kind==='live'?' live':kind==='err'?' err':kind==='load'?' load':'');
+  const dot=$('#stDot'); dot.className='dot'+(kind==='live'?' live':kind==='err'?' err':kind==='load'?' load':kind==='warn'?' warn':'');
   $('#stText').textContent=text;
+}
+
+/* --- CACHE: guarda a última base conectada para reabrir já conectado --- */
+const CACHE_KEY='estoque-cache';
+function saveCache(rows){
+  try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ ts:(lastUpdate||new Date()).getTime(), source:currentSource, fileName:currentFileName, rows })); }catch(e){}
+}
+function loadCache(){
+  try{ return JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); }catch(e){ return null; }
+}
+function renderFromCache(cache){
+  try{
+    const data=interpret(cache.rows);
+    renderCards(data);
+    lastUpdate=new Date(cache.ts||Date.now());
+    currentSource=cache.source||'server';
+    currentFileName=cache.fileName||CONFIG.arquivo;
+    $('#stLast').textContent=fmtDateTime(lastUpdate);
+    $('#stFile').textContent=currentFileName;
+    setStatus('live','Base salva — carregada do navegador');
+    return true;
+  }catch(e){ console.warn('cache inválido',e); return false; }
 }
 
 async function loadFromServer(){
@@ -434,26 +459,32 @@ async function loadFromServer(){
 async function refresh(manualRows){
   try{
     setStatus('load','Lendo base…');
-    let rows = manualRows || await loadFromServer();
+    let rows;
+    if(manualRows){ rows=manualRows; }
+    else { rows=await loadFromServer(); currentSource='server'; currentFileName=CONFIG.arquivo; }
     const data=interpret(rows);
     renderCards(data);
     lastUpdate=new Date();
     $('#stLast').textContent=fmtDateTime(lastUpdate);
-    setStatus('live', manualRows?'Base carregada (manual)':'Conectado à base');
+    $('#stFile').textContent=currentFileName;
+    setStatus('live', currentSource==='manual'?'Base carregada (manual) — salva no navegador':'Conectado à base');
+    saveCache(rows);                       // reabrir já conectado da próxima vez
     scheduleNext();
     if(manualRows) $('#overlay').classList.remove('show');
     return true;
   }catch(err){
     console.error(err);
-    setStatus('err','Falha ao ler a base');
-    const msg=(''+err.message||err);
+    const msg=(''+(err.message||err));
     if(!lastUpdate){
-      // primeira carga falhou -> abre configuração
+      // nunca conectou e não há base salva -> abre configuração
+      setStatus('err','Falha ao ler a base');
       $('#dlgErr').textContent='Não foi possível ler '+CONFIG.arquivo+' do servidor: '+msg+'. Verifique o arquivo ou carregue manualmente.';
       $('#dlgErr').classList.remove('hidden');
       $('#overlay').classList.add('show');
     }else{
-      toast('Falha na atualização: '+msg,'err');
+      // já existe base (salva ou anterior): mantém conectado, apenas avisa
+      setStatus('warn','Servidor indisponível — exibindo última base');
+      if(currentSource==='server') toast('Sem atualização agora — mantendo a última base','err');
     }
     scheduleNext();
     return false;
@@ -489,6 +520,7 @@ async function handleFile(file){
     let rows;
     if(/\.csv$/i.test(file.name)) rows=parseCsv(await readText(file));
     else rows=parseXlsx(await readBuf(file));
+    currentSource='manual'; currentFileName=file.name;
     $('#stFile').textContent=file.name;
     await refresh(rows);
     toast('Base carregada de '+file.name);
@@ -546,9 +578,17 @@ function init(){
   ['mousemove','mousedown','touchstart'].forEach(ev=>window.addEventListener(ev,armCursor));
   armCursor();
 
-  // relógio + primeira carga
+  // relógio
   tick(); setInterval(tick,1000);
-  refresh();
+
+  // reabrir JÁ CONECTADO: mostra a última base salva na hora e sincroniza depois
+  const cache=loadCache();
+  if(cache && cache.rows && renderFromCache(cache)){
+    if(currentSource==='server') refresh();   // atualiza do servidor por cima (silencioso se falhar)
+    else scheduleNext();                       // base manual: mantém a salva; agenda tentativa de servidor
+  }else{
+    refresh();                                 // primeira vez / sem base salva
+  }
 }
 document.addEventListener('DOMContentLoaded',init);
 </script>

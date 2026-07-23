@@ -14,6 +14,10 @@ atualização** e uma **contagem regressiva** para a próxima.
   substituir/atualizar o `estoque.xlsx` que a TV reflete sozinha no próximo ciclo.
 - Sempre mostra: **última atualização** (data/hora), **próxima atualização**
   (contagem regressiva), total por peça e os tipos abaixo do estoque mínimo (em vermelho).
+- **Reabre já conectado:** depois que a base é lida uma vez, ela fica salva no
+  próprio navegador. Ao reabrir a página (ou se o servidor/planilha ficar
+  indisponível no momento), o painel mostra **na hora a última base** — sem pedir
+  configuração de novo — e sincroniza sozinho assim que a base voltar.
 
 ## A planilha (`estoque.xlsx`)
 
