@@ -51,6 +51,27 @@ O que o painel passa a mostrar:
 modo quiosque, basta colocar o arquivo **`metas.json`** (o exportado) na **mesma
 pasta** do `index.html` — o painel carrega as metas automaticamente na primeira
 abertura. Um `metas.json` de exemplo já acompanha o projeto.
+
+## Pasta mapeada & relatório por e-mail (📁)
+
+No cadastro de metas (🎯), seção **"Pasta & Relatório por e-mail"**, clique em
+**"Mapear pasta"** e escolha uma pasta no PC. A partir daí o painel grava nessa pasta:
+
+- **`metas.json`** — a configuração (sempre que você salvar as metas);
+- **`estoque_email.html`** — o **relatório mais recente**, pronto para o **corpo de
+  um e-mail** (documento autônomo, com acentos corretos);
+- **`estoque_email_AAAAMMDD_HHMM.html`** — uma cópia com carimbo de data/hora.
+
+O relatório é gerado **automaticamente nos horários configurados** (por padrão
+**08:30** e **12:30**), e também pelos botões **"Gerar relatório agora"** e
+**"Pré-visualizar"**. O HTML traz uma tabela resumo (disponível, meta, %, DR e
+situação por peça) e o detalhe por local e por modelo.
+
+> Requisitos: funciona no **Chrome/Edge** servindo em **localhost** ou **https**
+> (recurso *File System Access API*). A pasta escolhida fica lembrada entre
+> reaberturas; se o navegador pedir, reautorize o acesso clicando em "Mapear pasta".
+> O envio do e-mail em si é feito por fora (ex.: um fluxo/rotina que lê o
+> `estoque_email.html` da pasta e envia) — o painel se encarrega de **gerar** o HTML.
 - **Reabre já conectado:** depois que a base é lida uma vez, ela fica salva no
   próprio navegador. Ao reabrir a página (ou se o servidor/planilha ficar
   indisponível no momento), o painel mostra **na hora a última base** — sem pedir

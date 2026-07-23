@@ -329,6 +329,26 @@ footer b{ color:var(--muted); }
       <span class="rlab">Intervalo de atualização (min)</span>
       <input class="inp" id="metaIntervalo" type="number" min="1" step="1">
     </div>
+
+    <div class="meta-cat" style="--c:#38bdf8;margin-top:12px">
+      <div class="mc-head">📁 Pasta &amp; Relatório por e-mail</div>
+      <p class="gnote" style="margin:0 0 10px">Mapeie uma pasta: nela o painel grava o <b>metas.json</b> (configuração)
+        e gera um <b>HTML pronto para o corpo do e-mail</b> nos horários abaixo. (Chrome/Edge, servindo em localhost ou https.)</p>
+      <div class="mrow" style="grid-template-columns:1fr auto;align-items:center">
+        <span class="rlab" id="folderStatus">Pasta: não mapeada</span>
+        <button class="btn" id="btnMapFolder" type="button">📁 Mapear pasta</button>
+      </div>
+      <div class="mrow" style="grid-template-columns:1fr 130px 130px;align-items:center">
+        <span class="rlab">Gerar HTML automaticamente às</span>
+        <input class="inp" id="relHora1" type="time">
+        <input class="inp" id="relHora2" type="time">
+      </div>
+      <div class="btnrow" style="margin-top:4px">
+        <button class="btn" id="btnGenReport" type="button">📤 Gerar relatório agora</button>
+        <button class="btn" id="btnPreview" type="button">👁 Pré-visualizar</button>
+      </div>
+    </div>
+
     <div class="errtext hidden" id="metasErr"></div>
     <div class="btnrow">
       <button class="btn primary" id="btnMetasSave">💾 Salvar</button>
@@ -373,6 +393,7 @@ const CONFIG = {
   arquivo: 'estoque.xlsx',   // planilha lida na mesma pasta (via servidor web)
   intervaloMin: 60,          // atualização automática (minutos)
   unidade: 'un',             // unidade exibida ao lado da quantidade
+  relatorio: { horarios: ['08:30','12:30'] },  // horários que geram o HTML de e-mail na pasta mapeada
 
   // Peças acompanhadas (classificadas pela descrição IMDSC1).
   // ORDEM IMPORTA: "BLOCO DO CILINDRO"/"CABECOTE CILINDRO" batem antes de "Cilindro".
@@ -601,9 +622,10 @@ function normalizeMetas(j){
     const mm=m.modelos||{}; Object.keys(mm).forEach(k=>{ const x=mm[k]||{}; t.modelos[k.toUpperCase()]={meta:+x.meta||0,minimo:+x.minimo||0}; });
   });
   if(j&&j.intervaloMin) CONFIG.intervaloMin=Math.max(1,+j.intervaloMin||CONFIG.intervaloMin);
+  if(j&&Array.isArray(j.relatorioHorarios)&&j.relatorioHorarios.length) CONFIG.relatorio.horarios=j.relatorioHorarios.filter(Boolean).slice(0,2);
   return o;
 }
-function metasPayload(){ return { intervaloMin:CONFIG.intervaloMin, metas:METAS }; }
+function metasPayload(){ return { intervaloMin:CONFIG.intervaloMin, relatorioHorarios:CONFIG.relatorio.horarios, metas:METAS }; }
 function loadMetas(){ try{ const s=localStorage.getItem(METAS_KEY); return s?normalizeMetas(JSON.parse(s)):null; }catch(e){ return null; } }
 function saveMetas(){ try{ localStorage.setItem(METAS_KEY, JSON.stringify(metasPayload())); }catch(e){} }
 async function fetchMetasFile(){ try{ const r=await fetch('metas.json?t='+Date.now(),{cache:'no-store'}); if(r.ok) return normalizeMetas(await r.json()); }catch(e){} return null; }
@@ -782,6 +804,119 @@ function readMetasForm(){
     else METAS[cat][f]=val;
   });
   const iv=parseInt($('#metaIntervalo').value,10); if(iv>0) CONFIG.intervaloMin=iv;
+  const h1=$('#relHora1'), h2=$('#relHora2');
+  if(h1||h2) CONFIG.relatorio.horarios=[h1&&h1.value, h2&&h2.value].filter(Boolean);
+}
+
+/* ============================================================
+   PASTA MAPEADA (File System Access API) + RELATÓRIO HTML (e-mail)
+   ============================================================ */
+let dirHandle=null;
+function fsOK(){ return typeof window!=='undefined' && !!window.showDirectoryPicker; }
+/* IndexedDB mínimo para guardar o handle da pasta entre reaberturas */
+function idbDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('estoque-fs',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function idbSet(k,v){ const db=await idbDB(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); }
+async function idbGet(k){ const db=await idbDB(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readonly'); const rq=t.objectStore('kv').get(k); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); }); }
+async function ensurePerm(handle,mode){ try{ const o={mode}; if((await handle.queryPermission(o))==='granted') return true; if((await handle.requestPermission(o))==='granted') return true; }catch(e){} return false; }
+async function writeFileToFolder(name,content,type){
+  if(!dirHandle) throw new Error('pasta não mapeada');
+  if(!(await ensurePerm(dirHandle,'readwrite'))) throw new Error('sem permissão na pasta');
+  const fh=await dirHandle.getFileHandle(name,{create:true});
+  const w=await fh.createWritable(); await w.write(new Blob([content],{type:type||'text/plain'})); await w.close();
+}
+function updateFolderUI(){ const el=$('#folderStatus'); if(el) el.textContent = dirHandle ? ('Pasta: '+dirHandle.name) : 'Pasta: não mapeada'; }
+async function mapFolder(){
+  if(!fsOK()){ toast('Este navegador não permite mapear pasta. Use Chrome/Edge servindo em localhost ou https.','err'); return; }
+  try{
+    dirHandle=await window.showDirectoryPicker({mode:'readwrite',id:'estoque'});
+    try{ await idbSet('dir',dirHandle); }catch(e){}
+    updateFolderUI();
+    await saveMetasToFolder();
+    await generateEmailReport('mapeamento');
+    toast('Pasta mapeada: '+dirHandle.name);
+  }catch(e){ if(e && e.name!=='AbortError'){ console.warn(e); toast('Não foi possível mapear a pasta','err'); } }
+}
+async function restoreFolder(){ try{ const h=await idbGet('dir'); if(h){ dirHandle=h; updateFolderUI(); } }catch(e){} }
+async function saveMetasToFolder(){ if(!dirHandle) return; try{ await writeFileToFolder('metas.json', JSON.stringify(metasPayload(),null,2),'application/json'); }catch(e){ console.warn('metas.json ->',e); } }
+
+/* HTML pronto para colar no corpo de um e-mail (tabelas + estilos inline) */
+function buildEmailHtml(data){
+  const esc=xmlEsc, now=new Date(), dt=fmtDateTime(now);
+  const C={txt:'#0f1b32',mut:'#5b6b86',line:'#e2e8f0',head:'#0b1220',ok:'#16a34a',warn:'#d97706',bad:'#dc2626',bg:'#f4f7fb'};
+  const stInfo=(disp,m)=>{ if(m.minimo>0&&disp<m.minimo) return {t:'Abaixo do mínimo',col:C.bad}; if(m.meta>0&&disp<m.meta) return {t:'Abaixo da meta',col:C.warn}; if(m.meta>0||m.minimo>0) return {t:'OK',col:C.ok}; return {t:'—',col:C.mut}; };
+  const th=t=>`<th align="${t.a||'left'}" style="padding:10px 12px;font-size:12px;color:${C.mut};text-transform:uppercase;letter-spacing:.4px">${t.n}</th>`;
+  let rows='';
+  CONFIG.categorias.forEach(cat=>{
+    const g=data.groups[cat.nome], m=METAS[cat.nome]||emptyMeta(), disp=g.disponivel;
+    const pct=m.meta>0?Math.round(disp/m.meta*100)+'%':'—', si=stInfo(disp,m);
+    rows+=`<tr>
+      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};font-weight:700;color:${C.txt}">${esc(cat.nome)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:right;font-weight:800;color:${C.txt}">${fmtInt(disp)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:right;color:${C.mut}">${m.meta>0?fmtInt(m.meta):'—'}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:right;color:${C.mut}">${pct}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:right;color:${g.rejeitado>0?C.bad:C.mut}">${fmtInt(g.rejeitado)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:center;font-weight:700;color:${si.col}">${si.t}</td>
+    </tr>`;
+  });
+  let detail='';
+  CONFIG.categorias.forEach(cat=>{
+    const g=data.groups[cat.nome];
+    const locs=data.locais.filter(l=>!isRej(l)).map(l=>{const v=g.locais[l]||0;return v?esc(l)+': '+fmtInt(v):'';}).filter(Boolean).join(' · ');
+    let mods=''; if(cat.modelo&&g.modeloOrdem){ mods=g.modeloOrdem.map(mo=>{const mm=g.modelos[mo];return esc(mo)+': '+fmtInt(mm.disp)+(mm.rej>0?' (DR '+fmtInt(mm.rej)+')':'');}).join(' · '); }
+    detail+=`<div style="margin:0 0 10px"><b style="color:${C.txt}">${esc(cat.nome)}</b>
+      <div style="color:${C.mut};font-size:13px">Locais: ${locs||'—'}${g.rejeitado>0?' · DR: '+fmtInt(g.rejeitado):''}</div>
+      ${mods?`<div style="color:${C.mut};font-size:13px">Modelos: ${mods}</div>`:''}</div>`;
+  });
+  const grand=CONFIG.categorias.reduce((s,cc)=>s+data.groups[cc.nome].disponivel,0);
+  const corpo=`<div style="margin:0;padding:0;background:${C.bg}"><div style="max-width:640px;margin:0 auto;padding:20px;font-family:Arial,Helvetica,sans-serif">
+    <div style="background:${C.head};border-radius:12px 12px 0 0;padding:16px 20px;color:#fff">
+      <div style="font-size:20px;font-weight:800">📦 Gestão de Estoque</div>
+      <div style="font-size:13px;color:#9fb0cc;margin-top:2px">Atualizado em ${esc(dt)}</div>
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#fff">
+      <tr style="background:#eef2f8">${th({n:'Peça'})}${th({n:'Disponível',a:'right'})}${th({n:'Meta',a:'right'})}${th({n:'%',a:'right'})}${th({n:'DR',a:'right'})}${th({n:'Situação',a:'center'})}</tr>
+      ${rows}
+      <tr style="background:#f7fafc"><td style="padding:10px 12px;font-weight:800;color:${C.txt}">Total</td><td style="padding:10px 12px;text-align:right;font-weight:800;color:${C.txt}">${fmtInt(grand)}</td><td colspan="4"></td></tr>
+    </table>
+    <div style="background:#fff;border-radius:0 0 12px 12px;padding:16px 20px;border-top:1px solid ${C.line}">
+      <div style="font-size:14px;font-weight:800;color:${C.txt};margin-bottom:10px">Detalhe por local e modelo</div>${detail}
+    </div>
+    <div style="color:${C.mut};font-size:11px;text-align:center;margin-top:12px">Gerado automaticamente pelo painel de Gestão de Estoque.</div>
+  </div></div>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório de Estoque — ${esc(dt)}</title></head><body style="margin:0;background:${C.bg}">${corpo}</body></html>`;
+}
+function previewReport(){
+  if(!lastData){ toast('Ainda sem dados da base','err'); return; }
+  const html=buildEmailHtml(lastData); const w=window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); } else { download('relatorio_estoque.html', new Blob([html],{type:'text/html'})); }
+}
+async function generateEmailReport(motivo){
+  if(!lastData) return;
+  const html=buildEmailHtml(lastData);
+  try{ localStorage.setItem('estoque-email-ultimo', html); }catch(e){}
+  if(dirHandle){
+    try{
+      const n=new Date(), stamp=n.getFullYear()+pad(n.getMonth()+1)+pad(n.getDate())+'_'+pad(n.getHours())+pad(n.getMinutes());
+      await writeFileToFolder('estoque_email_'+stamp+'.html', html,'text/html');
+      await writeFileToFolder('estoque_email.html', html,'text/html');   // sempre o último
+      await saveMetasToFolder();
+      toast('Relatório gerado na pasta ('+motivo+')');
+    }catch(e){ console.warn(e); toast('Falha ao gravar na pasta: '+(e.message||e),'err'); }
+  } else if(motivo==='manual'){
+    previewReport(); toast('Pasta não mapeada — abri a pré-visualização');
+  } else {
+    console.warn('Relatório ('+motivo+') gerado, mas nenhuma pasta está mapeada.');
+  }
+}
+/* dispara os relatórios nos horários configurados */
+const emailFired=new Set();
+function checkEmailSchedule(now){
+  const hhmm=pad(now.getHours())+':'+pad(now.getMinutes());
+  if(!CONFIG.relatorio.horarios.includes(hhmm)) return;
+  const key=now.toDateString()+' '+hhmm;
+  if(emailFired.has(key)) return;
+  emailFired.add(key);
+  generateEmailReport('agendado '+hhmm);
 }
 
 /* ============================================================
@@ -980,6 +1115,7 @@ function tick(){
     const h=Math.floor(s/3600); s%=3600; const m=Math.floor(s/60); s%=60;
     $('#stNext').textContent=(h>0?pad(h)+':':'')+pad(m)+':'+pad(s);
   }
+  checkEmailSchedule(now);
 }
 
 /* ============================================================
@@ -1040,13 +1176,23 @@ function init(){
   $('#btnTpl').onclick=()=>{ download('modelo_estoque.xlsx',buildXlsx(templateRows())); toast('Modelo Excel baixado'); };
 
   // METAS: abrir / salvar / exportar / importar
-  $('#btnMetas').onclick=()=>{ renderMetasForm(); $('#metasErr').classList.add('hidden'); $('#metasOverlay').classList.add('show'); };
+  const openMetas=()=>{ renderMetasForm();
+    $('#relHora1').value=CONFIG.relatorio.horarios[0]||'08:30';
+    $('#relHora2').value=CONFIG.relatorio.horarios[1]||'12:30';
+    updateFolderUI();
+    $('#metasErr').classList.add('hidden'); $('#metasOverlay').classList.add('show'); };
+  $('#btnMetas').onclick=openMetas;
   $('#btnMetasClose').onclick=()=>$('#metasOverlay').classList.remove('show');
   $('#btnMetasSave').onclick=()=>{
-    readMetasForm(); saveMetas(); applyIntervalLabels(); scheduleNext();
+    readMetasForm(); saveMetas(); applyIntervalLabels(); scheduleNext(); saveMetasToFolder();
     if(lastData) render(lastData);
     $('#metasOverlay').classList.remove('show'); toast('Metas salvas');
   };
+  // Pasta & relatório
+  $('#btnMapFolder').onclick=mapFolder;
+  $('#btnGenReport').onclick=()=>{ readMetasForm(); generateEmailReport('manual'); };
+  $('#btnPreview').onclick=previewReport;
+  restoreFolder();
   $('#btnMetasExport').onclick=()=>{
     readMetasForm(); saveMetas();
     download('metas.json', new Blob([JSON.stringify(metasPayload(),null,2)],{type:'application/json'}));
@@ -1073,7 +1219,7 @@ function init(){
     if(e.key==='f'||e.key==='F') toggleFull();
     else if(e.key==='r'||e.key==='R'){ e.preventDefault(); refresh(); }
     else if(e.key==='t'||e.key==='T') toggleTheme();
-    else if(e.key==='m'||e.key==='M'){ renderMetasForm(); $('#metasOverlay').classList.add('show'); }
+    else if(e.key==='m'||e.key==='M'){ openMetas(); }
     else if(e.key==='Escape'){ $('#overlay').classList.remove('show'); $('#metasOverlay').classList.remove('show'); }
   });
   ['mousemove','mousedown','touchstart'].forEach(ev=>window.addEventListener(ev,armCursor));
