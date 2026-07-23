@@ -734,7 +734,9 @@ function readMetasForm(){
    GRÁFICOS (SVG puro, séries por local)
    ============================================================ */
 function svgEl(tag,attrs,inner){ const a=Object.entries(attrs||{}).map(([k,v])=>`${k}="${v}"`).join(' '); return `<${tag} ${a}>${inner||''}</${tag}>`; }
-function niceMax(v){ if(v<=0) return 10; const p=Math.pow(10,Math.floor(Math.log10(v))); const n=v/p; const s=n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10; return s*p; }
+function niceMax(v){ if(v<=0) return 10; const p=Math.pow(10,Math.floor(Math.log10(v))); const n=v/p; const s=[1,1.2,1.5,2,2.5,3,4,5,6,8,10].find(x=>x>=n)||10; return s*p; }
+/* passo "redondo" do eixo Y para ~alvo intervalos (escala justa) */
+function niceStep(range,target){ const raw=range/Math.max(1,target); const p=Math.pow(10,Math.floor(Math.log10(raw))); const n=raw/p; const s=n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10; return s*p; }
 function fmtShort(n){ n=Math.round(n); if(n>=1000000) return (n/1000000).toFixed(n%1000000?1:0)+'M'; if(n>=1000) return (n/1000).toFixed(n%1000?1:0)+'k'; return ''+n; }
 
 function renderCharts(data){
@@ -748,19 +750,26 @@ function renderBarChart(data){
   // legenda
   $('#barLegend').innerHTML=locais.map(l=>`<span><span class="sw" style="background:${locColor(l)}"></span>${l}${isRej(l)?' (rejeitado)':''}</span>`).join('');
 
-  const W=1000,H=460, mL=64,mR=18,mT=18,mB=54;
+  // dimensões reais do espaço (preenche a largura toda; texto em px reais = nítido)
+  const host=$('#barPlot');
+  const W=Math.max(420, Math.round(host.clientWidth||1000));
+  const H=Math.max(220, Math.round(host.clientHeight||360));
+  const mL=64,mR=18,mT=22,mB=44;
   const iw=W-mL-mR, ih=H-mT-mB;
-  let max=0; cats.forEach(c=>locais.forEach(l=>{
-    max=Math.max(max,(data.groups[c.nome].locais[l]||0));
-    const lm=(METAS[c.nome]&&METAS[c.nome].locais&&METAS[c.nome].locais[l]); if(lm&&lm.meta) max=Math.max(max,lm.meta);
+  let dataMax=0; cats.forEach(c=>locais.forEach(l=>{
+    dataMax=Math.max(dataMax,(data.groups[c.nome].locais[l]||0));
+    const lm=(METAS[c.nome]&&METAS[c.nome].locais&&METAS[c.nome].locais[l]); if(lm&&lm.meta) dataMax=Math.max(dataMax,lm.meta);
   }));
-  max=niceMax(max)||10;
+  if(dataMax<=0) dataMax=10;
+  // escala Y justa: passo redondo, com o máximo logo acima do maior valor
+  const step=niceStep(dataMax,6);
+  const max=Math.max(step, Math.ceil((dataMax*1.02)/step)*step);
+  const ticks=Math.round(max/step);
   const y=v=>mT+ih-(v/max)*ih;
 
   let g='';
   // gridlines + rótulos Y
-  const ticks=5;
-  for(let i=0;i<=ticks;i++){ const val=max*i/ticks; const yy=y(val);
+  for(let i=0;i<=ticks;i++){ const val=step*i; const yy=y(val);
     g+=svgEl('line',{x1:mL,y1:yy.toFixed(1),x2:W-mR,y2:yy.toFixed(1),class:'grid'});
     g+=svgEl('text',{x:mL-10,y:(yy+4).toFixed(1),'text-anchor':'end',class:'axis'},fmtShort(val));
   }
@@ -786,9 +795,9 @@ function renderBarChart(data){
         g+=svgEl('line',{x1:(x-4).toFixed(1),y1:ty.toFixed(1),x2:(x+barW+4).toFixed(1),y2:ty.toFixed(1),stroke:'var(--txt)','stroke-width':2,'stroke-dasharray':'5 3','opacity':.7});
       }
     });
-    g+=svgEl('text',{x:(gx+groupW/2).toFixed(1),y:(H-mB+30).toFixed(1),'text-anchor':'middle',class:'axislab'},c.nome);
+    g+=svgEl('text',{x:(gx+groupW/2).toFixed(1),y:(H-mB+28).toFixed(1),'text-anchor':'middle',class:'axislab'},c.nome);
   });
-  $('#barPlot').innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:100%">${g}</svg>`;
 }
 
 /* donut: distribuição do estoque total por local (séries = locais) */
@@ -1015,6 +1024,9 @@ function init(){
   });
   ['mousemove','mousedown','touchstart'].forEach(ev=>window.addEventListener(ev,armCursor));
   armCursor();
+
+  // re-render dos gráficos ao redimensionar (ajusta escala/tamanho à tela)
+  let rz; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(lastData) renderCharts(lastData); },200); });
 
   // relógio
   tick(); setInterval(tick,1000);
