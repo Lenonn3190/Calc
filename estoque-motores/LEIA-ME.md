@@ -34,7 +34,9 @@ O que o painel passa a mostrar:
 
 - **Barra de progresso** em cada card (verde = meta atingida, amarelo = abaixo da
   meta, vermelho = abaixo do mínimo) e um selo de status.
-- **Alerta visual** (card piscando) quando o disponível fica abaixo do mínimo.
+- **Alerta visual** (card piscando em vermelho) quando o disponível fica abaixo do
+  mínimo **ou** quando **qualquer local** fica abaixo do mínimo dele (o selo indica
+  "Abaixo do mínimo" ou "Local abaixo do mínimo", e o chip do local fica vermelho).
 - **Mini-gráfico de tendência** (sparkline) por peça, com a variação desde a
   leitura anterior (▲/▼).
 - Marca de **meta por local** (linha tracejada) no gráfico de barras.

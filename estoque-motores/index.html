@@ -132,8 +132,8 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .locchip.ok .lv{ color:var(--ok); }
 .locchip.warn{ border-color:color-mix(in srgb,var(--warn) 45%,transparent); }
 .locchip.warn .lv{ color:var(--warn); }
-.locchip.low{ border-color:color-mix(in srgb,var(--bad) 45%,transparent); }
-.locchip.low .lv{ color:var(--bad); }
+.locchip.low, .locchip.bad{ border-color:color-mix(in srgb,var(--bad) 45%,transparent); background:var(--bad-bg); }
+.locchip.low .lv, .locchip.bad .lv{ color:var(--bad); }
 
 /* barra de progresso da meta + sparkline */
 .prog{ margin-top:6px; }
@@ -630,7 +630,10 @@ function renderCards(data){
     const disp=g?g.disponivel:0, rej=g?g.rejeitado:0, tipos=g?g.tipos.size:0;
     const m=METAS[cat.nome]||emptyMeta();
     const st=statusClass(disp,m.meta,m.minimo);
-    const alarm=(m.minimo>0 && disp<m.minimo);
+    // algum local abaixo do mínimo dele? (também dispara o alarme)
+    let locAlarm=false;
+    data.locais.filter(l=>!isRej(l)).forEach(l=>{ const v=(g&&g.locais[l])||0; const lm=(m.locais&&m.locais[l])||{}; if(lm.minimo>0 && v<lm.minimo) locAlarm=true; });
+    const alarm=(m.minimo>0 && disp<m.minimo) || locAlarm;
 
     // barra de progresso da meta
     let progHtml='';
@@ -662,7 +665,9 @@ function renderCards(data){
     const drOver=(m.drMax>0 && rej>m.drMax);
     const drChip = rej>0 ? `<span class="locchip rej"><span class="sw" style="background:${locColor(CONFIG.locais.rejeitado)}"></span><span class="lk">${CONFIG.locais.rejeitado} (rejeitado)${drOver?' ⚠':''}</span><span class="lv">−${fmtInt(rej)}${m.drMax>0?` <span style="color:var(--faint);font-weight:600">/ máx ${fmtInt(m.drMax)}</span>`:''}</span></span>` : '';
 
-    const badge = alarm ? `<span class="badge b-bad"><span class="dot err"></span>Abaixo do mínimo</span>`
+    const totalLow=(m.minimo>0 && disp<m.minimo);
+    const badge = totalLow ? `<span class="badge b-bad"><span class="dot err"></span>Abaixo do mínimo</span>`
+                : locAlarm ? `<span class="badge b-bad"><span class="dot err"></span>Local abaixo do mínimo</span>`
                 : (st==='warn') ? `<span class="badge b-warn"><span class="dot"></span>Abaixo da meta</span>`
                 : (st==='ok') ? `<span class="badge b-ok"><span class="dot live"></span>Meta atingida</span>`
                 : tipos ? `<span class="badge b-info"><span class="dot"></span>${tipos} item(ns)</span>`
