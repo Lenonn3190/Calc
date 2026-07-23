@@ -18,6 +18,10 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   rejeitadas e **descontadas do total** (mostradas em vermelho no card).
 - **Gráficos com séries por local:** barras agrupadas (peça × local) e um donut
   com a distribuição do estoque por local (FND / MMO / USI / DR).
+- **Cilindro dividido por modelo:** o código do modelo é extraído do **IMLITM**
+  (o trecho após `12100`, ex.: `12100KPT` → **KPT**). O card do Cilindro mostra
+  os modelos (**KPT / K2G / KRM**) com valor e meta, e cada modelo tem meta/mínimo
+  próprios (o card pisca se algum modelo ficar abaixo do mínimo).
 - Sempre mostra: **última atualização** (data/hora) e **próxima atualização**
   (contagem regressiva).
 
@@ -35,8 +39,9 @@ O que o painel passa a mostrar:
 - **Barra de progresso** em cada card (verde = meta atingida, amarelo = abaixo da
   meta, vermelho = abaixo do mínimo) e um selo de status.
 - **Alerta visual** (card piscando em vermelho) quando o disponível fica abaixo do
-  mínimo **ou** quando **qualquer local** fica abaixo do mínimo dele (o selo indica
-  "Abaixo do mínimo" ou "Local abaixo do mínimo", e o chip do local fica vermelho).
+  mínimo, quando **qualquer local** fica abaixo do mínimo dele, ou quando **qualquer
+  modelo** (Cilindro) fica abaixo do mínimo. O selo indica o motivo ("Abaixo do
+  mínimo" / "Local abaixo do mínimo" / "Modelo abaixo do mínimo") e o chip fica vermelho.
 - **Mini-gráfico de tendência** (sparkline) por peça, com a variação desde a
   leitura anterior (▲/▼).
 - Marca de **meta por local** (linha tracejada) no gráfico de barras.

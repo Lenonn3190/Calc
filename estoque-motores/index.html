@@ -121,7 +121,9 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .b-info{ color:var(--info); border-color:color-mix(in srgb,var(--info) 40%,transparent); background:rgba(56,189,248,.12); }
 
 /* chips por local dentro do card */
-.locs{ display:flex; flex-wrap:wrap; gap:9px; margin-top:4px; }
+.locs{ display:flex; flex-wrap:wrap; gap:9px; margin-top:4px; align-items:center; }
+.locs.modelos{ margin-top:8px; padding-top:8px; border-top:1px dashed var(--line-2); }
+.modlab{ color:var(--faint); font-weight:800; font-size:clamp(11px,.9vw,15px); text-transform:uppercase; letter-spacing:.4px; margin-right:2px; }
 .locchip{ display:inline-flex; align-items:center; gap:9px; padding:8px 14px; border-radius:11px; background:var(--panel); border:1px solid var(--line);
   font-size:clamp(13px,1.1vw,19px); font-weight:800; font-variant-numeric:tabular-nums; }
 .locchip .sw{ width:12px; height:12px; border-radius:3px; flex:0 0 auto; }
@@ -377,7 +379,10 @@ const CONFIG = {
   categorias: [
     { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'] },
     { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'] },
-    { nome:'Cilindro', svg:SVG_CILINDRO, cor:'#f59e0b', chaves:['cilindro'] },
+    { nome:'Cilindro', svg:SVG_CILINDRO, cor:'#f59e0b', chaves:['cilindro'],
+      // divide o Cilindro por MODELO (código extraído do IMLITM, após "12100")
+      modelo:{ regex:'^\\s*12100\\s*(\\S{3})', lista:['KPT','K2G','KRM'],
+               cor:{ KPT:'#fbbf24', K2G:'#38bdf8', KRM:'#a78bfa' } } },
   ],
 
   // Locais (LILOCN). label = nome curto; rejeitado = desconta do disponível (DR).
@@ -512,6 +517,9 @@ function locLabel(raw){
 }
 function locColor(label){ return CONFIG.locais.cor[label] || CONFIG.locais.paleta[(CONFIG.locais.ordem.indexOf(label)+CONFIG.locais.paleta.length)%CONFIG.locais.paleta.length] || '#94a3b8'; }
 function isRej(label){ return label===CONFIG.locais.rejeitado; }
+/* extrai o código do MODELO do IMLITM (ex.: 12100KPT -> KPT) */
+function modeloDe(cat,item){ if(!cat||!cat.modelo) return null; try{ const m=new RegExp(cat.modelo.regex).exec(String(item||'').trim()); return m?m[1].toUpperCase():null; }catch(e){ return null; } }
+function modeloColor(cat,mod){ return (cat.modelo&&cat.modelo.cor&&cat.modelo.cor[mod]) || '#94a3b8'; }
 
 /* interpreta as linhas -> agrupa por categoria e por local */
 function interpret(rows){
@@ -522,7 +530,7 @@ function interpret(rows){
   if(idx.qtd<0)  throw new Error('Coluna de quantidade (QTD) não encontrada.');
 
   const groups={};
-  CONFIG.categorias.forEach(c=>groups[c.nome]={cat:c, bom:0, rejeitado:0, disponivel:0, locais:{}, tipos:new Set(), linhas:0});
+  CONFIG.categorias.forEach(c=>groups[c.nome]={cat:c, bom:0, rejeitado:0, disponivel:0, locais:{}, modelos:{}, tipos:new Set(), linhas:0});
   const locaisSet=new Set();      // locais encontrados (bons)
   let totalLinhas=0;
 
@@ -533,10 +541,17 @@ function interpret(rows){
     const qtd=num(row[idx.qtd]);
     const loc=locLabel(idx.local>=0?row[idx.local]:'');
     const rej=isRej(loc);
+    const item=String(idx.item>=0?row[idx.item]:desc).trim()||desc;
     const g=groups[catName];
     g.locais[loc]=(g.locais[loc]||0)+qtd;
     if(rej) g.rejeitado+=qtd; else { g.bom+=qtd; locaisSet.add(loc); }
-    g.tipos.add(String(idx.item>=0?row[idx.item]:desc).trim()||desc);
+    g.tipos.add(item);
+    // sub-divisão por MODELO (se a categoria tiver)
+    if(g.cat.modelo){
+      const mod=modeloDe(g.cat,item)||'?';
+      const mm=g.modelos[mod]||(g.modelos[mod]={bom:0,rej:0,disp:0});
+      if(rej) mm.rej+=qtd; else mm.bom+=qtd;
+    }
     g.linhas++; totalLinhas++;
   }
 
@@ -554,6 +569,14 @@ function interpret(rows){
     const g=groups[c.nome];
     g.disponivel=g.bom-g.rejeitado;
     locais.forEach(l=>{ porLocal[l]+=(g.locais[l]||0); });
+    // finaliza modelos: disponível por modelo + ordem (config primeiro, extras depois)
+    if(c.modelo){
+      Object.values(g.modelos).forEach(mm=>mm.disp=mm.bom-mm.rej);
+      const found=Object.keys(g.modelos);
+      const ord=(c.modelo.lista||[]).filter(m=>found.includes(m));
+      found.forEach(m=>{ if(!ord.includes(m)) ord.push(m); });
+      g.modeloOrdem=ord;
+    }
   });
 
   return { groups, locais, porLocal, totalLinhas };
@@ -568,13 +591,14 @@ function interpret(rows){
 let METAS = {};
 let lastData = null;
 const METAS_KEY='estoque-metas';
-function emptyMeta(){ return {meta:0,minimo:0,drMax:0,locais:{}}; }
+function emptyMeta(){ return {meta:0,minimo:0,drMax:0,locais:{},modelos:{}}; }
 function defaultMetas(){ const o={}; CONFIG.categorias.forEach(c=>o[c.nome]=emptyMeta()); return o; }
 function normalizeMetas(j){
   const src=(j&&j.metas)?j.metas:(j||{}); const o=defaultMetas();
   CONFIG.categorias.forEach(c=>{ const m=src[c.nome]||{}; const t=o[c.nome];
     t.meta=+m.meta||0; t.minimo=+m.minimo||0; t.drMax=+m.drMax||0;
     const ml=m.locais||{}; Object.keys(ml).forEach(l=>{ const x=ml[l]||{}; t.locais[l]={meta:+x.meta||0,minimo:+x.minimo||0}; });
+    const mm=m.modelos||{}; Object.keys(mm).forEach(k=>{ const x=mm[k]||{}; t.modelos[k.toUpperCase()]={meta:+x.meta||0,minimo:+x.minimo||0}; });
   });
   if(j&&j.intervaloMin) CONFIG.intervaloMin=Math.max(1,+j.intervaloMin||CONFIG.intervaloMin);
   return o;
@@ -633,7 +657,18 @@ function renderCards(data){
     // algum local abaixo do mínimo dele? (também dispara o alarme)
     let locAlarm=false;
     data.locais.filter(l=>!isRej(l)).forEach(l=>{ const v=(g&&g.locais[l])||0; const lm=(m.locais&&m.locais[l])||{}; if(lm.minimo>0 && v<lm.minimo) locAlarm=true; });
-    const alarm=(m.minimo>0 && disp<m.minimo) || locAlarm;
+    // chips por MODELO (com meta/status) + alarme por modelo
+    let modelChips='', modAlarm=false;
+    if(cat.modelo && g && g.modeloOrdem && g.modeloOrdem.length){
+      modelChips=g.modeloOrdem.map(mod=>{
+        const v=(g.modelos[mod]&&g.modelos[mod].disp)||0;
+        const mMeta=(m.modelos&&m.modelos[mod])||{}; const mst=statusClass(v,mMeta.meta||0,mMeta.minimo||0);
+        if(mMeta.minimo>0 && v<mMeta.minimo) modAlarm=true;
+        const alvo=(mMeta.meta>0)?` <span style="color:var(--faint);font-weight:600">/ ${fmtInt(mMeta.meta)}</span>`:'';
+        return `<span class="locchip ${mst}"><span class="sw" style="background:${modeloColor(cat,mod)}"></span><span class="lk">${xmlEsc(mod)}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>`;
+      }).join('');
+    }
+    const alarm=(m.minimo>0 && disp<m.minimo) || locAlarm || modAlarm;
 
     // barra de progresso da meta
     let progHtml='';
@@ -667,6 +702,7 @@ function renderCards(data){
 
     const totalLow=(m.minimo>0 && disp<m.minimo);
     const badge = totalLow ? `<span class="badge b-bad"><span class="dot err"></span>Abaixo do mínimo</span>`
+                : modAlarm ? `<span class="badge b-bad"><span class="dot err"></span>Modelo abaixo do mínimo</span>`
                 : locAlarm ? `<span class="badge b-bad"><span class="dot err"></span>Local abaixo do mínimo</span>`
                 : (st==='warn') ? `<span class="badge b-warn"><span class="dot"></span>Abaixo da meta</span>`
                 : (st==='ok') ? `<span class="badge b-ok"><span class="dot live"></span>Meta atingida</span>`
@@ -684,7 +720,8 @@ function renderCards(data){
       <div class="sub"><b>disponível</b> · estoque bom ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}</div>
       ${progHtml}
       ${sparkHtml}
-      <div class="locs">${chips}${drChip}</div>`;
+      <div class="locs">${chips}${drChip}</div>
+      ${modelChips?`<div class="locs modelos"><span class="modlab">Modelos</span>${modelChips}</div>`:''}`;
     el.appendChild(card);
   });
   const grand=CONFIG.categorias.reduce((s,c)=>s+((data.groups[c.nome]&&data.groups[c.nome].disponivel)||0),0);
@@ -705,6 +742,19 @@ function renderMetasForm(){
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-loc="${l}" data-f="minimo" type="number" min="0" value="${lm.minimo||''}">
         <span></span></div>`;
     }).join('');
+    // seção por MODELO (só p/ categorias com modelo)
+    let modBlock='';
+    if(c.modelo){
+      const mods=((lastData&&lastData.groups[c.nome]&&lastData.groups[c.nome].modeloOrdem)||c.modelo.lista||[]);
+      const modRows=mods.map(mod=>{ const mm=(m.modelos&&m.modelos[mod])||{meta:0,minimo:0};
+        return `<div class="mrow">
+          <span class="rlab"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${modeloColor(c,mod)};margin-right:8px;vertical-align:middle"></span>${xmlEsc(mod)}</span>
+          <input class="inp" data-cat="${xmlEsc(c.nome)}" data-mod="${xmlEsc(mod)}" data-f="meta" type="number" min="0" value="${mm.meta||''}">
+          <input class="inp" data-cat="${xmlEsc(c.nome)}" data-mod="${xmlEsc(mod)}" data-f="minimo" type="number" min="0" value="${mm.minimo||''}">
+          <span></span></div>`;
+      }).join('');
+      modBlock=`<div class="mrow head"><span class="rlab">Por modelo</span><span>Meta</span><span>Mínimo</span><span></span></div>${modRows}`;
+    }
     return `<div class="meta-cat" style="--c:${c.cor}">
       <div class="mc-head"><span class="pic">${c.svg}</span>${xmlEsc(c.nome)}</div>
       <div class="mrow head"><span class="rlab">Total</span><span>Meta</span><span>Mínimo</span><span>DR máx.</span></div>
@@ -716,15 +766,17 @@ function renderMetasForm(){
       </div>
       <div class="mrow head"><span class="rlab">Por local</span><span>Meta</span><span>Mínimo</span><span></span></div>
       ${locRows}
+      ${modBlock}
     </div>`;
   }).join('');
   $('#metaIntervalo').value=CONFIG.intervaloMin;
 }
 function readMetasForm(){
   $('#metasForm').querySelectorAll('input.inp').forEach(inp=>{
-    const cat=inp.dataset.cat, f=inp.dataset.f, loc=inp.dataset.loc, val=Math.max(0,parseFloat(inp.value)||0);
+    const cat=inp.dataset.cat, f=inp.dataset.f, loc=inp.dataset.loc, mod=inp.dataset.mod, val=Math.max(0,parseFloat(inp.value)||0);
     if(!METAS[cat]) METAS[cat]=emptyMeta();
     if(loc){ (METAS[cat].locais[loc]||(METAS[cat].locais[loc]={meta:0,minimo:0}))[f]=val; }
+    else if(mod){ if(!METAS[cat].modelos) METAS[cat].modelos={}; (METAS[cat].modelos[mod]||(METAS[cat].modelos[mod]={meta:0,minimo:0}))[f]=val; }
     else METAS[cat][f]=val;
   });
   const iv=parseInt($('#metaIntervalo').value,10); if(iv>0) CONFIG.intervaloMin=iv;

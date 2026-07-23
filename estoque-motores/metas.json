@@ -22,6 +22,11 @@
       "locais": {
         "FND": { "meta": 9000, "minimo": 6000 },
         "USI": { "meta": 11000, "minimo": 8000 }
+      },
+      "modelos": {
+        "KPT": { "meta": 7000, "minimo": 5000 },
+        "K2G": { "meta": 10000, "minimo": 8000 },
+        "KRM": { "meta": 300, "minimo": 100 }
       }
     }
   }
