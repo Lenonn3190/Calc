@@ -1,10 +1,10 @@
-# Gestão de Estoque — Cabeçote & Bloco (painel para TV)
+# Gestão de Estoque — Cabeçote, Bloco & Cilindro (painel para TV)
 
 Painel web em **tela cheia (modo quiosque)** para acompanhar em uma TV quantas
-peças de **Cabeçote** e **Bloco** estão disponíveis. A base é uma planilha
-**Excel (`.xlsx`)**, no mesmo estilo dos outros projetos, e o painel se
-**atualiza sozinho a cada 1 hora**, mostrando a **data e hora da última
-atualização** e uma **contagem regressiva** para a próxima.
+peças de **Cabeçote**, **Bloco** e **Cilindro** estão disponíveis, com **gráficos
+por local**. A base é uma planilha **Excel (`.xlsx`)** exportada do sistema (JDE),
+e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
+última atualização** e uma **contagem regressiva** para a próxima.
 
 ## Como funciona
 
@@ -12,8 +12,14 @@ atualização** e uma **contagem regressiva** para a próxima.
   `index.html` (precisa ser servido por um servidor web — veja abaixo).
 - A cada **60 minutos** ele relê a planilha automaticamente. Assim, basta
   substituir/atualizar o `estoque.xlsx` que a TV reflete sozinha no próximo ciclo.
-- Sempre mostra: **última atualização** (data/hora), **próxima atualização**
-  (contagem regressiva), total por peça e os tipos abaixo do estoque mínimo (em vermelho).
+- Cada peça é classificada pela **descrição** e o estoque é somado **por local**
+  (`LILOCN`). O número em destaque é o **disponível = estoque bom − rejeitados**.
+- **Rejeitados (ESTREJ = "DR"):** as peças no local `ESTREJ` são tratadas como
+  rejeitadas e **descontadas do total** (mostradas em vermelho no card).
+- **Gráficos com séries por local:** barras agrupadas (peça × local) e um donut
+  com a distribuição do estoque por local (FND / MMO / USI / DR).
+- Sempre mostra: **última atualização** (data/hora) e **próxima atualização**
+  (contagem regressiva).
 - **Reabre já conectado:** depois que a base é lida uma vez, ela fica salva no
   próprio navegador. Ao reabrir a página (ou se o servidor/planilha ficar
   indisponível no momento), o painel mostra **na hora a última base** — sem pedir
@@ -21,19 +27,22 @@ atualização** e uma **contagem regressiva** para a próxima.
 
 ## A planilha (`estoque.xlsx`)
 
-Primeira linha é o cabeçalho. Colunas aceitas (nomes flexíveis, com/sem acento):
+Primeira linha é o cabeçalho. Colunas da base (JDE) — nomes flexíveis:
 
-| Coluna         | Obrigatória | Descrição                                             |
-|----------------|:-----------:|-------------------------------------------------------|
-| **Peça**       | ✅          | Contém "Cabeçote" ou "Bloco" (classifica o item)      |
-| **Quantidade** | ✅          | Quantidade disponível (aceita `1.234` ou `1234`)      |
-| Modelo         | —           | Descrição/variação do item (ex.: "Cabeçote 1.6 4cil") |
-| Mínimo         | —           | Estoque mínimo — abaixo disso o item fica em vermelho |
-| Local          | —           | Prateleira/posição                                    |
+| Coluna     | Obrigatória | Descrição                                                        |
+|------------|:-----------:|------------------------------------------------------------------|
+| **IMDSC1** | ✅          | Descrição da peça — classifica em Cabeçote / Bloco / Cilindro    |
+| **QTD**    | ✅          | Quantidade (aceita `1.234` ou `1234`)                            |
+| **LILOCN** | ✅*         | Local: `ESTFND`→FND, `ESTMMO`→MMO, `ESTUSI`→USI, `ESTREJ`→DR     |
+| IMLITM     | —           | Código do item (conta os "tipos" por peça)                       |
+| LILOTN     | —           | Lote (usado nas linhas de rejeitado)                             |
 
-> Um **modelo pronto** pode ser baixado direto no painel: botão **⚙ → "Baixar
-> modelo (.xlsx)"**. O arquivo **`estoque.xlsx`** já incluído aqui é um exemplo —
-> substitua pelos seus dados.
+> \*Sem `LILOCN` o painel ainda funciona, mas sem separação por local nem DR.
+>
+> **Locais e categorias** são configuráveis no início do `<script>` (bloco
+> `CONFIG` → `categorias` e `locais`). Um **modelo** pode ser baixado no painel
+> (**⚙ → "Baixar modelo (.xlsx)"**). O `estoque.xlsx` incluído é a sua base real —
+> substitua pelo export mais recente quando quiser.
 
 ## Como colocar na TV (modo quiosque)
 
