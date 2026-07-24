@@ -28,6 +28,21 @@
         "K2G": { "meta": 10000, "minimo": 8000 },
         "KRM": { "meta": 300, "minimo": 100 }
       }
+    },
+    "Motor": {
+      "meta": 1000, "minimo": 600, "drMax": 20,
+      "locais": {
+        "LMO": { "meta": 700, "minimo": 400 },
+        "TRA": { "meta": 120, "minimo": 50 },
+        "MMO": { "meta": 40, "minimo": 0 }
+      },
+      "modelos": {
+        "1.5 TURBO FFV": { "meta": 150, "minimo": 80 },
+        "1.5 FFV": { "meta": 250, "minimo": 150 },
+        "1.5 CVT": { "meta": 10, "minimo": 0 },
+        "1.5 FFV CVT": { "meta": 500, "minimo": 300 },
+        "1.5 FLEX CVT": { "meta": 150, "minimo": 80 }
+      }
     }
   }
 }
