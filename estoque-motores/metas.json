@@ -1,26 +1,6 @@
 {
   "intervaloMin": 60,
   "metas": {
-    "Cabeçote": {
-      "meta": 5000,
-      "minimo": 3000,
-      "drMax": 30,
-      "locais": {
-        "FND": {
-          "meta": 3000,
-          "minimo": 2000
-        },
-        "MMO": {
-          "meta": 600,
-          "minimo": 300
-        },
-        "USI": {
-          "meta": 1600,
-          "minimo": 1000
-        }
-      },
-      "consumoDia": 511
-    },
     "Bloco": {
       "meta": 5000,
       "minimo": 3000,
@@ -41,34 +21,49 @@
       },
       "consumoDia": 511
     },
-    "Cilindro": {
-      "meta": 15000,
-      "minimo": 10000,
-      "drMax": 50,
+    "Cabeçote": {
+      "meta": 5000,
+      "minimo": 3000,
+      "drMax": 30,
       "locais": {
         "FND": {
-          "meta": 9000,
-          "minimo": 6000
+          "meta": 3000,
+          "minimo": 2000
+        },
+        "MMO": {
+          "meta": 600,
+          "minimo": 300
         },
         "USI": {
-          "meta": 11000,
-          "minimo": 8000
+          "meta": 1600,
+          "minimo": 1000
         }
       },
-      "modelos": {
-        "KPT": {
-          "meta": 7000,
-          "minimo": 5000
+      "consumoDia": 511
+    },
+    "Transmissão": {
+      "meta": 6000,
+      "minimo": 4000,
+      "drMax": 20,
+      "locais": {
+        "DLI": {
+          "meta": 5000,
+          "minimo": 3500
         },
-        "K2G": {
-          "meta": 10000,
-          "minimo": 8000
+        "TRA": {
+          "meta": 600,
+          "minimo": 300
         },
-        "KRM": {
-          "meta": 300,
-          "minimo": 100
+        "MMO": {
+          "meta": 100,
+          "minimo": 0
+        },
+        "LMO": {
+          "meta": 100,
+          "minimo": 0
         }
-      }
+      },
+      "consumoDia": 511
     },
     "Motor": {
       "meta": 1000,
@@ -100,29 +95,38 @@
       },
       "consumoDia": 511
     },
-    "Transmissão": {
-      "meta": 6000,
-      "minimo": 4000,
-      "drMax": 20,
+    "Cilindro 2W": {
+      "meta": 15000,
+      "minimo": 10000,
+      "drMax": 50,
       "locais": {
-        "DLI": {
-          "meta": 5000,
-          "minimo": 3500
+        "FND": {
+          "meta": 9000,
+          "minimo": 6000
         },
-        "TRA": {
-          "meta": 600,
-          "minimo": 300
-        },
-        "MMO": {
-          "meta": 100,
-          "minimo": 0
-        },
-        "LMO": {
-          "meta": 100,
-          "minimo": 0
+        "USI": {
+          "meta": 11000,
+          "minimo": 8000
         }
       },
-      "consumoDia": 511
+      "modelos": {
+        "KPT": {
+          "meta": 7000,
+          "minimo": 5000
+        },
+        "K2G": {
+          "meta": 10000,
+          "minimo": 8000
+        },
+        "KRM": {
+          "meta": 300,
+          "minimo": 100
+        }
+      }
     }
+  },
+  "cobertura": {
+    "critico": 1,
+    "baixo": 5
   }
 }
