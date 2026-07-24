@@ -6,7 +6,9 @@ title Agendar atualizacao automatica da base
 REM Cria uma tarefa que roda Atualizar-Base.ps1 a cada 1 hora (no minuto :50),
 REM alinhado para a base ja estar pronta quando o painel reler.
 
-set "PS1=%~dp0Atualizar-Base.ps1"
+REM Script usado: ODBC direto (DSN DPN-Producao). Para usar a via Excel,
+REM troque para  Atualizar-Base.ps1
+set "PS1=%~dp0Atualizar-Base-ODBC.ps1"
 set "TAREFA=Atualizar Base Estoque"
 
 echo Criando/atualizando a tarefa agendada "%TAREFA%"...

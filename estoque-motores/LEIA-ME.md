@@ -56,15 +56,17 @@ atualizado. Duas formas:
 Conexões → Propriedades*, marque **"Atualizar a cada N minutos"** e **"Atualizar ao abrir"**.
 (Menos robusto: o Excel precisa ficar aberto e pode travar o arquivo.)
 
-**C) ODBC direto, sem Excel (mais robusto)** — como a base vem por **ODBC**, dá para
-consultar direto e gerar a base sem abrir o Excel:
-1. Abra **`Atualizar-Base-ODBC.ps1`** e preencha a conexão (`$conn` = DSN ou string) e a
-   consulta (`$sql`). A consulta deve retornar as colunas **LIMCU, IMLITM, IMDSC1,
-   LILOCN, LILOTN, QTD** (use `AS` se os nomes forem outros). Ele gera **`estoque.csv`**.
-2. No `index.html`, troque `arquivo: 'estoque.xlsx'` por **`arquivo: 'estoque.csv'`**
-   (o painel lê CSV `;` ou `,` automaticamente).
-3. Agende como no item A (no `Agendar-Atualizacao.bat`, troque o nome do `.ps1` para
-   `Atualizar-Base-ODBC.ps1`).
+**C) ODBC direto, sem Excel (RECOMENDADO — já configurado)** — o
+**`Atualizar-Base-ODBC.ps1`** já vem com a **sua consulta** (DSN `DPN-Producao`,
+tabela `JHABJDTA73.F41021JC`, `LIPQOH/10000 AS QTD` e os mesmos filtros do Power
+Query). Ele gera **`estoque.csv`**, que o painel **já lê por padrão** (`arquivo:
+'estoque.csv'`). Passos:
+1. Confirme que o DSN **`DPN-Producao`** existe neste PC. Se ele não guardar
+   usuário/senha, edite `$conn` no script: `"dsn=DPN-Producao;UID=usuario;PWD=senha;"`.
+2. Dê duplo clique em **`Agendar-Atualizacao.bat`** (já aponta para o script ODBC) —
+   cria a tarefa que atualiza a base a cada 1h.
+3. Para testar na hora: `schtasks /Run /TN "Atualizar Base Estoque"` (confira o
+   `atualizar-base.log`).
 
 > Notas ODBC (valem para A e C):
 > - A conexão precisa ter **usuário/senha salvos** (sem prompt), senão a atualização trava.

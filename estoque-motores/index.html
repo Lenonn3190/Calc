@@ -403,7 +403,7 @@ const SVG_TRANSMISSAO = `<svg viewBox="0 0 48 48" fill="none" stroke="currentCol
    CONFIGURAÇÃO
    ============================================================ */
 const CONFIG = {
-  arquivo: 'estoque.xlsx',   // planilha lida na mesma pasta (via servidor web)
+  arquivo: 'estoque.csv',    // base lida na mesma pasta (CSV do ODBC; aceita .xlsx tbm)
   intervaloMin: 60,          // atualização automática (minutos)
   unidade: 'un',             // unidade exibida ao lado da quantidade
   relatorio: { horarios: ['08:30','12:30'] },  // horários que geram o HTML de e-mail na pasta mapeada

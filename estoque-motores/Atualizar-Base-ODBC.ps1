@@ -1,26 +1,33 @@
 # ============================================================
 #  Atualiza a base do painel consultando o ODBC DIRETO (sem Excel).
-#  Roda a consulta e grava estoque.csv (que o painel le automaticamente).
-#  Mais robusto para rodar sozinho (nao precisa de Excel aberto/COM).
+#  Usa a MESMA consulta do seu Power Query (DSN: DPN-Producao / F41021JC)
+#  e grava estoque.csv, que o painel le automaticamente.
+#  Rode via Agendador de Tarefas (ver Agendar-Atualizacao.bat).
 #
-#  COMO USAR:
-#   1) Ajuste $conn (DSN ou string de conexao) e $sql abaixo.
-#   2) A consulta DEVE retornar as colunas: LIMCU, IMLITM, IMDSC1, LILOCN, LILOTN, QTD
-#      (se os nomes no banco forem outros, use "AS" para renomear).
-#   3) No index.html, troque:  arquivo: 'estoque.xlsx'  ->  arquivo: 'estoque.csv'
-#   4) Agende este script (ver Agendar-Atualizacao.bat, trocando o nome do .ps1).
+#  PRE-REQUISITOS:
+#   - DSN "DPN-Producao" configurado neste PC (de preferencia DSN de Sistema).
+#   - Se o DSN nao guardar usuario/senha, preencha UID/PWD em $conn.
 # ============================================================
 
-# >>> AJUSTE AQUI <<<
-# Opcao A: DSN ja configurado no Windows (Origens de Dados ODBC):
-$conn = "DSN=SEU_DSN;UID=usuario;PWD=senha;"
-# Opcao B: string completa sem DSN (exemplo generico):
-# $conn = "Driver={SQL Server};Server=SEU_SERVIDOR;Database=SEU_BANCO;UID=usuario;PWD=senha;"
+# Conexao ODBC (mesmo DSN do Power Query). Se precisar de login:
+#   $conn = "dsn=DPN-Producao;UID=usuario;PWD=senha;"
+$conn = "dsn=DPN-Producao;"
 
+# Consulta (identica a do Power Query). O filtro LIMCU <> 'TERCHABN' foi
+# incorporado ao WHERE (era o Table.SelectRows do Power Query).
 $sql = @"
-SELECT LIMCU, IMLITM, IMDSC1, LILOCN, LILOTN, QTD
-FROM  SUA_TABELA_OU_VIEW
--- WHERE ...
+SELECT LIMCU, IMLITM, IMDSC1, LILOCN, LILOTN, LIPQOH/10000 AS QTD, LIUPMJ
+FROM JHABJDTA73.F41021JC
+WHERE LIPQOH <> 0
+  AND (
+        TRIM(IMLITM) IN ('1220B62X M000','1220162X M000BB','1220162X M000AA',
+            '1100B62H M000','1110062H M000BB','12100K2G 9000','12100KPT A004',
+            '12100KRM 8400 AC','12100KWG 6001','12100K2G 9000XB','12100K2G 9000XA','12100KPT A001AA')
+        OR TRIM(IMLITM) LIKE '100006%'
+        OR TRIM(IMDSC1) = 'CJ TRANSMISSAO CVT -AL'
+      )
+  AND TRIM(LIMCU) <> 'TERCHABN'
+ORDER BY LIMCU, LILOCN, IMLITM
 "@
 
 # ------------------------------------------------------------
@@ -33,7 +40,7 @@ $c = $null
 try {
   $c = New-Object System.Data.Odbc.OdbcConnection $conn
   $c.Open()
-  $cmd = $c.CreateCommand(); $cmd.CommandText = $sql; $cmd.CommandTimeout = 120
+  $cmd = $c.CreateCommand(); $cmd.CommandText = $sql; $cmd.CommandTimeout = 180
   $rdr = $cmd.ExecuteReader()
   $dt = New-Object System.Data.DataTable
   $dt.Load($rdr)
