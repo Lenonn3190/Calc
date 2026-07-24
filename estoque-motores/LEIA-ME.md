@@ -32,6 +32,10 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   bloco + 1 transmissão por motor → 511/dia cada. Sem consumo definido, a peça não mostra previsão.
 - Sempre mostra: **última atualização** (data/hora) e **próxima atualização**
   (contagem regressiva).
+- **Tela sempre ligada:** o painel usa o *Screen Wake Lock* para impedir que a
+  tela apague/bloqueie enquanto estiver aberto (Chrome/Edge em localhost/https).
+  Para garantia total, configure também o Windows para **nunca suspender** e
+  **desativar o bloqueio de tela/protetor** (veja abaixo).
 
 ## Metas (🎯) e alertas
 
@@ -116,6 +120,12 @@ Primeira linha é o cabeçalho. Colunas da base (JDE) — nomes flexíveis:
    ```
    chrome --kiosk http://SEU-IP:8080/
    ```
+3. **Impedir suspensão/bloqueio (Windows):** o painel já mantém a tela ligada via
+   *Wake Lock*, mas para o PC nunca dormir/bloquear configure também no Windows:
+   - **Configurações → Sistema → Energia**: "Tela desligar" e "Suspender" = **Nunca**
+     (ou plano de energia de **Alto desempenho**).
+   - **Configurações → Contas → Opções de entrada**: bloqueio automático/protetor de
+     tela **desativado** (em rede corporativa pode depender de política de TI/GPO).
 
 ## Atalhos
 

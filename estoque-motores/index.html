@@ -1218,6 +1218,17 @@ function toggleTheme(){ const r=document.documentElement; const t=r.getAttribute
 let cursorTimer;
 function armCursor(){ document.body.classList.remove('cursor-hidden'); clearTimeout(cursorTimer); cursorTimer=setTimeout(()=>document.body.classList.add('cursor-hidden'),4000); }
 
+/* manter a TELA SEMPRE LIGADA (evita descanso/bloqueio de tela) — Screen Wake Lock API */
+let wakeLock=null;
+async function keepAwake(){
+  try{
+    if(!('wakeLock' in navigator)) return;               // navegador sem suporte
+    if(wakeLock && wakeLock.released===false) return;     // já está ativo
+    wakeLock=await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release',()=>{ /* liberado (ex.: aba oculta) — será re-solicitado */ });
+  }catch(e){ /* silencioso: precisa de aba visível + contexto seguro (localhost/https) */ }
+}
+
 /* ============================================================
    INIT
    ============================================================ */
@@ -1295,6 +1306,13 @@ function init(){
   });
   ['mousemove','mousedown','touchstart'].forEach(ev=>window.addEventListener(ev,armCursor));
   armCursor();
+
+  // manter a tela ligada (sem descanso/bloqueio) e re-solicitar quando necessário
+  keepAwake();
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') keepAwake(); });
+  document.addEventListener('fullscreenchange',keepAwake);
+  ['mousedown','keydown','touchstart'].forEach(ev=>window.addEventListener(ev,keepAwake));
+  setInterval(keepAwake,60000);   // reforço periódico
 
   // re-render dos gráficos ao redimensionar (ajusta escala/tamanho à tela)
   let rz; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ fitQty(); },180); });
