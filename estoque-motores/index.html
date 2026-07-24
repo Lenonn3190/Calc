@@ -91,42 +91,42 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .main{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:clamp(8px,1.2vh,16px); }
 
 /* ============ CARDS (destaque) ============ */
-.cards{ display:grid; grid-template-columns:repeat(5,1fr); gap:clamp(8px,1vw,16px); flex:0 0 auto; }
+.cards{ display:grid; grid-template-columns:repeat(5,1fr); gap:clamp(8px,1vw,16px); flex:1 1 auto; min-height:0; align-content:stretch; }
 .card{
   position:relative; overflow:hidden; border-radius:var(--radius);
   border:1px solid var(--line); background:linear-gradient(180deg,var(--panel-2),var(--panel));
-  box-shadow:var(--shadow); padding:clamp(10px,1.3vh,18px) clamp(12px,1.2vw,22px);
-  display:flex; flex-direction:column; gap:clamp(3px,.6vh,7px);
+  box-shadow:var(--shadow); padding:clamp(14px,1.8vh,26px) clamp(14px,1.3vw,26px);
+  display:flex; flex-direction:column; gap:clamp(5px,.9vh,12px);
 }
-.card::before{ content:""; position:absolute; inset:0 auto 0 0; width:8px; background:var(--c,var(--brand)); }
+.card::before{ content:""; position:absolute; inset:0 auto 0 0; width:9px; background:var(--c,var(--brand)); }
 .card .card-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-.card .name{ display:flex; align-items:center; gap:11px; min-width:0; font-size:clamp(17px,1.7vw,30px); font-weight:800; letter-spacing:-.5px; }
+.card .name{ display:flex; align-items:center; gap:12px; min-width:0; font-size:clamp(20px,2vw,38px); font-weight:800; letter-spacing:-.5px; }
 .card .name .pic{
-  width:clamp(40px,3.2vw,58px); height:clamp(40px,3.2vw,58px); border-radius:14px; display:grid; place-items:center;
+  width:clamp(46px,3.6vw,68px); height:clamp(46px,3.6vw,68px); border-radius:15px; display:grid; place-items:center;
   background:color-mix(in srgb, var(--c) 18%, transparent); color:var(--c);
   border:1px solid color-mix(in srgb, var(--c) 45%, transparent);
 }
 .card .name .pic svg{ width:66%; height:66%; display:block; }
-.card .qty-wrap{ display:flex; align-items:baseline; gap:9px; }
-.card .qty{ font-size:clamp(36px,4.1vw,80px); font-weight:900; line-height:.9; letter-spacing:-2px; font-variant-numeric:tabular-nums; color:var(--txt); }
-.card .unit{ font-size:clamp(13px,1.2vw,20px); font-weight:800; color:var(--muted); white-space:nowrap; }
-.card .sub{ color:var(--muted); font-size:clamp(11px,1vw,16px); font-weight:600; margin-top:0; }
+.card .qty-wrap{ display:flex; align-items:baseline; gap:10px; }
+.card .qty{ font-size:clamp(44px,4.6vw,92px); font-weight:900; line-height:.9; letter-spacing:-2px; font-variant-numeric:tabular-nums; color:var(--txt); }
+.card .unit{ font-size:clamp(15px,1.4vw,24px); font-weight:800; color:var(--muted); white-space:nowrap; }
+.card .sub{ color:var(--muted); font-size:clamp(13px,1.15vw,19px); font-weight:600; margin-top:0; }
 .card .sub b{ color:var(--txt); }
 .card .meta{ display:flex; gap:clamp(8px,.8vw,14px); flex-wrap:wrap; }
-.badge{ display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:999px; font-size:clamp(11px,.95vw,16px); font-weight:700; border:1px solid var(--line-2); background:var(--panel); color:var(--muted); }
-.badge .dot{ width:9px; height:9px; }
+.badge{ display:inline-flex; align-items:center; gap:8px; padding:7px 13px; border-radius:999px; font-size:clamp(12px,1.05vw,18px); font-weight:700; border:1px solid var(--line-2); background:var(--panel); color:var(--muted); }
+.badge .dot{ width:10px; height:10px; }
 .b-ok{ color:var(--ok); border-color:color-mix(in srgb,var(--ok) 40%,transparent); background:var(--ok-bg); }
 .b-warn{ color:var(--warn); border-color:color-mix(in srgb,var(--warn) 40%,transparent); background:var(--warn-bg); }
 .b-bad{ color:var(--bad); border-color:color-mix(in srgb,var(--bad) 40%,transparent); background:var(--bad-bg); }
 .b-info{ color:var(--info); border-color:color-mix(in srgb,var(--info) 40%,transparent); background:rgba(56,189,248,.12); }
 
 /* chips por local dentro do card */
-.locs{ display:flex; flex-wrap:wrap; gap:6px; margin-top:2px; align-items:center; }
-.locs.modelos{ margin-top:5px; padding-top:5px; border-top:1px dashed var(--line-2); }
-.modlab{ flex:0 0 100%; color:var(--faint); font-weight:800; font-size:clamp(10px,.85vw,14px); text-transform:uppercase; letter-spacing:.6px; margin:0 0 1px; }
-.locchip{ display:inline-flex; align-items:center; gap:7px; padding:5px 10px; border-radius:9px; background:var(--panel); border:1px solid var(--line);
-  font-size:clamp(11px,1vw,16px); font-weight:800; font-variant-numeric:tabular-nums; }
-.locchip .sw{ width:10px; height:10px; border-radius:3px; flex:0 0 auto; }
+.locs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:3px; align-items:center; }
+.locs.modelos{ margin-top:7px; padding-top:7px; border-top:1px dashed var(--line-2); }
+.modlab{ flex:0 0 100%; color:var(--faint); font-weight:800; font-size:clamp(11px,.95vw,16px); text-transform:uppercase; letter-spacing:.6px; margin:0 0 2px; }
+.locchip{ display:inline-flex; align-items:center; gap:8px; padding:7px 13px; border-radius:10px; background:var(--panel); border:1px solid var(--line);
+  font-size:clamp(13px,1.15vw,19px); font-weight:800; font-variant-numeric:tabular-nums; }
+.locchip .sw{ width:12px; height:12px; border-radius:3px; flex:0 0 auto; }
 .locchip .lk{ color:var(--muted); font-weight:600; }
 .locchip.rej{ border-color:color-mix(in srgb,var(--bad) 45%,transparent); }
 .locchip.rej .lv{ color:var(--bad); }
@@ -138,17 +138,17 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .locchip.low .lv, .locchip.bad .lv{ color:var(--bad); }
 
 /* barra de progresso da meta + sparkline */
-.prog{ margin-top:3px; }
-.prog .ptop{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:clamp(11px,.95vw,16px); font-weight:700; color:var(--muted); margin-bottom:4px; }
+.prog{ margin-top:4px; }
+.prog .ptop{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:clamp(12px,1.05vw,18px); font-weight:700; color:var(--muted); margin-bottom:5px; }
 .prog .ptop .pv{ color:var(--txt); font-weight:800; }
-.prog .bar{ height:10px; border-radius:999px; background:var(--panel); border:1px solid var(--line); overflow:hidden; }
+.prog .bar{ height:13px; border-radius:999px; background:var(--panel); border:1px solid var(--line); overflow:hidden; }
 .prog .fill{ height:100%; border-radius:999px; transition:width .6s ease; }
 .prog.ok   .fill{ background:linear-gradient(90deg,var(--ok),#4ade80); }
 .prog.warn .fill{ background:linear-gradient(90deg,var(--warn),#fbbf24); }
 .prog.bad  .fill{ background:linear-gradient(90deg,var(--bad),#f87171); }
-.spark{ margin-top:4px; display:flex; align-items:center; gap:10px; }
-.spark svg{ flex:1 1 auto; height:clamp(24px,3vh,38px); }
-.spark .scap{ font-size:clamp(10px,.85vw,13px); color:var(--faint); font-weight:700; white-space:nowrap; }
+.spark{ margin-top:6px; display:flex; align-items:center; gap:12px; }
+.spark svg{ flex:1 1 auto; height:clamp(34px,5vh,64px); }
+.spark .scap{ font-size:clamp(11px,.95vw,15px); color:var(--faint); font-weight:700; white-space:nowrap; }
 .spark .sdelta{ font-weight:800; font-variant-numeric:tabular-nums; }
 .spark .up{ color:var(--ok);} .spark .down{ color:var(--bad);} .spark .flat{ color:var(--muted);}
 
@@ -266,14 +266,6 @@ footer b{ color:var(--muted); }
   <div class="main">
     <div class="cards" id="cards">
       <!-- cards injetados via JS -->
-    </div>
-
-    <div class="charts">
-      <div class="chart-card">
-        <h3>📊 Estoque por local &amp; peça</h3>
-        <div class="legend" id="barLegend"></div>
-        <div class="plot" id="barPlot"></div>
-      </div>
     </div>
   </div>
 
@@ -692,7 +684,15 @@ function sparkline(points,color){
 /* ============================================================
    RENDER
    ============================================================ */
-function render(data){ lastData=data; renderCards(data); renderCharts(data); }
+function render(data){ lastData=data; renderCards(data); fitQty(); }
+/* encolhe o número em destaque só o necessário para caber na largura do card */
+function fitQty(){
+  document.querySelectorAll('.card .qty').forEach(q=>{
+    q.style.fontSize=''; const wrap=q.parentElement;
+    let size=parseFloat(getComputedStyle(q).fontSize), guard=0;
+    while(wrap.scrollWidth>wrap.clientWidth && size>26 && guard++<48){ size-=2; q.style.fontSize=size+'px'; }
+  });
+}
 
 function renderCards(data){
   const el=$('#cards'); el.innerHTML='';
@@ -959,6 +959,7 @@ function renderCharts(data){
 
 /* barras agrupadas: eixo X = categorias, séries = locais */
 function renderBarChart(data){
+  if(!$('#barPlot')) return;   // gráfico removido do layout
   const cats=CONFIG.categorias, locais=data.locais;
   // legenda
   $('#barLegend').innerHTML=locais.map(l=>`<span><span class="sw" style="background:${locColor(l)}"></span>${l}${isRej(l)?' (rejeitado)':''}</span>`).join('');
@@ -1250,7 +1251,7 @@ function init(){
   armCursor();
 
   // re-render dos gráficos ao redimensionar (ajusta escala/tamanho à tela)
-  let rz; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(lastData) renderCharts(lastData); },200); });
+  let rz; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ fitQty(); },180); });
 
   // relógio
   tick(); setInterval(tick,1000);

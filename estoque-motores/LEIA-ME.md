@@ -2,7 +2,7 @@
 
 Painel web em **tela cheia (modo quiosque)** para acompanhar em uma TV quantas
 peças de **Cabeçote**, **Bloco**, **Cilindro**, **Motor (conjunto)** e
-**Transmissão** estão disponíveis, com **gráfico por local**. A base é uma planilha **Excel (`.xlsx`)** exportada do sistema (JDE),
+**Transmissão** estão disponíveis. A base é uma planilha **Excel (`.xlsx`)** exportada do sistema (JDE),
 e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
 última atualização** e uma **contagem regressiva** para a próxima.
 
@@ -16,8 +16,6 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   (`LILOCN`). O número em destaque é o **disponível = estoque bom − rejeitados**.
 - **Rejeitados (ESTREJ = "DR"):** as peças no local `ESTREJ` são tratadas como
   rejeitadas e **descontadas do total** (mostradas em vermelho no card).
-- **Gráfico com séries por local:** barras agrupadas (peça × local) para
-  FND / MMO / USI / LMO / TRA / DLI / DR.
 - **Cilindro dividido por modelo:** o código do modelo é extraído do **IMLITM**
   (o trecho após `12100`, ex.: `12100KPT` → **KPT**). O card do Cilindro mostra
   os modelos (**KPT / K2G / KRM**) com valor e meta, e cada modelo tem meta/mínimo
@@ -48,7 +46,6 @@ O que o painel passa a mostrar:
   mínimo" / "Local abaixo do mínimo" / "Modelo abaixo do mínimo") e o chip fica vermelho.
 - **Mini-gráfico de tendência** (sparkline) por peça, com a variação desde a
   leitura anterior (▲/▼).
-- Marca de **meta por local** (linha tracejada) no gráfico de barras.
 
 **Salvar / carregar parâmetros:** as metas ficam salvas neste navegador e podem ser
 **exportadas** (`⬇ Exportar .json`) e **importadas** (`⬆ Importar .json`). Para o
