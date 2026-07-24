@@ -56,6 +56,23 @@ atualizado. Duas formas:
 Conexões → Propriedades*, marque **"Atualizar a cada N minutos"** e **"Atualizar ao abrir"**.
 (Menos robusto: o Excel precisa ficar aberto e pode travar o arquivo.)
 
+**C) ODBC direto, sem Excel (mais robusto)** — como a base vem por **ODBC**, dá para
+consultar direto e gerar a base sem abrir o Excel:
+1. Abra **`Atualizar-Base-ODBC.ps1`** e preencha a conexão (`$conn` = DSN ou string) e a
+   consulta (`$sql`). A consulta deve retornar as colunas **LIMCU, IMLITM, IMDSC1,
+   LILOCN, LILOTN, QTD** (use `AS` se os nomes forem outros). Ele gera **`estoque.csv`**.
+2. No `index.html`, troque `arquivo: 'estoque.xlsx'` por **`arquivo: 'estoque.csv'`**
+   (o painel lê CSV `;` ou `,` automaticamente).
+3. Agende como no item A (no `Agendar-Atualizacao.bat`, troque o nome do `.ps1` para
+   `Atualizar-Base-ODBC.ps1`).
+
+> Notas ODBC (valem para A e C):
+> - A conexão precisa ter **usuário/senha salvos** (sem prompt), senão a atualização trava.
+> - Use um **DSN de Sistema** (não de Usuário) e confirme a **bitagem** (ODBC 32 vs 64 bits
+>   deve bater com o Excel, no caso da opção A).
+> - A tarefa agendada deve rodar **com um usuário que enxergue o DSN** (no PC do quiosque,
+>   logado no mesmo usuário, funciona bem).
+
 ## Metas (🎯) e alertas
 
 Clique no botão **🎯** (ou tecla **M**) para abrir o **Cadastro de Metas**. Defina,

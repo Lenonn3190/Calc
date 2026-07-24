@@ -1129,6 +1129,8 @@ async function loadFromServer(){
   const r=await fetch(url,{cache:'no-store'});
   if(!r.ok) throw new Error('HTTP '+r.status);
   const buf=await r.arrayBuffer();
+  // aceita .csv (ex.: gerado direto do ODBC) ou .xlsx conforme o nome do arquivo
+  if(/\.csv(\?|$)/i.test(CONFIG.arquivo)) return parseCsv(new TextDecoder('utf-8').decode(new Uint8Array(buf)));
   return parseXlsx(buf);
 }
 
