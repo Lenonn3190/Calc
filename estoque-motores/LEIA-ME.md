@@ -37,6 +37,25 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   Para garantia total, configure também o Windows para **nunca suspender** e
   **desativar o bloqueio de tela/protetor** (veja abaixo).
 
+## Atualizar a base (`estoque.xlsx`) automaticamente
+
+O painel relê o `estoque.xlsx` a cada 1h, mas o **arquivo em si** precisa ser
+atualizado. Duas formas:
+
+**A) Tarefa agendada (recomendado)** — mantém tudo automático mesmo com a TV sozinha:
+1. Deixe na pasta a sua **planilha de consulta** (a que puxa do sistema/JDE) e abra
+   **`Atualizar-Base.ps1`**, ajustando a variável **`$origem`** com o caminho dela.
+   *(A consulta precisa atualizar sem pedir login/senha nem abrir caixas de diálogo —
+   deixe as credenciais salvas na conexão.)*
+2. Dê duplo clique em **`Agendar-Atualizacao.bat`** (se pedir, rode como Administrador).
+   Ele cria uma tarefa no Windows que roda o script **a cada 1 hora** (no minuto :50),
+   abre a consulta, atualiza (`RefreshAll`) e **regrava o `estoque.xlsx`** de forma segura.
+3. O painel pega a base nova sozinho no próximo ciclo. (Log em `atualizar-base.log`.)
+
+**B) Só dentro do Excel** — se o PC ficar com o Excel aberto: em *Dados → Consultas e
+Conexões → Propriedades*, marque **"Atualizar a cada N minutos"** e **"Atualizar ao abrir"**.
+(Menos robusto: o Excel precisa ficar aberto e pode travar o arquivo.)
+
 ## Metas (🎯) e alertas
 
 Clique no botão **🎯** (ou tecla **M**) para abrir o **Cadastro de Metas**. Defina,
