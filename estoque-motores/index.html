@@ -1354,14 +1354,13 @@ function init(){
     fetchMetasFile().then(f=>{ if(f){ METAS=f; saveMetas(); applyIntervalLabels(); scheduleNext(); renderMetasForm(); if(lastData) render(lastData); } });
   }
 
-  // reabrir JÁ CONECTADO: mostra a última base salva na hora e sincroniza depois
+  // reabrir JÁ CONECTADO: mostra a última base salva na hora e SEMPRE tenta
+  // atualizar do servidor por cima. Se o servidor estiver fora, refresh()
+  // mantém a base salva e reagenda. Assim o carregamento automático volta
+  // a funcionar mesmo que o cache tenha ficado em modo "manual".
   const cache=loadCache();
-  if(cache && cache.rows && renderFromCache(cache)){
-    if(currentSource==='server') refresh();   // atualiza do servidor por cima (silencioso se falhar)
-    else scheduleNext();                       // base manual: mantém a salva; agenda tentativa de servidor
-  }else{
-    refresh();                                 // primeira vez / sem base salva
-  }
+  if(cache && cache.rows) renderFromCache(cache);   // exibição instantânea
+  refresh();                                        // busca do servidor (sempre)
 }
 document.addEventListener('DOMContentLoaded',init);
 </script>
