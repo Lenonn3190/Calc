@@ -29,16 +29,19 @@ timeout /t 2 /nobreak >nul
 echo [3/3] Abrindo o painel em tela cheia (quiosque)...
 set "URL=http://localhost:8080/"
 
+REM Zoom do quiosque (0.67 = 67%%). Altere aqui se quiser outro zoom.
+set "ZOOM=0.67"
+
 set "CHROME="
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "CHROME=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
 if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "CHROME=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
 if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "CHROME=%LocalAppData%\Google\Chrome\Application\chrome.exe"
 
 if defined CHROME (
-  start "" "%CHROME%" --kiosk --start-fullscreen --disable-session-crashed-bubble --disable-infobars --overscroll-history-navigation=0 --autoplay-policy=no-user-gesture-required "%URL%"
+  start "" "%CHROME%" --kiosk --start-fullscreen --force-device-scale-factor=%ZOOM% --disable-session-crashed-bubble --disable-infobars --overscroll-history-navigation=0 --autoplay-policy=no-user-gesture-required "%URL%"
 ) else (
   echo    Chrome nao encontrado. Tentando Microsoft Edge...
-  start "" msedge --kiosk "%URL%" --edge-kiosk-type=fullscreen --no-first-run
+  start "" msedge --kiosk "%URL%" --edge-kiosk-type=fullscreen --force-device-scale-factor=%ZOOM% --no-first-run
 )
 
 echo.

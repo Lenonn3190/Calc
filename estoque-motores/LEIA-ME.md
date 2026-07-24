@@ -148,7 +148,12 @@ Primeira linha é o cabeçalho. Colunas da base (JDE) — nomes flexíveis:
 **Jeito fácil (Windows):** dê **duplo clique em `Iniciar-Painel-TV.bat`**. Ele:
 1. configura a energia para **nunca suspender / não desligar a tela**;
 2. sobe o **servidor local** (`servir.ps1`, sem instalar nada) na porta 8080;
-3. abre o **Chrome/Edge em tela cheia (quiosque)** apontando para o painel.
+3. abre o **Chrome/Edge em tela cheia (quiosque)** apontando para o painel, já
+   com **zoom de 67%** (para caber mais conteúdo na TV).
+
+> **Zoom:** o quiosque abre com **67%** (`--force-device-scale-factor=0.67`). Para
+> mudar, edite a linha `set "ZOOM=0.67"` no `Iniciar-Painel-TV.bat` (ex.: `0.75`,
+> `0.9`, `1.0`).
 
 > Para sair do quiosque: **Alt+F4**. Deixe todos os arquivos na **mesma pasta**
 > (`index.html`, `estoque.xlsx`, `metas.json`, `servir.ps1`, `Iniciar-Painel-TV.bat`).
