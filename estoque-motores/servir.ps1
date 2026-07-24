@@ -1,24 +1,43 @@
 # Servidor web estático simples (sem instalar nada) para o Painel de Estoque.
-# Serve os arquivos desta pasta em http://localhost:8080/
-# Necessário porque o painel lê estoque.xlsx / metas.json via fetch (não funciona em file://).
+# Serve os arquivos desta pasta na porta 8080, ACESSÍVEL PELA REDE (celular/outra TV).
+# Necessário porque o painel lê estoque.csv / estoque.xlsx via fetch (não funciona em file://).
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $port = 8080
 
+function Get-LanIPs {
+  try {
+    [System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) |
+      Where-Object { $_.AddressFamily -eq 'InterNetwork' } |
+      ForEach-Object { $_.IPAddressToString } |
+      Where-Object { $_ -ne '127.0.0.1' -and $_ -notlike '169.254*' }
+  } catch { @() }
+}
+
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://localhost:$port/")
-$listener.Prefixes.Add("http://127.0.0.1:$port/")
+$rede = $true
+$listener.Prefixes.Add("http://+:$port/")     # todas as interfaces (rede)
 try {
   $listener.Start()
 } catch {
-  Write-Host "Nao foi possivel iniciar na porta $port. Talvez ja esteja em uso." -ForegroundColor Red
-  Start-Sleep -Seconds 5
-  exit 1
+  $rede = $false
+  Write-Host "AVISO: nao consegui abrir para a REDE na porta $port." -ForegroundColor Yellow
+  Write-Host "       Rode 'Liberar-Rede.bat' como ADMINISTRADOR uma vez (libera porta+firewall)." -ForegroundColor Yellow
+  Write-Host "       Iniciando apenas neste PC (localhost)..." -ForegroundColor Yellow
+  $listener = New-Object System.Net.HttpListener
+  $listener.Prefixes.Add("http://localhost:$port/")
+  $listener.Prefixes.Add("http://127.0.0.1:$port/")
+  $listener.Start()
 }
+
 Write-Host "Painel de Estoque servindo:" -ForegroundColor Green
-Write-Host "  $root"
-Write-Host "  http://localhost:$port/   (feche esta janela para parar)"
+Write-Host "  Pasta: $root"
+Write-Host "  Neste PC:      http://localhost:$port/"
+if ($rede) {
+  foreach ($ip in Get-LanIPs) { Write-Host "  Na rede (cel): http://$ip`:$port/" -ForegroundColor Cyan }
+}
+Write-Host "  (feche esta janela para parar)"
 
 $mime = @{
   '.html' = 'text/html; charset=utf-8'
@@ -37,7 +56,6 @@ while ($listener.IsListening) {
     $ctx = $listener.GetContext()
     $rel = [uri]::UnescapeDataString($ctx.Request.Url.AbsolutePath.TrimStart('/'))
     if ([string]::IsNullOrEmpty($rel)) { $rel = 'index.html' }
-    # remove querystring residual e evita subir de pasta
     $rel = $rel.Split('?')[0].Replace('..','')
     $path = Join-Path $root $rel
 
@@ -54,7 +72,5 @@ while ($listener.IsListening) {
       $ctx.Response.OutputStream.Write($msg, 0, $msg.Length)
     }
     $ctx.Response.OutputStream.Close()
-  } catch {
-    # ignora erros de conexao individual e continua servindo
-  }
+  } catch { }
 }

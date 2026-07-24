@@ -161,9 +161,26 @@ Primeira linha é o cabeçalho. Colunas da base (JDE) — nomes flexíveis:
 (cria um atalho na pasta *Inicializar* do Windows — o painel abre no login).
 Para desativar, use **`Remover-Inicializacao.bat`**.
 
-**Manual (qualquer SO):** sirva a pasta por HTTP (o `fetch` do `.xlsx` não funciona
-em `file://`). Ex.: `python -m http.server 8080` e acesse `http://localhost:8080/`.
+**Manual (qualquer SO):** sirva a pasta por HTTP (o `fetch` do `.xlsx`/`.csv` não
+funciona em `file://`). Ex.: `python -m http.server 8080` e acesse `http://localhost:8080/`.
 Na TV, pressione **F** (ou **⛶**) para tela cheia, ou inicie com `chrome --kiosk http://localhost:8080/`.
+
+> ⚠️ **Não abra pelo `Arquivo Z:\...\index.html` (file://)** — assim o painel só
+> funciona no modo "manual" e **não atualiza sozinho**. Sempre use o **servidor**
+> (`http://localhost:8080/` no PC).
+
+## Acessar pelo celular / outra TV (na mesma rede)
+
+1. **Uma vez**, no PC, execute **`Liberar-Rede.bat` como Administrador** (libera a
+   porta 8080 e cria a regra de firewall).
+2. Rode o **`Iniciar-Painel-TV.bat`** (ou `servir.ps1`). Ao iniciar, o servidor
+   **mostra o endereço de rede**, algo como `http://192.168.0.10:8080/`.
+3. No **celular** (na **mesma rede/Wi-Fi**), abra esse endereço no navegador:
+   **`http://IP-DO-PC:8080/`**.
+
+> - PC e celular precisam estar na **mesma rede** e o roteador não pode isolar os
+>   dispositivos (redes corporativas às vezes bloqueiam — se não abrir, fale com a TI).
+> - No celular é só **visualização** (mapear pasta/relatório só funcionam no PC).
 3. **Impedir suspensão/bloqueio (Windows):** o painel já mantém a tela ligada via
    *Wake Lock*, mas para o PC nunca dormir/bloquear configure também no Windows:
    - **Configurações → Sistema → Energia**: "Tela desligar" e "Suspender" = **Nunca**
