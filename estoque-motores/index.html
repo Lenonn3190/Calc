@@ -136,6 +136,8 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .locchip.warn .lv{ color:var(--warn); }
 .locchip.low, .locchip.bad{ border-color:color-mix(in srgb,var(--bad) 45%,transparent); background:var(--bad-bg); }
 .locchip.low .lv, .locchip.bad .lv{ color:var(--bad); }
+.locchip.imp{ border-color:color-mix(in srgb,#c084fc 45%,transparent); background:color-mix(in srgb,#c084fc 14%,transparent); }
+.locchip.imp .lv{ color:#c084fc; }
 
 /* cobertura / previsão (dias úteis) */
 .cover{ display:inline-flex; flex-direction:column; gap:1px; margin-top:auto; padding:7px 14px; border-radius:11px;
@@ -409,6 +411,8 @@ const CONFIG = {
   relatorio: { horarios: ['08:30','12:30'] },  // horários que geram o HTML de e-mail na pasta mapeada
   // cobertura (previsão em dias úteis): limiares de alerta
   cobertura: { critico: 1, baixo: 5 },         // < crítico = vermelho/pisca ; < baixo = amarelo
+  // "Impregna": linhas com este LIMCU nao entram no disponivel; aparecem à parte no card
+  impregna: { limcu: 'TERCHAB3', label: 'Impregna', cor: '#c084fc' },
 
   // Peças acompanhadas (classificadas pela descrição IMDSC1).
   // ORDEM: só a sequência visual dos cards. A classificação é por palavra-chave
@@ -539,13 +543,14 @@ function download(name,blob){ const url=URL.createObjectURL(blob); const a=docum
    INTERPRETAÇÃO DOS DADOS
    ============================================================ */
 function mapHeader(head){
-  const H=head.map(norm); const idx={desc:-1,item:-1,qtd:-1,local:-1,lote:-1};
+  const H=head.map(norm); const idx={desc:-1,item:-1,qtd:-1,local:-1,lote:-1,limcu:-1};
   const find=(...keys)=>H.findIndex(h=>keys.some(k=>h===k||h.startsWith(k)));
   idx.desc  = find('imdsc','descricao','peca','peça','produto','tipo');          // IMDSC1
   idx.item  = find('imlitm','codigo','sku','material','item');                   // IMLITM
   idx.qtd   = find('qtd','quantidade','qtde','saldo','estoque','disponivel');    // QTD
   idx.local = find('lilocn','local','deposito','deposito','loc','setor');        // LILOCN
   idx.lote  = find('lilotn','lote','lot');                                       // LILOTN
+  idx.limcu = find('limcu','filial','unidade','planta','mcu');                   // LIMCU (filial/planta)
   return idx;
 }
 function classify(text){
@@ -586,8 +591,9 @@ function interpret(rows){
   if(idx.qtd<0)  throw new Error('Coluna de quantidade (QTD) não encontrada.');
 
   const groups={};
-  CONFIG.categorias.forEach(c=>groups[c.nome]={cat:c, bom:0, rejeitado:0, disponivel:0, locais:{}, modelos:{}, tipos:new Set(), linhas:0});
+  CONFIG.categorias.forEach(c=>groups[c.nome]={cat:c, bom:0, rejeitado:0, disponivel:0, impregna:0, locais:{}, modelos:{}, tipos:new Set(), linhas:0});
   const locaisSet=new Set();      // locais encontrados (bons)
+  const impLimcu=norm((CONFIG.impregna&&CONFIG.impregna.limcu)||'');
   let totalLinhas=0;
 
   for(let r=1;r<rows.length;r++){
@@ -595,10 +601,12 @@ function interpret(rows){
     const desc=String(row[idx.desc]||'').trim(); if(!desc) continue;
     const catName=classify(desc); if(!catName || !groups[catName]) continue;
     const qtd=num(row[idx.qtd]);
-    const loc=locLabel(idx.local>=0?row[idx.local]:'');
-    const rej=isRej(loc);
     const item=String(idx.item>=0?row[idx.item]:desc).trim()||desc;
     const g=groups[catName];
+    // LIMCU especial "Impregna": nao entra no disponivel, conta à parte
+    if(impLimcu && idx.limcu>=0 && norm(row[idx.limcu])===impLimcu){ g.impregna+=qtd; g.tipos.add(item); totalLinhas++; continue; }
+    const loc=locLabel(idx.local>=0?row[idx.local]:'');
+    const rej=isRej(loc);
     g.locais[loc]=(g.locais[loc]||0)+qtd;
     if(rej) g.rejeitado+=qtd; else { g.bom+=qtd; locaisSet.add(loc); }
     g.tipos.add(item);
@@ -780,6 +788,9 @@ function renderCards(data){
     }).join('');
     const drOver=(m.drMax>0 && rej>m.drMax);
     const drChip = rej>0 ? `<span class="locchip rej"><span class="sw" style="background:${locColor(CONFIG.locais.rejeitado)}"></span><span class="lk">${CONFIG.locais.rejeitado} (rejeitado)${drOver?' ⚠':''}</span><span class="lv">−${fmtInt(rej)}${m.drMax>0?` <span style="color:var(--faint);font-weight:600">/ máx ${fmtInt(m.drMax)}</span>`:''}</span></span>` : '';
+    // chip "Impregna" (LIMCU especial), mostrado ABAIXO do DR
+    const imp=(g&&g.impregna)||0;
+    const impChip = imp>0 ? `<span class="locchip imp"><span class="sw" style="background:${CONFIG.impregna.cor}"></span><span class="lk">${xmlEsc(CONFIG.impregna.label)}</span><span class="lv">${fmtInt(imp)}</span></span>` : '';
 
     const totalLow=(m.minimo>0 && disp<m.minimo);
     const badge = totalLow ? `<span class="badge b-bad"><span class="dot err"></span>Abaixo do mínimo</span>`
@@ -803,6 +814,7 @@ function renderCards(data){
       ${progHtml}
       ${sparkHtml}
       <div class="locs">${chips}${drChip}</div>
+      ${impChip?`<div class="locs">${impChip}</div>`:''}
       ${modelChips?`<div class="locs modelos"><span class="modlab">Modelos</span>${modelChips}</div>`:''}
       ${covHtml}`;
     el.appendChild(card);
@@ -933,7 +945,7 @@ function buildEmailHtml(data){
     let mods=''; if(cat.modelo&&g.modeloOrdem){ mods=g.modeloOrdem.map(mo=>{const mm=g.modelos[mo];return esc(mo)+': '+fmtInt(mm.disp)+(mm.rej>0?' (DR '+fmtInt(mm.rej)+')':'');}).join(' · '); }
     detail+=`<div style="margin:0 0 10px"><b style="color:${C.txt}">${esc(cat.nome)}</b>
       ${cons>0?`<div style="font-size:13px;font-weight:700;color:${cobCol}">Cobertura: ${cob}</div>`:''}
-      <div style="color:${C.mut};font-size:13px">Locais: ${locs||'—'}${g.rejeitado>0?' · DR: '+fmtInt(g.rejeitado):''}</div>
+      <div style="color:${C.mut};font-size:13px">Locais: ${locs||'—'}${g.rejeitado>0?' · DR: '+fmtInt(g.rejeitado):''}${g.impregna>0?' · '+esc(CONFIG.impregna.label)+': '+fmtInt(g.impregna):''}</div>
       ${mods?`<div style="color:${C.mut};font-size:13px">Modelos: ${mods}</div>`:''}</div>`;
   });
   const grand=CONFIG.categorias.reduce((s,cc)=>s+data.groups[cc.nome].disponivel,0);

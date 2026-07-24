@@ -16,6 +16,9 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   (`LILOCN`). O número em destaque é o **disponível = estoque bom − rejeitados**.
 - **Rejeitados (ESTREJ = "DR"):** as peças no local `ESTREJ` são tratadas como
   rejeitadas e **descontadas do total** (mostradas em vermelho no card).
+- **Impregna (LIMCU = `TERCHAB3`):** linhas com esse `LIMCU` **não entram no
+  disponível** — aparecem à parte, num chip **"Impregna"** logo abaixo do DR no card.
+  (Configurável em `CONFIG.impregna` → `limcu` / `label`.)
 - **Cilindro dividido por modelo:** o código do modelo é extraído do **IMLITM**
   (o trecho após `12100`, ex.: `12100KPT` → **KPT**). O card do Cilindro mostra
   os modelos (**KPT / K2G / KRM**) com valor e meta, e cada modelo tem meta/mínimo

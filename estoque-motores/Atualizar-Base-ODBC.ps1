@@ -29,6 +29,8 @@ WHERE LIPQOH <> 0
   AND TRIM(LIMCU) <> 'TERCHABN'
 ORDER BY LIMCU, LILOCN, IMLITM
 "@
+# OBS: mantenha o LIMCU 'TERCHAB3' na consulta (é a "Impregna" que o painel mostra
+# à parte). Se voce alterou o SELECT no Power Query, cole aqui a versao mais recente.
 
 # ------------------------------------------------------------
 $dir     = Split-Path -Parent $MyInvocation.MyCommand.Path
