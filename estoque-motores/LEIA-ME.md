@@ -59,24 +59,12 @@ atualizado. Duas formas:
 Conexões → Propriedades*, marque **"Atualizar a cada N minutos"** e **"Atualizar ao abrir"**.
 (Menos robusto: o Excel precisa ficar aberto e pode travar o arquivo.)
 
-**C) ODBC direto, sem Excel (RECOMENDADO — já configurado)** — o
-**`Atualizar-Base-ODBC.ps1`** já vem com a **sua consulta** (DSN `DPN-Producao`,
-tabela `JHABJDTA73.F41021JC`, `LIPQOH/10000 AS QTD` e os mesmos filtros do Power
-Query). Ele gera **`estoque.csv`**, que o painel **já lê por padrão** (`arquivo:
-'estoque.csv'`). Passos:
-1. Confirme que o DSN **`DPN-Producao`** existe neste PC. Se ele não guardar
-   usuário/senha, edite `$conn` no script: `"dsn=DPN-Producao;UID=usuario;PWD=senha;"`.
-2. Dê duplo clique em **`Agendar-Atualizacao.bat`** (já aponta para o script ODBC) —
-   cria a tarefa que atualiza a base a cada 1h.
-3. Para testar na hora: `schtasks /Run /TN "Atualizar Base Estoque"` (confira o
-   `atualizar-base.log`).
-
-> Notas ODBC (valem para A e C):
-> - A conexão precisa ter **usuário/senha salvos** (sem prompt), senão a atualização trava.
-> - Use um **DSN de Sistema** (não de Usuário) e confirme a **bitagem** (ODBC 32 vs 64 bits
->   deve bater com o Excel, no caso da opção A).
-> - A tarefa agendada deve rodar **com um usuário que enxergue o DSN** (no PC do quiosque,
->   logado no mesmo usuário, funciona bem).
+> Notas:
+> - A planilha de consulta precisa atualizar **sem pedir login/senha** (deixe as
+>   credenciais salvas na conexão), senão a atualização trava.
+> - A tarefa agendada deve rodar **com um usuário que enxergue a conexão** (no PC do
+>   quiosque, logado no mesmo usuário, funciona bem).
+> - Confira a **bitagem** do Excel/driver (32 vs 64 bits) se a conexão usar ODBC por baixo.
 
 ## Metas (🎯) e alertas
 
