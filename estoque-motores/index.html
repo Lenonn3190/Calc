@@ -688,12 +688,16 @@ function statusClass(v,meta,minimo){
 let HIST = {};
 const HIST_KEY='estoque-hist', HIST_MAX=72;
 function loadHist(){ try{ return JSON.parse(localStorage.getItem(HIST_KEY)||'{}')||{}; }catch(e){ return {}; } }
+function ehHoje(t){ return new Date(t).toDateString()===new Date().toDateString(); }
 function recordHist(data){
   const h=loadHist(), t=Date.now();
-  CONFIG.categorias.forEach(c=>{ const arr=h[c.nome]||(h[c.nome]=[]); const v=data.groups[c.nome].disponivel;
+  CONFIG.categorias.forEach(c=>{
+    let arr=(h[c.nome]||[]).filter(p=>ehHoje(p.t));   // mantém só o histórico de HOJE (zera a cada dia)
+    const v=data.groups[c.nome].disponivel;
     const last=arr[arr.length-1];
     if(last && (t-last.t)<25*60000){ last.t=t; last.v=v; } else arr.push({t,v});
     while(arr.length>HIST_MAX) arr.shift();
+    h[c.nome]=arr;
   });
   try{ localStorage.setItem(HIST_KEY, JSON.stringify(h)); }catch(e){}
   return h;
@@ -769,13 +773,13 @@ function renderCards(data){
         <div class="bar"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div></div>`;
     }
 
-    // sparkline (histórico)
-    const hist=HIST[cat.nome]||[];
+    // sparkline (histórico — só do dia atual)
+    const hist=(HIST[cat.nome]||[]).filter(p=>ehHoje(p.t));
     let sparkHtml;
     if(hist.length>=2){
       const delta=hist[hist.length-1].v-hist[hist.length-2].v;
       const dc=delta>0?'up':delta<0?'down':'flat', ar=delta>0?'▲':delta<0?'▼':'▬';
-      sparkHtml=`<div class="spark">${sparkline(hist,cat.cor)}<span class="scap">${hist.length} leituras<br><span class="sdelta ${dc}">${ar} ${fmtInt(Math.abs(delta))}</span></span></div>`;
+      sparkHtml=`<div class="spark">${sparkline(hist,cat.cor)}<span class="scap">${hist.length} leituras hoje<br><span class="sdelta ${dc}">${ar} ${fmtInt(Math.abs(delta))}</span></span></div>`;
     } else {
       sparkHtml=`<div class="spark"><span class="scap">Coletando histórico…</span></div>`;
     }
