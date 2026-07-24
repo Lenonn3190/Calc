@@ -119,6 +119,10 @@ Primeira linha é o cabeçalho. Colunas da base (JDE) — nomes flexíveis:
 > (`index.html`, `estoque.xlsx`, `metas.json`, `servir.ps1`, `Iniciar-Painel-TV.bat`).
 > Se a energia não mudar, rode o `.bat` como **Administrador**.
 
+**Abrir sozinho quando o PC liga:** dê duplo clique em **`Instalar-Inicializacao.bat`**
+(cria um atalho na pasta *Inicializar* do Windows — o painel abre no login).
+Para desativar, use **`Remover-Inicializacao.bat`**.
+
 **Manual (qualquer SO):** sirva a pasta por HTTP (o `fetch` do `.xlsx` não funciona
 em `file://`). Ex.: `python -m http.server 8080` e acesse `http://localhost:8080/`.
 Na TV, pressione **F** (ou **⛶**) para tela cheia, ou inicie com `chrome --kiosk http://localhost:8080/`.
