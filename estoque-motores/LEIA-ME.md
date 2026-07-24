@@ -110,16 +110,18 @@ Primeira linha é o cabeçalho. Colunas da base (JDE) — nomes flexíveis:
 
 ## Como colocar na TV (modo quiosque)
 
-1. Coloque a pasta em um PC e sirva por HTTP (o `fetch` do `.xlsx` não funciona
-   abrindo o arquivo direto com `file://`). Opções:
-   - **Python:** dentro da pasta, `python -m http.server 8080` e acesse
-     `http://localhost:8080/`.
-   - Qualquer servidor web/rede simples (mesmo esquema dos outros projetos).
-2. Na TV, abra o navegador no endereço e pressione **F** (ou o botão **⛶**) para
-   entrar em **tela cheia**. Para quiosque de verdade, inicie o Chrome/Edge com:
-   ```
-   chrome --kiosk http://SEU-IP:8080/
-   ```
+**Jeito fácil (Windows):** dê **duplo clique em `Iniciar-Painel-TV.bat`**. Ele:
+1. configura a energia para **nunca suspender / não desligar a tela**;
+2. sobe o **servidor local** (`servir.ps1`, sem instalar nada) na porta 8080;
+3. abre o **Chrome/Edge em tela cheia (quiosque)** apontando para o painel.
+
+> Para sair do quiosque: **Alt+F4**. Deixe todos os arquivos na **mesma pasta**
+> (`index.html`, `estoque.xlsx`, `metas.json`, `servir.ps1`, `Iniciar-Painel-TV.bat`).
+> Se a energia não mudar, rode o `.bat` como **Administrador**.
+
+**Manual (qualquer SO):** sirva a pasta por HTTP (o `fetch` do `.xlsx` não funciona
+em `file://`). Ex.: `python -m http.server 8080` e acesse `http://localhost:8080/`.
+Na TV, pressione **F** (ou **⛶**) para tela cheia, ou inicie com `chrome --kiosk http://localhost:8080/`.
 3. **Impedir suspensão/bloqueio (Windows):** o painel já mantém a tela ligada via
    *Wake Lock*, mas para o PC nunca dormir/bloquear configure também no Windows:
    - **Configurações → Sistema → Energia**: "Tela desligar" e "Suspender" = **Nunca**
