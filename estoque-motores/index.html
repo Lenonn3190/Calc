@@ -779,7 +779,7 @@ function renderCards(data){
     if(hist.length>=2){
       const delta=hist[hist.length-1].v-hist[hist.length-2].v;
       const dc=delta>0?'up':delta<0?'down':'flat', ar=delta>0?'▲':delta<0?'▼':'▬';
-      sparkHtml=`<div class="spark">${sparkline(hist,cat.cor)}<span class="scap">${hist.length} leituras hoje<br><span class="sdelta ${dc}">${ar} ${fmtInt(Math.abs(delta))}</span></span></div>`;
+      sparkHtml=`<div class="spark">${sparkline(hist,cat.cor)}<span class="scap">${hist.length} Updates hoje<br><span class="sdelta ${dc}">${ar} ${fmtInt(Math.abs(delta))}</span></span></div>`;
     } else {
       sparkHtml=`<div class="spark"><span class="scap">Coletando histórico…</span></div>`;
     }
@@ -926,12 +926,22 @@ async function saveMetasToFolder(){ if(!dirHandle) return; try{ await writeFileT
 function buildEmailHtml(data){
   const esc=xmlEsc, now=new Date(), dt=fmtDateTime(now);
   const C={txt:'#0f1b32',mut:'#5b6b86',line:'#e2e8f0',head:'#0b1220',ok:'#16a34a',warn:'#d97706',bad:'#dc2626',bg:'#f4f7fb'};
-  const stInfo=(disp,m)=>{ if(m.minimo>0&&disp<m.minimo) return {t:'Abaixo do mínimo',col:C.bad}; if(m.meta>0&&disp<m.meta) return {t:'Abaixo da meta',col:C.warn}; if(m.meta>0||m.minimo>0) return {t:'OK',col:C.ok}; return {t:'—',col:C.mut}; };
+  // mesma lógica do selo do card (prioridade: mínimo > cobertura > modelo > local > meta)
+  const stInfo=(cat,g,m)=>{
+    const disp=g.disponivel;
+    if(m.minimo>0 && disp<m.minimo) return {t:'Abaixo do mínimo',col:C.bad};
+    if(m.consumoDia>0 && (disp/m.consumoDia)<CONFIG.cobertura.critico) return {t:'Cobertura crítica',col:C.bad};
+    if(cat.modelo && g.modeloOrdem){ for(const mo of g.modeloOrdem){ const mm=(m.modelos&&m.modelos[mo])||{}; if(mm.minimo>0 && ((g.modelos[mo]&&g.modelos[mo].disp)||0)<mm.minimo) return {t:'Modelo abaixo do mínimo',col:C.bad}; } }
+    for(const l of data.locais){ if(isRej(l)) continue; const lm=(m.locais&&m.locais[l])||{}; if(lm.minimo>0 && ((g.locais[l])||0)<lm.minimo) return {t:'Local abaixo do mínimo',col:C.bad}; }
+    if(m.meta>0 && disp<m.meta) return {t:'Abaixo da meta',col:C.warn};
+    if(m.meta>0||m.minimo>0) return {t:'OK',col:C.ok};
+    return {t:'—',col:C.mut};
+  };
   const th=t=>`<th align="${t.a||'left'}" style="padding:10px 12px;font-size:12px;color:${C.mut};text-transform:uppercase;letter-spacing:.4px">${t.n}</th>`;
   let rows='';
   CONFIG.categorias.forEach(cat=>{
     const g=data.groups[cat.nome], m=METAS[cat.nome]||emptyMeta(), disp=g.disponivel;
-    const pct=m.meta>0?Math.round(disp/m.meta*100)+'%':'—', si=stInfo(disp,m);
+    const pct=m.meta>0?Math.round(disp/m.meta*100)+'%':'—', si=stInfo(cat,g,m);
     rows+=`<tr>
       <td style="padding:10px 12px;border-bottom:1px solid ${C.line};font-weight:700;color:${C.txt}">${esc(cat.nome)}</td>
       <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:right;font-weight:800;color:${C.txt}">${fmtInt(disp)}</td>
