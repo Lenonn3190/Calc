@@ -198,7 +198,8 @@ footer b{ color:var(--muted); }
 .overlay{ position:fixed; inset:0; z-index:50; display:none; place-items:center; padding:24px;
   background:rgba(7,12,24,.82); backdrop-filter:blur(6px); }
 .overlay.show{ display:grid; }
-.dialog{ width:min(640px,94vw); background:var(--panel); border:1px solid var(--line-2); border-radius:var(--radius); box-shadow:var(--shadow); padding:clamp(22px,3vh,40px); }
+.dialog{ width:min(640px,94vw); background:var(--panel); border:1px solid var(--line-2); border-radius:var(--radius); box-shadow:var(--shadow); padding:clamp(22px,3vh,40px);
+  max-height:calc(100vh - 48px); overflow-y:auto; }   /* rola o diálogo inteiro se passar da tela */
 .dialog h2{ font-size:clamp(20px,2vw,30px); font-weight:800; display:flex; align-items:center; gap:12px; }
 .dialog p{ color:var(--muted); margin:12px 0; font-size:clamp(13px,1.1vw,17px); line-height:1.5; }
 .drop{ margin-top:18px; border:2px dashed var(--line-2); border-radius:var(--radius-sm); padding:34px 20px; text-align:center; cursor:pointer; transition:.15s; }
@@ -214,7 +215,7 @@ footer b{ color:var(--muted); }
 
 /* formulário de metas */
 .dialog.wide{ width:min(760px,96vw); }
-.metas-scroll{ max-height:56vh; overflow:auto; margin:8px 0 4px; padding-right:6px; }
+.metas-scroll{ margin:8px 0 4px; }   /* sem scroll próprio: o diálogo inteiro rola (uma barra só) */
 .metas-scroll::-webkit-scrollbar{ width:8px; } .metas-scroll::-webkit-scrollbar-thumb{ background:var(--line-2); border-radius:8px; }
 .meta-cat{ border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; background:var(--panel-2); }
 .meta-cat .mc-head{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:16px; margin-bottom:10px; }
