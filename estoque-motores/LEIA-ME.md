@@ -24,6 +24,11 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   **1.5 Turbo** (as que têm "TURBO") e **1.5** (as demais). O card **Motor** mostra
   os dois grupos, cada um com meta/mínimo próprios. (Os grupos são configuráveis em
   `CONFIG` → categoria Motor → `modelo.grupos`.)
+- **Cobertura / previsão (dias úteis):** cada card mostra por quantos **dias úteis**
+  o estoque atual aguenta = *disponível ÷ consumo por dia*. Verde (folgado),
+  amarelo (baixo) e vermelho (crítico — o card pisca). O consumo/dia é definido no
+  cadastro de metas (ex.: 511 motores/dia em ITI, e 1 cabeçote + 1 bloco + 1
+  transmissão por motor → 511/dia cada). Sem consumo definido, a peça não mostra previsão.
 - Sempre mostra: **última atualização** (data/hora) e **próxima atualização**
   (contagem regressiva).
 
@@ -34,7 +39,8 @@ por peça **e por local**:
 
 - **Meta (alvo)** — quanto se quer ter em estoque;
 - **Mínimo** — abaixo dele o card **pisca em vermelho** (alerta na TV);
-- **DR máx.** — quantidade de rejeitados aceitável (acima disso marca ⚠).
+- **DR máx.** — quantidade de rejeitados aceitável (acima disso marca ⚠);
+- **Consumo/dia útil** — usado para calcular a **cobertura em dias** (previsão).
 
 O que o painel passa a mostrar:
 

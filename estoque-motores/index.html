@@ -137,6 +137,16 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .locchip.low, .locchip.bad{ border-color:color-mix(in srgb,var(--bad) 45%,transparent); background:var(--bad-bg); }
 .locchip.low .lv, .locchip.bad .lv{ color:var(--bad); }
 
+/* cobertura / previsão (dias úteis) */
+.cover{ display:inline-flex; flex-direction:column; gap:1px; margin-top:2px; padding:6px 14px; border-radius:11px;
+  border:1px solid var(--line-2); background:var(--panel); align-self:flex-start; }
+.cover .cov-main{ font-weight:800; font-size:clamp(16px,1.6vw,27px); font-variant-numeric:tabular-nums; line-height:1.05; color:var(--muted); white-space:nowrap; }
+.cover .cov-sub{ font-weight:600; font-size:clamp(10px,.9vw,15px); color:var(--faint); white-space:nowrap; }
+.cover.ok  { border-color:color-mix(in srgb,var(--ok) 40%,transparent); background:var(--ok-bg); }
+.cover.warn{ border-color:color-mix(in srgb,var(--warn) 40%,transparent); background:var(--warn-bg); }
+.cover.bad { border-color:color-mix(in srgb,var(--bad) 45%,transparent); background:var(--bad-bg); }
+.cover.ok .cov-main{ color:var(--ok); } .cover.warn .cov-main{ color:var(--warn); } .cover.bad .cov-main{ color:var(--bad); }
+
 /* barra de progresso da meta + sparkline */
 .prog{ margin-top:4px; }
 .prog .ptop{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:clamp(12px,1.05vw,18px); font-weight:700; color:var(--muted); margin-bottom:5px; }
@@ -392,12 +402,14 @@ const CONFIG = {
   intervaloMin: 60,          // atualização automática (minutos)
   unidade: 'un',             // unidade exibida ao lado da quantidade
   relatorio: { horarios: ['08:30','12:30'] },  // horários que geram o HTML de e-mail na pasta mapeada
+  // cobertura (previsão em dias úteis): limiares de alerta
+  cobertura: { critico: 2, baixo: 5 },         // < crítico = vermelho/pisca ; < baixo = amarelo
 
   // Peças acompanhadas (classificadas pela descrição IMDSC1).
   // ORDEM IMPORTA: "BLOCO DO CILINDRO"/"CABECOTE CILINDRO" batem antes de "Cilindro".
   categorias: [
-    { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'] },
-    { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'] },
+    { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'], consumoDia:511 },
+    { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'], consumoDia:511 },
     { nome:'Cilindro', svg:SVG_CILINDRO, cor:'#f59e0b', chaves:['cilindro'],
       // divide o Cilindro por MODELO (código extraído do IMLITM, após "12100")
       modelo:{ regex:'^\\s*12100\\s*(\\S{3})', lista:['KPT','K2G','KRM'],
@@ -405,11 +417,12 @@ const CONFIG = {
     // deve ficar por ÚLTIMO: "CJ CABECOTE MOTOR" já casa em Cabeçote antes.
     { nome:'Motor', svg:SVG_MOTOR, cor:'#f43f5e', chaves:['motor'],
       // agrupa o Motor em 1.5 Turbo (tem "TURBO") e 1.5 (as demais)
+      consumoDia:511,
       modelo:{ fonte:'desc',
                grupos:[ { nome:'1.5 Turbo', chaves:['turbo'] }, { nome:'1.5', chaves:[''] } ],
                lista:['1.5','1.5 Turbo'],
                cor:{ '1.5':'#60a5fa', '1.5 Turbo':'#fb7185' } } },
-    { nome:'Transmissão', svg:SVG_TRANSMISSAO, cor:'#06b6d4', chaves:['transmiss'] },
+    { nome:'Transmissão', svg:SVG_TRANSMISSAO, cor:'#06b6d4', chaves:['transmiss'], consumoDia:511 },
   ],
 
   // Locais (LILOCN). label = nome curto; rejeitado = desconta do disponível (DR).
@@ -431,6 +444,7 @@ const $ = s => document.querySelector(s);
 function norm(s){ return String(s==null?'':s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
 function num(v){ if(v==null) return 0; const n=parseFloat(String(v).replace(/\./g,'').replace(',','.').replace(/[^\d.-]/g,'')); return isNaN(n)?0:n; }
 function fmtInt(n){ return new Intl.NumberFormat('pt-BR').format(Math.round(n)); }
+function fmtDays(d){ return (d<10 ? d.toFixed(1) : String(Math.round(d))).replace('.',','); }
 function pad(n){ return String(n).padStart(2,'0'); }
 function fmtDateTime(d){
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+
@@ -629,12 +643,13 @@ function interpret(rows){
 let METAS = {};
 let lastData = null;
 const METAS_KEY='estoque-metas';
-function emptyMeta(){ return {meta:0,minimo:0,drMax:0,locais:{},modelos:{}}; }
-function defaultMetas(){ const o={}; CONFIG.categorias.forEach(c=>o[c.nome]=emptyMeta()); return o; }
+function emptyMeta(){ return {meta:0,minimo:0,drMax:0,consumoDia:0,locais:{},modelos:{}}; }
+function defaultMetas(){ const o={}; CONFIG.categorias.forEach(c=>{ o[c.nome]=emptyMeta(); o[c.nome].consumoDia=c.consumoDia||0; }); return o; }
 function normalizeMetas(j){
   const src=(j&&j.metas)?j.metas:(j||{}); const o=defaultMetas();
   CONFIG.categorias.forEach(c=>{ const m=src[c.nome]||{}; const t=o[c.nome];
     t.meta=+m.meta||0; t.minimo=+m.minimo||0; t.drMax=+m.drMax||0;
+    t.consumoDia=(m.consumoDia!=null)?(+m.consumoDia||0):(c.consumoDia||0);
     const ml=m.locais||{}; Object.keys(ml).forEach(l=>{ const x=ml[l]||{}; t.locais[l]={meta:+x.meta||0,minimo:+x.minimo||0}; });
     const mm=m.modelos||{}; Object.keys(mm).forEach(k=>{ const x=mm[k]||{}; t.modelos[k]={meta:+x.meta||0,minimo:+x.minimo||0}; });
   });
@@ -717,7 +732,19 @@ function renderCards(data){
         return `<span class="locchip ${mst}"><span class="sw" style="background:${modeloColor(cat,mod)}"></span><span class="lk">${xmlEsc(mod)}</span><span class="lv">${fmtInt(v)}${alvo}${drTag}</span></span>`;
       }).join('');
     }
-    const alarm=(m.minimo>0 && disp<m.minimo) || locAlarm || modAlarm;
+    // COBERTURA / PREVISÃO (dias úteis) = disponível ÷ consumo/dia
+    const cons=m.consumoDia||0;
+    const cobertura = cons>0 ? disp/cons : null;
+    let covClass='', covCritico=false;
+    if(cobertura!=null){
+      if(cobertura<CONFIG.cobertura.critico){ covClass='bad'; covCritico=true; }
+      else if(cobertura<CONFIG.cobertura.baixo){ covClass='warn'; }
+      else covClass='ok';
+    }
+    const covHtml = cobertura!=null
+      ? `<div class="cover ${covClass}"><div class="cov-main">📅 ≈ ${fmtDays(cobertura)} dias</div><div class="cov-sub">úteis · consumo ${fmtInt(cons)}/dia</div></div>`
+      : '';
+    const alarm=(m.minimo>0 && disp<m.minimo) || locAlarm || modAlarm || covCritico;
 
     // barra de progresso da meta
     let progHtml='';
@@ -751,6 +778,7 @@ function renderCards(data){
 
     const totalLow=(m.minimo>0 && disp<m.minimo);
     const badge = totalLow ? `<span class="badge b-bad"><span class="dot err"></span>Abaixo do mínimo</span>`
+                : covCritico ? `<span class="badge b-bad"><span class="dot err"></span>Cobertura crítica</span>`
                 : modAlarm ? `<span class="badge b-bad"><span class="dot err"></span>Modelo abaixo do mínimo</span>`
                 : locAlarm ? `<span class="badge b-bad"><span class="dot err"></span>Local abaixo do mínimo</span>`
                 : (st==='warn') ? `<span class="badge b-warn"><span class="dot"></span>Abaixo da meta</span>`
@@ -767,6 +795,7 @@ function renderCards(data){
       </div>
       <div class="qty-wrap"><span class="qty">${fmtInt(disp)}</span><span class="unit">${CONFIG.unidade}</span></div>
       <div class="sub"><b>disponível</b> · estoque bom ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}</div>
+      ${covHtml}
       ${progHtml}
       ${sparkHtml}
       <div class="locs">${chips}${drChip}</div>
@@ -812,6 +841,10 @@ function renderMetasForm(){
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-f="meta" type="number" min="0" value="${m.meta||''}">
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-f="minimo" type="number" min="0" value="${m.minimo||''}">
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-f="drMax" type="number" min="0" value="${m.drMax||''}">
+      </div>
+      <div class="mrow" style="grid-template-columns:120px 1fr">
+        <span class="rlab">Consumo/dia útil</span>
+        <input class="inp" data-cat="${xmlEsc(c.nome)}" data-f="consumoDia" type="number" min="0" value="${m.consumoDia||''}" placeholder="0 = sem previsão">
       </div>
       <div class="mrow head"><span class="rlab">Por local</span><span>Meta</span><span>Mínimo</span><span></span></div>
       ${locRows}
@@ -885,10 +918,13 @@ function buildEmailHtml(data){
   });
   let detail='';
   CONFIG.categorias.forEach(cat=>{
-    const g=data.groups[cat.nome];
+    const g=data.groups[cat.nome]; const mt=METAS[cat.nome]||emptyMeta(); const cons=mt.consumoDia||0;
+    const cob=cons>0?('≈ '+fmtDays(g.disponivel/cons)+' dias úteis (consumo '+fmtInt(cons)+'/dia)'):'—';
+    const cobCol = cons>0 ? (g.disponivel/cons<CONFIG.cobertura.critico?C.bad:(g.disponivel/cons<CONFIG.cobertura.baixo?C.warn:C.ok)) : C.mut;
     const locs=data.locais.filter(l=>!isRej(l)).map(l=>{const v=g.locais[l]||0;return v?esc(l)+': '+fmtInt(v):'';}).filter(Boolean).join(' · ');
     let mods=''; if(cat.modelo&&g.modeloOrdem){ mods=g.modeloOrdem.map(mo=>{const mm=g.modelos[mo];return esc(mo)+': '+fmtInt(mm.disp)+(mm.rej>0?' (DR '+fmtInt(mm.rej)+')':'');}).join(' · '); }
     detail+=`<div style="margin:0 0 10px"><b style="color:${C.txt}">${esc(cat.nome)}</b>
+      ${cons>0?`<div style="font-size:13px;font-weight:700;color:${cobCol}">Cobertura: ${cob}</div>`:''}
       <div style="color:${C.mut};font-size:13px">Locais: ${locs||'—'}${g.rejeitado>0?' · DR: '+fmtInt(g.rejeitado):''}</div>
       ${mods?`<div style="color:${C.mut};font-size:13px">Modelos: ${mods}</div>`:''}</div>`;
   });
