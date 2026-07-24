@@ -407,10 +407,11 @@ const CONFIG = {
                cor:{ KPT:'#fbbf24', K2G:'#38bdf8', KRM:'#a78bfa' } } },
     // deve ficar por ÚLTIMO: "CJ CABECOTE MOTOR" já casa em Cabeçote antes.
     { nome:'Motor', svg:SVG_MOTOR, cor:'#f43f5e', chaves:['motor'],
-      // divide o Motor por VARIANTE (extraída da descrição, após "MOTOR")
-      modelo:{ fonte:'desc', regex:'MOTOR\\s+(.+)$',
-               lista:['1.5 TURBO FFV','1.5 FFV','1.5 CVT','1.5 FFV CVT','1.5 FLEX CVT'],
-               cor:{ '1.5 TURBO FFV':'#fb7185','1.5 FFV':'#60a5fa','1.5 CVT':'#2dd4bf','1.5 FFV CVT':'#a78bfa','1.5 FLEX CVT':'#fbbf24' } } },
+      // agrupa o Motor em 1.5 Turbo (tem "TURBO") e 1.5 (as demais)
+      modelo:{ fonte:'desc',
+               grupos:[ { nome:'1.5 Turbo', chaves:['turbo'] }, { nome:'1.5', chaves:[''] } ],
+               lista:['1.5','1.5 Turbo'],
+               cor:{ '1.5':'#60a5fa', '1.5 Turbo':'#fb7185' } } },
   ],
 
   // Locais (LILOCN). label = nome curto; rejeitado = desconta do disponível (DR).
@@ -545,8 +546,19 @@ function locLabel(raw){
 }
 function locColor(label){ return CONFIG.locais.cor[label] || CONFIG.locais.paleta[(CONFIG.locais.ordem.indexOf(label)+CONFIG.locais.paleta.length)%CONFIG.locais.paleta.length] || '#94a3b8'; }
 function isRej(label){ return label===CONFIG.locais.rejeitado; }
-/* extrai o MODELO/variante do item: do IMLITM (padrão) ou da descrição (fonte:'desc') */
-function modeloDe(cat,item,desc){ if(!cat||!cat.modelo) return null; try{ const src=(cat.modelo.fonte==='desc'?desc:item); const m=new RegExp(cat.modelo.regex).exec(String(src||'').trim()); return m?m[1].trim().toUpperCase():null; }catch(e){ return null; } }
+/* extrai o MODELO/variante do item.
+   - grupos: classifica por palavra-chave (1ª que casar), preservando o nome do grupo
+   - regex:  captura do IMLITM (padrão) ou da descrição (fonte:'desc') */
+function modeloDe(cat,item,desc){
+  if(!cat||!cat.modelo) return null;
+  const src=String((cat.modelo.fonte==='desc'?desc:item)||'').trim();
+  if(cat.modelo.grupos){
+    const n=norm(src);
+    for(const gp of cat.modelo.grupos){ if(gp.chaves.some(k=>k===''||n.includes(norm(k)))) return gp.nome; }
+    return null;
+  }
+  try{ const m=new RegExp(cat.modelo.regex).exec(src); return m?m[1].trim().toUpperCase():null; }catch(e){ return null; }
+}
 function modeloColor(cat,mod){ return (cat.modelo&&cat.modelo.cor&&cat.modelo.cor[mod]) || '#94a3b8'; }
 
 /* interpreta as linhas -> agrupa por categoria e por local */
@@ -626,7 +638,7 @@ function normalizeMetas(j){
   CONFIG.categorias.forEach(c=>{ const m=src[c.nome]||{}; const t=o[c.nome];
     t.meta=+m.meta||0; t.minimo=+m.minimo||0; t.drMax=+m.drMax||0;
     const ml=m.locais||{}; Object.keys(ml).forEach(l=>{ const x=ml[l]||{}; t.locais[l]={meta:+x.meta||0,minimo:+x.minimo||0}; });
-    const mm=m.modelos||{}; Object.keys(mm).forEach(k=>{ const x=mm[k]||{}; t.modelos[k.toUpperCase()]={meta:+x.meta||0,minimo:+x.minimo||0}; });
+    const mm=m.modelos||{}; Object.keys(mm).forEach(k=>{ const x=mm[k]||{}; t.modelos[k]={meta:+x.meta||0,minimo:+x.minimo||0}; });
   });
   if(j&&j.intervaloMin) CONFIG.intervaloMin=Math.max(1,+j.intervaloMin||CONFIG.intervaloMin);
   if(j&&Array.isArray(j.relatorioHorarios)&&j.relatorioHorarios.length) CONFIG.relatorio.horarios=j.relatorioHorarios.filter(Boolean).slice(0,2);

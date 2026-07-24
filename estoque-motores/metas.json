@@ -37,11 +37,8 @@
         "MMO": { "meta": 40, "minimo": 0 }
       },
       "modelos": {
-        "1.5 TURBO FFV": { "meta": 150, "minimo": 80 },
-        "1.5 FFV": { "meta": 250, "minimo": 150 },
-        "1.5 CVT": { "meta": 10, "minimo": 0 },
-        "1.5 FFV CVT": { "meta": 500, "minimo": 300 },
-        "1.5 FLEX CVT": { "meta": 150, "minimo": 80 }
+        "1.5": { "meta": 900, "minimo": 500 },
+        "1.5 Turbo": { "meta": 150, "minimo": 80 }
       }
     }
   }

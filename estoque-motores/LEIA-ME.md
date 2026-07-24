@@ -22,10 +22,10 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   (o trecho após `12100`, ex.: `12100KPT` → **KPT**). O card do Cilindro mostra
   os modelos (**KPT / K2G / KRM**) com valor e meta, e cada modelo tem meta/mínimo
   próprios (o card pisca se algum modelo ficar abaixo do mínimo).
-- **Motor (conjunto) dividido por variante:** a variante vem da **descrição**
-  (após "MOTOR", ex.: `CONJ MOTOR 1.5 FFV` → **1.5 FFV**). O card **Motor** mostra
-  as variantes (1.5 TURBO FFV, 1.5 FFV, 1.5 CVT, 1.5 FFV CVT, 1.5 FLEX CVT), cada
-  uma com meta/mínimo próprios.
+- **Motor (conjunto) agrupado:** as variantes da descrição são agrupadas em
+  **1.5 Turbo** (as que têm "TURBO") e **1.5** (as demais). O card **Motor** mostra
+  os dois grupos, cada um com meta/mínimo próprios. (Os grupos são configuráveis em
+  `CONFIG` → categoria Motor → `modelo.grupos`.)
 - Sempre mostra: **última atualização** (data/hora) e **próxima atualização**
   (contagem regressiva).
 
