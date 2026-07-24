@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="dark light" />
-<title>Gestão de Estoque — Cabeçote &amp; Bloco</title>
+<title>Gestão de Estoque | Powertrain</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233b82f6'/%3E%3Ctext x='50' y='70' font-family='Arial,sans-serif' font-size='58' font-weight='bold' fill='white' text-anchor='middle'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E" />
 <meta name="theme-color" content="#0b1220" />
 
@@ -53,7 +53,8 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
   border-radius:16px; display:grid; place-items:center; font-size:clamp(24px,2.6vw,40px);
   background:linear-gradient(145deg,var(--brand),var(--accent)); color:#fff; box-shadow:var(--shadow);
 }
-.brand h1{ font-size:clamp(20px,2.4vw,40px); font-weight:800; letter-spacing:-.5px; line-height:1.05; }
+.brand h1{ font-size:clamp(24px,2.9vw,48px); font-weight:800; letter-spacing:-.5px; line-height:1.05; }
+.brand h1 .pw{ color:var(--brand-2); font-weight:800; }
 .brand p{ color:var(--muted); font-size:clamp(12px,1.1vw,17px); font-weight:500; margin-top:2px; }
 .head-right{ display:flex; align-items:center; gap:clamp(12px,1.6vw,26px); flex-wrap:wrap; justify-content:flex-end; }
 .clock{ text-align:right; }
@@ -246,7 +247,7 @@ footer b{ color:var(--muted); }
     <div class="brand">
       <div class="logo">📦</div>
       <div>
-        <h1>Gestão de Estoque</h1>
+        <h1>Gestão de Estoque <span class="pw">| Powertrain</span></h1>
         <p id="subTitle">Cabeçote &amp; Bloco — painel de acompanhamento</p>
       </div>
     </div>
@@ -951,7 +952,7 @@ function buildEmailHtml(data){
   const grand=CONFIG.categorias.reduce((s,cc)=>s+data.groups[cc.nome].disponivel,0);
   const corpo=`<div style="margin:0;padding:0;background:${C.bg}"><div style="max-width:640px;margin:0 auto;padding:20px;font-family:Arial,Helvetica,sans-serif">
     <div style="background:${C.head};border-radius:12px 12px 0 0;padding:16px 20px;color:#fff">
-      <div style="font-size:20px;font-weight:800">📦 Gestão de Estoque</div>
+      <div style="font-size:20px;font-weight:800">📦 Gestão de Estoque | Powertrain</div>
       <div style="font-size:13px;color:#9fb0cc;margin-top:2px">Atualizado em ${esc(dt)}</div>
     </div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#fff">
