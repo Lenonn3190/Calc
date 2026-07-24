@@ -40,6 +40,15 @@
         "1.5": { "meta": 900, "minimo": 500 },
         "1.5 Turbo": { "meta": 150, "minimo": 80 }
       }
+    },
+    "Transmissão": {
+      "meta": 6000, "minimo": 4000, "drMax": 20,
+      "locais": {
+        "DLI": { "meta": 5000, "minimo": 3500 },
+        "TRA": { "meta": 600, "minimo": 300 },
+        "MMO": { "meta": 100, "minimo": 0 },
+        "LMO": { "meta": 100, "minimo": 0 }
+      }
     }
   }
 }

@@ -1,8 +1,8 @@
-# Gestão de Estoque — Cabeçote, Bloco, Cilindro & Motor (painel para TV)
+# Gestão de Estoque — Cabeçote, Bloco, Cilindro, Motor & Transmissão (painel para TV)
 
 Painel web em **tela cheia (modo quiosque)** para acompanhar em uma TV quantas
-peças de **Cabeçote**, **Bloco**, **Cilindro** e **Motor (conjunto)** estão
-disponíveis, com **gráfico por local**. A base é uma planilha **Excel (`.xlsx`)** exportada do sistema (JDE),
+peças de **Cabeçote**, **Bloco**, **Cilindro**, **Motor (conjunto)** e
+**Transmissão** estão disponíveis, com **gráfico por local**. A base é uma planilha **Excel (`.xlsx`)** exportada do sistema (JDE),
 e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
 última atualização** e uma **contagem regressiva** para a próxima.
 
@@ -17,7 +17,7 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
 - **Rejeitados (ESTREJ = "DR"):** as peças no local `ESTREJ` são tratadas como
   rejeitadas e **descontadas do total** (mostradas em vermelho no card).
 - **Gráfico com séries por local:** barras agrupadas (peça × local) para
-  FND / MMO / USI / LMO / TRA / DR.
+  FND / MMO / USI / LMO / TRA / DLI / DR.
 - **Cilindro dividido por modelo:** o código do modelo é extraído do **IMLITM**
   (o trecho após `12100`, ex.: `12100KPT` → **KPT**). O card do Cilindro mostra
   os modelos (**KPT / K2G / KRM**) com valor e meta, e cada modelo tem meta/mínimo
@@ -87,9 +87,9 @@ Primeira linha é o cabeçalho. Colunas da base (JDE) — nomes flexíveis:
 
 | Coluna     | Obrigatória | Descrição                                                        |
 |------------|:-----------:|------------------------------------------------------------------|
-| **IMDSC1** | ✅          | Descrição — classifica em Cabeçote / Bloco / Cilindro / Motor    |
+| **IMDSC1** | ✅          | Descrição — classifica em Cabeçote / Bloco / Cilindro / Motor / Transmissão |
 | **QTD**    | ✅          | Quantidade (aceita `1.234` ou `1234`)                            |
-| **LILOCN** | ✅*         | Local: FND / MMO / USI / LMO / TRA e `ESTREJ`→DR (rejeitado)     |
+| **LILOCN** | ✅*         | Local: FND / MMO / USI / LMO / TRA / DLI e `ESTREJ`→DR (rejeitado)     |
 | IMLITM     | —           | Código do item (conta os "tipos" por peça)                       |
 | LILOTN     | —           | Lote (usado nas linhas de rejeitado)                             |
 
