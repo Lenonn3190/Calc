@@ -284,7 +284,7 @@ footer b{ color:var(--muted); }
 
   <footer>
     <div class="totals" id="ftTotals"><span>Total de itens: <b>—</b></span></div>
-    <div>Atualização automática a cada <b id="ftInterval">60</b> min • Modo quiosque para TV</div>
+    <div>Atualização automática de hora em hora (no minuto <b id="ftInterval">:00</b>) • Modo quiosque para TV</div>
   </footer>
 </div>
 
@@ -292,8 +292,8 @@ footer b{ color:var(--muted); }
 <div class="overlay" id="overlay">
   <div class="dialog">
     <h2>⚙ Configurar base de estoque</h2>
-    <p>O painel lê uma planilha <b>Excel (.xlsx)</b> e atualiza sozinho a cada
-      <b id="dlgInterval">60</b> minutos. Coloque o arquivo <b id="dlgFile">estoque.xlsx</b>
+    <p>O painel lê uma planilha <b>Excel (.xlsx)</b> e atualiza sozinho
+      <b id="dlgInterval">de hora em hora (no minuto :00)</b>. Coloque o arquivo <b id="dlgFile">estoque.xlsx</b>
       na mesma pasta desta página (servida por um servidor web) para atualização automática,
       ou carregue manualmente abaixo.</p>
 
@@ -419,8 +419,8 @@ const CONFIG = {
   // ORDEM: só a sequência visual dos cards. A classificação é por palavra-chave
   // (Cabeçote/Bloco batem antes de Cilindro; Cabeçote bate antes de Motor).
   categorias: [
-    { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'], consumoDia:511 },
-    { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'], consumoDia:511 },
+    { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'], consumoDia:511, coberturaLocais:['MMO','USI'] },
+    { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'], consumoDia:511, coberturaLocais:['MMO','USI'] },
     { nome:'Transmissão', svg:SVG_TRANSMISSAO, cor:'#06b6d4', chaves:['transmiss'], consumoDia:511 },
     { nome:'Motor', svg:SVG_MOTOR, cor:'#f43f5e', chaves:['motor'], consumoDia:511,
       // agrupa o Motor em 1.5 Turbo (tem "TURBO") e 1.5 (as demais)
@@ -727,6 +727,17 @@ function fitQty(){
   });
 }
 
+// Base usada no cálculo de cobertura (dias). Se a categoria definir
+// coberturaLocais, soma SÓ o estoque bom nesses locais (ex.: Bloco/Cabeçote =
+// MMO + USI); senão usa o disponível total.
+function coberturaBase(cat,g){
+  if(!g) return 0;
+  if(cat.coberturaLocais && cat.coberturaLocais.length){
+    return cat.coberturaLocais.reduce((s,l)=>s+((g.locais&&g.locais[l])||0),0);
+  }
+  return g.disponivel;
+}
+
 function renderCards(data){
   const el=$('#cards'); el.innerHTML='';
   CONFIG.categorias.forEach(cat=>{
@@ -750,17 +761,20 @@ function renderCards(data){
         return `<span class="locchip ${mst}"><span class="sw" style="background:${modeloColor(cat,mod)}"></span><span class="lk">${xmlEsc(mod)}</span><span class="lv">${fmtInt(v)}${alvo}${drTag}</span></span>`;
       }).join('');
     }
-    // COBERTURA / PREVISÃO (dias úteis) = disponível ÷ consumo/dia
+    // COBERTURA / PREVISÃO (dias úteis) = base de cobertura ÷ consumo/dia
+    // (Bloco/Cabeçote usam só MMO + USI; ver coberturaBase)
     const cons=m.consumoDia||0;
-    const cobertura = cons>0 ? disp/cons : null;
+    const covBase=coberturaBase(cat,g);
+    const cobertura = cons>0 ? covBase/cons : null;
     let covClass='', covCritico=false;
     if(cobertura!=null){
       if(cobertura<CONFIG.cobertura.critico){ covClass='bad'; covCritico=true; }
       else if(cobertura<CONFIG.cobertura.baixo){ covClass='warn'; }
       else covClass='ok';
     }
+    const covFonte=(cat.coberturaLocais&&cat.coberturaLocais.length)?(' · '+cat.coberturaLocais.join('+')):'';
     const covHtml = cobertura!=null
-      ? `<div class="cover ${covClass}"><div class="cov-main">📅 ≈ ${fmtDays(cobertura)} dias</div><div class="cov-sub">úteis · consumo ${fmtInt(cons)}/dia</div></div>`
+      ? `<div class="cover ${covClass}"><div class="cov-main">📅 ≈ ${fmtDays(cobertura)} dias</div><div class="cov-sub">úteis · consumo ${fmtInt(cons)}/dia${covFonte}</div></div>`
       : '';
     const alarm=(m.minimo>0 && disp<m.minimo) || locAlarm || modAlarm || covCritico;
 
@@ -930,7 +944,7 @@ function buildEmailHtml(data){
   const stInfo=(cat,g,m)=>{
     const disp=g.disponivel;
     if(m.minimo>0 && disp<m.minimo) return {t:'Abaixo do mínimo',col:C.bad};
-    if(m.consumoDia>0 && (disp/m.consumoDia)<CONFIG.cobertura.critico) return {t:'Cobertura crítica',col:C.bad};
+    if(m.consumoDia>0 && (coberturaBase(cat,g)/m.consumoDia)<CONFIG.cobertura.critico) return {t:'Cobertura crítica',col:C.bad};
     if(cat.modelo && g.modeloOrdem){ for(const mo of g.modeloOrdem){ const mm=(m.modelos&&m.modelos[mo])||{}; if(mm.minimo>0 && ((g.modelos[mo]&&g.modelos[mo].disp)||0)<mm.minimo) return {t:'Modelo abaixo do mínimo',col:C.bad}; } }
     for(const l of data.locais){ if(isRej(l)) continue; const lm=(m.locais&&m.locais[l])||{}; if(lm.minimo>0 && ((g.locais[l])||0)<lm.minimo) return {t:'Local abaixo do mínimo',col:C.bad}; }
     if(m.meta>0 && disp<m.meta) return {t:'Abaixo da meta',col:C.warn};
@@ -954,7 +968,8 @@ function buildEmailHtml(data){
   let detail='';
   CONFIG.categorias.forEach(cat=>{
     const g=data.groups[cat.nome]; const mt=METAS[cat.nome]||emptyMeta(); const cons=mt.consumoDia||0;
-    const cob=cons>0?('≈ '+fmtDays(g.disponivel/cons)+' dias úteis (consumo '+fmtInt(cons)+'/dia)'):'—';
+    const covFonte=(cat.coberturaLocais&&cat.coberturaLocais.length)?(' — '+cat.coberturaLocais.join('+')):'';
+    const cob=cons>0?('≈ '+fmtDays(coberturaBase(cat,g)/cons)+' dias úteis (consumo '+fmtInt(cons)+'/dia'+covFonte+')'):'—';
     const cobCol = cons>0 ? (g.disponivel/cons<CONFIG.cobertura.critico?C.bad:(g.disponivel/cons<CONFIG.cobertura.baixo?C.warn:C.ok)) : C.mut;
     const locs=data.locais.filter(l=>!isRej(l)).map(l=>{const v=g.locais[l]||0;return v?esc(l)+': '+fmtInt(v):'';}).filter(Boolean).join(' · ');
     let mods=''; if(cat.modelo&&g.modeloOrdem){ mods=g.modeloOrdem.map(mo=>{const mm=g.modelos[mo];return esc(mo)+': '+fmtInt(mm.disp)+(mm.rej>0?' (DR '+fmtInt(mm.rej)+')':'');}).join(' · '); }
@@ -1198,9 +1213,12 @@ async function refresh(manualRows){
 }
 
 function scheduleNext(){
-  nextAt=Date.now()+CONFIG.intervaloMin*60000;
+  // Atualiza sempre no minuto :00 da hora (topo da próxima hora cheia).
+  const now=new Date();
+  const next=new Date(now); next.setMinutes(0,0,0); next.setHours(now.getHours()+1);
+  nextAt=next.getTime();
   if(refreshTimer) clearTimeout(refreshTimer);
-  refreshTimer=setTimeout(()=>refresh(),CONFIG.intervaloMin*60000);
+  refreshTimer=setTimeout(()=>refresh(), Math.max(1000, nextAt-Date.now()));
 }
 
 /* relógio + contagem regressiva (1s) */
@@ -1261,7 +1279,7 @@ async function keepAwake(){
 /* ============================================================
    INIT
    ============================================================ */
-function applyIntervalLabels(){ $('#ftInterval').textContent=CONFIG.intervaloMin; $('#dlgInterval').textContent=CONFIG.intervaloMin; }
+function applyIntervalLabels(){ /* atualização é sempre no minuto :00 (rótulos fixos no HTML) */ }
 
 function init(){
   try{ const t=localStorage.getItem('estoque-theme'); if(t) document.documentElement.setAttribute('data-theme',t); }catch(e){}

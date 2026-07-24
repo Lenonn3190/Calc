@@ -28,13 +28,18 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   os dois grupos, cada um com meta/mínimo próprios. (Os grupos são configuráveis em
   `CONFIG` → categoria Motor → `modelo.grupos`.)
 - **Cobertura / previsão (dias úteis):** no **rodapé de cada card**, por quantos
-  **dias úteis** o estoque atual aguenta = *disponível ÷ consumo por dia*. Verde
+  **dias úteis** o estoque atual aguenta = *base ÷ consumo por dia*. Verde
   (folgado), amarelo (baixo) e vermelho (crítico — o card pisca). O consumo/dia e os
   **limiares** (crítico e baixo) são **editáveis no cadastro de metas** (padrão:
   crítico < 1 dia, baixo < 5 dias). Ex.: 511 motores/dia em ITI, e 1 cabeçote + 1
   bloco + 1 transmissão por motor → 511/dia cada. Sem consumo definido, a peça não mostra previsão.
+  - **Bloco** e **Cabeçote** contam na cobertura **apenas os locais MMO + USI**
+    (o card mostra "· MMO+USI" ao lado do consumo). As demais peças usam o
+    disponível total. Isso é configurável em `CONFIG` → categoria →
+    `coberturaLocais: ['MMO','USI']`.
 - Sempre mostra: **última atualização** (data/hora) e **próxima atualização**
-  (contagem regressiva).
+  (contagem regressiva). A atualização automática ocorre **de hora em hora, no
+  minuto :00** (topo de cada hora).
 - **Tela sempre ligada:** o painel usa o *Screen Wake Lock* para impedir que a
   tela apague/bloqueie enquanto estiver aberto (Chrome/Edge em localhost/https).
   Para garantia total, configure também o Windows para **nunca suspender** e
@@ -42,8 +47,9 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
 
 ## Atualizar a base (`estoque.xlsx`) automaticamente
 
-O painel relê o `estoque.xlsx` a cada 1h, mas o **arquivo em si** precisa ser
-atualizado. Duas formas:
+O painel relê o `estoque.xlsx` **de hora em hora, no minuto :00**, mas o
+**arquivo em si** precisa ser atualizado antes disso. A tarefa agendada abaixo
+regrava o arquivo no minuto **:50** (10 min antes da releitura do painel). Formas:
 
 **A) Tarefa agendada (recomendado)** — mantém tudo automático mesmo com a TV sozinha:
 1. Deixe na pasta a sua **planilha de consulta** (a que puxa do sistema/JDE) e abra
