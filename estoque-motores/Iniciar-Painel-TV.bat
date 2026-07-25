@@ -27,7 +27,8 @@ echo     Aguardando o servidor subir...
 timeout /t 2 /nobreak >nul
 
 echo [3/3] Abrindo o painel em tela cheia (quiosque)...
-set "URL=http://localhost:8080/"
+REM ?v=%RANDOM% forca o navegador a buscar o index.html novo (sem cache antigo).
+set "URL=http://localhost:8080/?v=%RANDOM%%RANDOM%"
 
 REM Zoom do quiosque (0.67 = 67%%). Altere aqui se quiser outro zoom.
 set "ZOOM=0.67"

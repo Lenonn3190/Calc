@@ -33,6 +33,13 @@ try {
 
 Write-Host "Painel de Estoque servindo:" -ForegroundColor Green
 Write-Host "  Pasta: $root"
+$idx = Join-Path $root 'index.html'
+if (Test-Path -LiteralPath $idx) {
+  $fi = Get-Item -LiteralPath $idx
+  Write-Host ("  index.html: {0}  ({1:N0} bytes)" -f $fi.LastWriteTime.ToString('yyyy-MM-dd HH:mm'), $fi.Length) -ForegroundColor Yellow
+} else {
+  Write-Host "  ATENCAO: nao existe index.html nesta pasta!" -ForegroundColor Red
+}
 Write-Host "  Neste PC:      http://localhost:$port/"
 if ($rede) {
   foreach ($ip in Get-LanIPs) { Write-Host "  Na rede (cel): http://$ip`:$port/" -ForegroundColor Cyan }
@@ -63,7 +70,9 @@ while ($listener.IsListening) {
       $bytes = [System.IO.File]::ReadAllBytes($path)
       $ext = [System.IO.Path]::GetExtension($path).ToLower()
       if ($mime.ContainsKey($ext)) { $ctx.Response.ContentType = $mime[$ext] }
-      $ctx.Response.Headers['Cache-Control'] = 'no-store'
+      $ctx.Response.Headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+      $ctx.Response.Headers['Pragma'] = 'no-cache'
+      $ctx.Response.Headers['Expires'] = '0'
       $ctx.Response.ContentLength64 = $bytes.Length
       $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
     } else {
