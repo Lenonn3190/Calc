@@ -15,13 +15,15 @@ $Pasta      = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Arquivo    = Join-Path $Pasta "estoque_email.html"
 
 # Servidor de e-mail (SMTP) da empresa.
-$SmtpServer = "smtp.suaempresa.com"   # <<< AJUSTE (ex.: relay interno da planta)
-$SmtpPort   = 25                       # 25 (relay interno, sem login) | 587 (com login/TLS)
-$UsarTLS    = $false                   # $true se o servidor exigir TLS/SSL (normalmente na 587)
+# >>> Configurado para RELAY INTERNO na porta 25, SEM login (seu caso). <<<
+# So falta preencher o nome/IP do servidor SMTP interno abaixo:
+$SmtpServer = "SEU-SERVIDOR-SMTP"      # <<< AJUSTE: nome ou IP do relay interno (ex.: mailrelay.honda.local)
+$SmtpPort   = 25                       # relay interno
+$UsarTLS    = $false                   # relay interno na 25 nao usa TLS
 
-# Login (deixe VAZIO para relay ANONIMO interno, comum em fabrica na porta 25).
-$Usuario    = ""                       # ex.: "conta@suaempresa.com"
-$Senha      = ""                       # ex.: "senha"  (ver nota sobre seguranca no LEIA-ME)
+# Sem login (relay anonimo). Deixe VAZIO.
+$Usuario    = ""
+$Senha      = ""
 
 # Remetente e destinatarios.
 $De         = "painel.estoque@suaempresa.com"          # <<< AJUSTE
