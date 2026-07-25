@@ -117,8 +117,33 @@ situação por peça) e o detalhe por local e por modelo.
 > Requisitos: funciona no **Chrome/Edge** servindo em **localhost** ou **https**
 > (recurso *File System Access API*). A pasta escolhida fica lembrada entre
 > reaberturas; se o navegador pedir, reautorize o acesso clicando em "Mapear pasta".
-> O envio do e-mail em si é feito por fora (ex.: um fluxo/rotina que lê o
-> `estoque_email.html` da pasta e envia) — o painel se encarrega de **gerar** o HTML.
+> O envio do e-mail em si é feito por fora (o painel se encarrega de **gerar** o
+> HTML) — veja abaixo o script pronto de envio.
+
+### Enviar o relatório por e-mail automaticamente (horário definido)
+
+O painel **gera** o `estoque_email.html`; quem **envia** é um script no Windows
+(o navegador não envia e-mail sozinho, por segurança). Já vem pronto:
+
+1. Abra **`Enviar-Email.ps1`** e preencha no topo:
+   - `$Pasta` — a pasta que você **mapeou** no painel (onde nasce o `estoque_email.html`).
+     Por padrão usa a pasta do próprio script; ajuste se for outra.
+   - `$SmtpServer` / `$SmtpPort` / `$UsarTLS` — o servidor de e-mail. Em fábrica é
+     comum um **relay interno na porta 25 sem login** (deixe `$Usuario`/`$Senha` vazios).
+     Para Office 365/Exchange com login, use porta **587**, `$UsarTLS = $true` e preencha usuário/senha.
+   - `$De` (remetente) e `$Para` (um ou vários destinatários).
+2. Dê duplo clique em **`Agendar-Email.bat`** para criar as tarefas de envio. Os
+   horários padrão são **08:35** e **12:35** (5 min após o painel gerar o HTML às
+   08:30/12:30) — edite `HORA1`/`HORA2` no `.bat` como quiser.
+3. Testar na hora: `schtasks /Run /TN "Enviar Estoque 1"` (erros vão para `enviar-email.log`).
+
+> Requisitos: o **PC do quiosque precisa estar ligado e com o painel aberto** nos
+> horários (para o `estoque_email.html` estar atualizado). Segurança: evite senha em
+> texto puro — prefira o **relay anônimo interno** ou uma conta de serviço dedicada.
+> O envio precisa de permissão de rede até o servidor SMTP.
+>
+> Alternativa: um fluxo do **Power Automate** que observa a pasta e envia o
+> `estoque_email.html` — mesma ideia, sem PowerShell.
 - **Reabre já conectado:** depois que a base é lida uma vez, ela fica salva no
   próprio navegador. Ao reabrir a página (ou se o servidor/planilha ficar
   indisponível no momento), o painel mostra **na hora a última base** — sem pedir
