@@ -430,12 +430,13 @@ const CONFIG = {
     { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'], consumoDia:511, coberturaLocais:['MMO','USI'] },
     { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'], consumoDia:511, coberturaLocais:['MMO','USI'] },
     { nome:'Transmissão', svg:SVG_TRANSMISSAO, cor:'#06b6d4', chaves:['transmiss'], consumoDia:511 },
-    { nome:'Motor', svg:SVG_MOTOR, cor:'#f43f5e', chaves:['motor'], consumoDia:511,
+    // cor violeta (nao vermelha) para nao confundir a identidade do card com alerta
+    { nome:'Motor', svg:SVG_MOTOR, cor:'#8b5cf6', chaves:['motor'], consumoDia:511,
       // agrupa o Motor em 1.5 Turbo (tem "TURBO") e 1.5 (as demais)
       modelo:{ fonte:'desc',
                grupos:[ { nome:'1.5 Turbo', chaves:['turbo'] }, { nome:'1.5', chaves:[''] } ],
                lista:['1.5','1.5 Turbo'],
-               cor:{ '1.5':'#60a5fa', '1.5 Turbo':'#fb7185' } } },
+               cor:{ '1.5':'#60a5fa', '1.5 Turbo':'#e879f9' } } },
     { nome:'Cilindro 2W', svg:SVG_CILINDRO, cor:'#f59e0b', chaves:['cilindro'],
       // divide o Cilindro por MODELO (código extraído do IMLITM, após "12100")
       modelo:{ regex:'^\\s*12100\\s*(\\S{3})', lista:['KPT','K2G','KRM'],
