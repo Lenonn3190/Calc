@@ -117,20 +117,20 @@ O relatório é gerado **automaticamente nos horários configurados** (por padr�
 1. **KPIs** — disponível total (com a variação do dia), peças em alerta, menor
    cobertura e DR total;
 2. **Pontos de atenção** — uma linha por peça em alerta, com o motivo e os números;
-3. **Cards por peça** — número grande, selo de situação, % da meta e cobertura
-   (a leitura rápida do gerente);
-4. **Detalhe por peça** — distribuição por local, sublocais, cobertura, modelos e
-   o gráfico de **evolução (n-5)**.
+3. **Cards por peça** — número grande, selo de situação, % da meta, cobertura e um
+   **mini-gráfico (sparkline) dos 5 dias** (a leitura rápida do gerente);
+4. **Detalhe por peça** — distribuição por local, sublocais, cobertura e modelos.
 
-**Evolução (n-5):** mostra o **fechamento (23:59) dos 5 dias anteriores** mais o
-valor atual, com rótulo de série e a variação vs. o primeiro dia. O painel grava
+**Sparkline de 5 dias (n-5), dentro de cada card:** mostra o **fechamento (23:59)
+dos 5 dias anteriores** mais o valor atual, com o valor das pontas, o dia de cada
+ponto e a variação do período (▲/▼). O painel grava
 esse fechamento sozinho (`estoque-hist-dia` no navegador): a cada leitura o valor
 do dia é sobrescrito, então ao virar o dia sobra a última leitura daquele dia. O
 gráfico usa **marcadores posicionados** (não barras) com **escala ampliada na
 faixa dos dados** — a variação diária costuma ser pequena (~15%) e, com posição em
 vez de comprimento, a escala ampliada mostra a evolução sem distorcer a leitura.
-A faixa usada vem escrita embaixo do gráfico. O histórico se forma com o uso: com
-o painel aberto todo dia, em 5 dias o gráfico fica completo.
+O histórico se forma com o uso: com o painel aberto todo dia, em 5 dias o gráfico
+fica completo (até lá o relatório avisa no lugar do gráfico).
 
 > Requisitos: funciona no **Chrome/Edge** servindo em **localhost** ou **https**
 > (recurso *File System Access API*). A pasta escolhida fica lembrada entre

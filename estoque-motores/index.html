@@ -1074,41 +1074,41 @@ function buildEmailHtml(data){
   };
   const sw=c=>`<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};vertical-align:baseline"></span>`;
   const legend=items=>items.map(it=>`<span style="white-space:nowrap;color:${T.sec};font-size:12px">${sw(it.color)}&nbsp;${esc(it.label)}&nbsp;<b style="color:${T.ink}">${fmtInt(it.val)}</b></span>`).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
-  /* EVOLUÇÃO n-5: fechamento (23:59) dos 5 dias anteriores + hoje.
-     Marcadores POSICIONADOS (não barras): a variação típica aqui é pequena
-     (~15%), então uma escala ampliada é necessária para a evolução ser visível —
-     e com posição (não comprimento) a escala ampliada não distorce a leitura.
+  /* SPARKLINE n-5 (dentro do card): fechamento (23:59) dos 5 dias anteriores +
+     hoje. Marcadores POSICIONADOS (não barras) em escala ampliada: a variação
+     diária é pequena (~15%) e, com posição em vez de comprimento, a escala
+     ampliada mostra a tendência sem distorcer a leitura.
      Só tabelas/bgcolor — sem SVG/imagem, para o Outlook renderizar. */
-  const colChart=(serie,cor,nomeSerie)=>{
+  const miniSpark=(serie,cor)=>{
     if(serie.length<2) return '';
-    const H=66, D=13;                                    // altura útil e diâmetro
+    const H=30, D=7;                                     // altura útil e diâmetro
     const vs=serie.map(p=>p.v), max=Math.max(...vs), min=Math.min(...vs);
     const amp=(max-min)||Math.max(1,Math.abs(max)*0.1);  // faixa (evita divisão por 0)
-    const hi=max+amp*0.25, lo=min-amp*0.25;              // folga p/ não colar nas bordas
+    const hi=max+amp*0.2, lo=min-amp*0.2;                // folga p/ não colar nas bordas
     const topo=v=>Math.round((hi-v)/((hi-lo)||1)*(H-D));
     const prim=serie[0].v, ult=serie[serie.length-1].v, dif=ult-prim;
     const difCol=dif>0?S.ok.text:(dif<0?S.bad.text:T.mut);
     const difTxt=(dif>0?'▲ +':(dif<0?'▼ ':'▬ '))+fmtInt(Math.abs(dif));
-    const vals=serie.map(p=>`<td align="center" style="font-size:11px;font-weight:800;color:${p.hoje?T.ink:T.sec};padding:0 2px 3px">${fmtInt(p.v)}</td>`).join('');
     const dots=serie.map(p=>{
       const d=p.hoje?D+2:D;
-      return `<td align="center" valign="top" height="${H}" style="padding:0 3px;background:${p.hoje?'#f2f6fc':'#f8fafc'}">
+      return `<td align="center" valign="top" height="${H}" style="padding:0 1px;background:${p.hoje?'#eaf1fb':'#f7fafc'}">
         <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
           <td height="${Math.max(0,topo(p.v))}" style="font-size:0;line-height:0">&nbsp;</td></tr><tr>
           <td width="${d}" height="${d}" bgcolor="${cor}" style="font-size:0;line-height:0;border-radius:50%">&nbsp;</td>
         </tr></table></td>`;
     }).join('');
-    const labs=serie.map(p=>`<td align="center" style="font-size:10px;font-weight:700;color:${p.hoje?T.ink:T.mut};padding-top:4px">${p.hoje?'Hoje':esc(labelDia(p.d))}</td>`).join('');
-    return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid ${T.line}">
-      <div style="font-size:11px;font-weight:800;color:${T.mut};text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">
-        Evolução (n-5) &nbsp;<span style="font-weight:700;color:${T.sec};text-transform:none;letter-spacing:0">${sw(cor)}&nbsp;${esc(nomeSerie)} — disponível (un)</span>
-        &nbsp;·&nbsp;<span style="color:${difCol};text-transform:none;letter-spacing:0">${difTxt} vs ${esc(labelDia(serie[0].d))}</span>
-      </div>
+    const labs=serie.map(p=>`<td align="center" style="font-size:9px;font-weight:700;color:${p.hoje?T.sec:T.mut};padding-top:3px">${p.hoje?'hoje':esc(labelDia(p.d).slice(0,2))}</td>`).join('');
+    const meio=Math.ceil(serie.length/2);
+    return `<div style="margin-top:9px;padding-top:8px;border-top:1px solid ${T.line}">
+      <div style="font-size:10px;font-weight:700;color:${T.mut};margin-bottom:3px">
+        ${serie.length-1} dias &nbsp;<span style="color:${difCol};font-weight:800">${difTxt}</span></div>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
-        <tr>${vals}</tr><tr>${dots}</tr><tr>${labs}</tr>
-      </table>
-      <div style="font-size:10px;color:${T.mut};margin-top:3px">Fechamento de cada dia (23:59) · último ponto = valor atual · escala ampliada na faixa ${fmtInt(min)}–${fmtInt(max)} un</div>
-    </div>`;
+        <tr>
+          <td colspan="${meio}" style="font-size:9px;font-weight:700;color:${T.mut};padding-bottom:2px">${fmtInt(prim)}</td>
+          <td colspan="${serie.length-meio}" align="right" style="font-size:9px;font-weight:800;color:${T.ink};padding-bottom:2px">${fmtInt(ult)}</td>
+        </tr>
+        <tr>${dots}</tr><tr>${labs}</tr>
+      </table></div>`;
   };
   const kpi=(label,value,sub,subCol)=>`
     <td width="25%" valign="top" style="padding:14px 12px;border-right:1px solid ${T.line}">
@@ -1157,6 +1157,7 @@ function buildEmailHtml(data){
           ${pill(c.st.k,c.st.label)}
           ${c.m.meta>0?`<div style="margin-top:8px">${meter(Math.min(100,pct),c.st.k==='mut'?'ok':c.st.k,7)}</div>`:''}
           <div style="font-size:11px;color:${T.mut};margin-top:5px;font-weight:700">${c.m.meta>0?pct+'% da meta':'sem meta'}${c.cov?` &nbsp;·&nbsp; <span style="color:${S[c.cov.k].text}">${fmtDays(c.cov.d)} dias</span>`:''}${c.g.rejeitado>0?` &nbsp;·&nbsp; <span style="color:${S.bad.text}">DR ${fmtInt(c.g.rejeitado)}</span>`:''}</div>
+          ${miniSpark(serieDias(c.cat.nome,5),c.cat.cor)}
         </td></tr>
       </table></td>`;
   };
@@ -1209,10 +1210,9 @@ function buildEmailHtml(data){
       ${locItems.length?`<div style="margin-top:10px">${stackBar(locItems)}</div>
       <div style="margin-top:6px">${legend(locItems.concat(extra))}</div>`:''}
       ${subHtml}${covLine}${modsHtml}
-      ${colChart(serieDias(cat.nome,5),cat.cor,cat.nome)}
     </div>`;
   }).join('');
-  // aviso quando ainda não há histórico diário suficiente para a evolução n-5
+  // aviso quando ainda não há histórico diário suficiente para o sparkline n-5
   const semHist=cats.every(c=>serieDias(c.cat.nome,5).length<2);
 
   const corpo=`<div style="margin:0;padding:0;background:${T.bg}"><div style="max-width:680px;margin:0 auto;padding:20px 14px;font-family:-apple-system,'Segoe UI',Arial,Helvetica,sans-serif">
@@ -1241,13 +1241,14 @@ function buildEmailHtml(data){
         ${sumRows}
       </div>
     </div>
-    <!-- resumo em cards (leitura rápida) -->
+    <!-- resumo em cards (leitura rápida) + sparkline de 5 dias em cada card -->
     <div style="background:${T.bg};padding:6px 8px 10px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${cardsGrid}</table>
+      ${semHist?`<div style="font-size:11px;color:${T.mut};padding:2px 5px">O mini-gráfico de 5 dias aparece em cada card conforme o histórico diário é formado.</div>`:''}
     </div>
     <!-- detalhe por peça -->
     <div style="background:${T.card};border-radius:12px;padding-bottom:4px;border:1px solid ${T.line}">
-      <div style="padding:14px 16px 2px;font-size:13px;font-weight:800;color:${T.ink}">Detalhe por peça${semHist?` <span style="font-size:11px;font-weight:400;color:${T.mut}">— a evolução n-5 aparece conforme o histórico diário é formado</span>`:''}</div>
+      <div style="padding:14px 16px 2px;font-size:13px;font-weight:800;color:${T.ink}">Detalhe por peça</div>
       ${detail}
     </div>
     <div style="color:${T.mut};font-size:11px;text-align:center;margin-top:12px">Gerado automaticamente pelo painel de Gestão de Estoque | Powertrain.</div>
