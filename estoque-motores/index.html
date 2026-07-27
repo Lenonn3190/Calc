@@ -937,65 +937,205 @@ async function mapFolder(){
 async function restoreFolder(){ try{ const h=await idbGet('dir'); if(h){ dirHandle=h; updateFolderUI(); } }catch(e){} }
 async function saveMetasToFolder(){ if(!dirHandle) return; try{ await writeFileToFolder('metas.json', JSON.stringify(metasPayload(),null,2),'application/json'); }catch(e){ console.warn('metas.json ->',e); } }
 
-/* HTML pronto para colar no corpo de um e-mail (tabelas + estilos inline) */
+/* HTML pronto para colar no corpo de um e-mail (tabelas + estilos inline).
+   Layout executivo: KPIs, resumo de alertas, medidores de meta, cobertura e
+   barras de distribuição por local. Sem JS/SVG/imagens — sobrevive ao Outlook. */
 function buildEmailHtml(data){
   const esc=xmlEsc, now=new Date(), dt=fmtDateTime(now);
-  const C={txt:'#0f1b32',mut:'#5b6b86',line:'#e2e8f0',head:'#0b1220',ok:'#16a34a',warn:'#d97706',bad:'#dc2626',bg:'#f4f7fb'};
-  // mesma lógica do selo do card (prioridade: mínimo > cobertura > modelo > local > meta)
-  const stInfo=(cat,g,m)=>{
-    const disp=g.disponivel;
-    if(m.minimo>0 && disp<m.minimo) return {t:'Abaixo do mínimo',col:C.bad};
-    if(m.consumoDia>0 && (coberturaBase(cat,g)/m.consumoDia)<CONFIG.cobertura.critico) return {t:'Cobertura crítica',col:C.bad};
-    if(cat.modelo && g.modeloOrdem){ for(const mo of g.modeloOrdem){ const mm=(m.modelos&&m.modelos[mo])||{}; if(mm.minimo>0 && ((g.modelos[mo]&&g.modelos[mo].disp)||0)<mm.minimo) return {t:'Modelo abaixo do mínimo',col:C.bad}; } }
-    for(const l of data.locais){ if(isRej(l)) continue; const lm=(m.locais&&m.locais[l])||{}; if(lm.minimo>0 && ((g.locais[l])||0)<lm.minimo) return {t:'Local abaixo do mínimo',col:C.bad}; }
-    if(m.meta>0 && disp<m.meta) return {t:'Abaixo da meta',col:C.warn};
-    if(m.meta>0||m.minimo>0) return {t:'OK',col:C.ok};
-    return {t:'—',col:C.mut};
+  // tokens de texto/superfície + status (texto de status sempre com ícone+rótulo)
+  const T={ink:'#0f1b32',sec:'#42526b',mut:'#64748b',line:'#e2e8f0',bg:'#eef2f7',card:'#ffffff',head:'#0b1220',track:'#e9eef5'};
+  const S={
+    ok:  {fill:'#16a34a', text:'#15803d', tint:'#e7f6ec', icon:'✔'},
+    warn:{fill:'#d97706', text:'#b45309', tint:'#fdf3e0', icon:'⚠'},
+    bad: {fill:'#dc2626', text:'#b91c1c', tint:'#fdeaea', icon:'⛔'},
+    mut: {fill:'#94a3b8', text:'#64748b', tint:'#f1f5f9', icon:'•'},
   };
-  const th=t=>`<th align="${t.a||'left'}" style="padding:10px 12px;font-size:12px;color:${C.mut};text-transform:uppercase;letter-spacing:.4px">${t.n}</th>`;
-  let rows='';
-  CONFIG.categorias.forEach(cat=>{
-    const g=data.groups[cat.nome], m=METAS[cat.nome]||emptyMeta(), disp=g.disponivel;
-    const pct=m.meta>0?Math.round(disp/m.meta*100)+'%':'—', si=stInfo(cat,g,m);
-    rows+=`<tr>
-      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};font-weight:700;color:${C.txt}">${esc(cat.nome)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:right;font-weight:800;color:${C.txt}">${fmtInt(disp)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:right;color:${C.mut}">${m.meta>0?fmtInt(m.meta):'—'}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:right;color:${C.mut}">${pct}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:right;color:${g.rejeitado>0?C.bad:C.mut}">${fmtInt(g.rejeitado)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid ${C.line};text-align:center;font-weight:700;color:${si.col}">${si.t}</td>
+  // paleta dos locais reescalonada p/ fundo claro (validada: contraste ≥3:1,
+  // separação CVD ok na ordem usada; legenda com rótulo+valor acompanha sempre)
+  const LC={FND:'#3b82f6',MMO:'#0d9488',USI:'#8b5cf6',LMO:'#059669',TRA:'#d97706',DLI:'#0891b2',DR:'#dc2626'};
+  const locCol=l=>LC[l]||'#64748b';
+  const IMP_COL='#7c3aed';
+
+  // ---- status por peça (mesma prioridade do selo do card) + motivo detalhado
+  const statusFull=(cat,g,m)=>{
+    const disp=g.disponivel, cons=m.consumoDia||0, covB=coberturaBase(cat,g);
+    if(m.minimo>0 && disp<m.minimo)
+      return {k:'bad',label:'Abaixo do mínimo',detail:`disponível ${fmtInt(disp)} un, mínimo ${fmtInt(m.minimo)} un`};
+    if(cons>0 && covB/cons<CONFIG.cobertura.critico)
+      return {k:'bad',label:'Cobertura crítica',detail:`≈ ${fmtDays(covB/cons)} dia(s) útil(eis) de estoque (limite ${fmtDays(CONFIG.cobertura.critico)})`};
+    if(cat.modelo && g.modeloOrdem){
+      for(const mo of g.modeloOrdem){
+        const mm=(m.modelos&&m.modelos[mo])||{}; const v=(g.modelos[mo]&&g.modelos[mo].disp)||0;
+        if(mm.minimo>0 && v<mm.minimo)
+          return {k:'bad',label:'Modelo abaixo do mínimo',detail:`${mo}: ${fmtInt(v)} un, mínimo ${fmtInt(mm.minimo)} un`};
+      }
+    }
+    for(const l of data.locais){
+      if(isRej(l)) continue;
+      const lm=(m.locais&&m.locais[l])||{}; const v=(g.locais[l])||0;
+      if(lm.minimo>0 && v<lm.minimo)
+        return {k:'bad',label:'Local abaixo do mínimo',detail:`${l}: ${fmtInt(v)} un, mínimo ${fmtInt(lm.minimo)} un`};
+    }
+    if(m.meta>0 && disp<m.meta)
+      return {k:'warn',label:'Abaixo da meta',detail:`disponível ${fmtInt(disp)} un, meta ${fmtInt(m.meta)} un (${Math.round(disp/m.meta*100)}%)`};
+    if(m.meta>0||m.minimo>0) return {k:'ok',label:'OK',detail:''};
+    return {k:'mut',label:'—',detail:''};
+  };
+  const covInfo=(cat,g,m)=>{
+    const cons=m.consumoDia||0; if(!(cons>0)) return null;
+    const d=coberturaBase(cat,g)/cons;
+    const k=d<CONFIG.cobertura.critico?'bad':(d<CONFIG.cobertura.baixo?'warn':'ok');
+    return {d,k,cons,fonte:(cat.coberturaLocais&&cat.coberturaLocais.length)?cat.coberturaLocais.join('+'):''};
+  };
+
+  // ---- componentes (tabelas + estilos inline)
+  const pill=(k,txt)=>`<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${S[k].tint};color:${S[k].text};font-size:12px;font-weight:700;white-space:nowrap">${S[k].icon}&nbsp;${esc(txt)}</span>`;
+  const meter=(pct,k,h)=>{ // medidor: preenchimento = severidade; trilho claro
+    h=h||10; const p=Math.max(0,Math.min(100,pct));
+    const fill=p>0?`<td width="${p.toFixed(1)}%" bgcolor="${S[k].fill}" style="height:${h}px;font-size:0;line-height:0;border-radius:6px">&nbsp;</td>`:'';
+    const rest=p<100?`<td style="height:${h}px;font-size:0;line-height:0">&nbsp;</td>`:'';
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;background:${T.track};border-radius:6px">
+      <tr>${fill}${rest}</tr></table>`;
+  };
+  const stackBar=(items,h)=>{ // barra de distribuição: gaps de 2px na cor da superfície
+    h=h||14; const tot=items.reduce((s,i)=>s+i.val,0); if(!(tot>0)) return '';
+    const tds=items.map((it,i)=>{
+      const pct=Math.max(2,+(it.val/tot*100).toFixed(1));
+      const gap=i<items.length-1?`border-right:2px solid ${T.card};`:'';
+      return `<td width="${pct}%" bgcolor="${it.color}" style="height:${h}px;font-size:0;line-height:0;${gap}">&nbsp;</td>`;
+    }).join('');
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-radius:5px;overflow:hidden"><tr>${tds}</tr></table>`;
+  };
+  const sw=c=>`<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};vertical-align:baseline"></span>`;
+  const legend=items=>items.map(it=>`<span style="white-space:nowrap;color:${T.sec};font-size:12px">${sw(it.color)}&nbsp;${esc(it.label)}&nbsp;<b style="color:${T.ink}">${fmtInt(it.val)}</b></span>`).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+  const kpi=(label,value,sub,subCol)=>`
+    <td width="25%" valign="top" style="padding:14px 12px;border-right:1px solid ${T.line}">
+      <div style="font-size:11px;font-weight:700;color:${T.mut};text-transform:uppercase;letter-spacing:.5px">${esc(label)}</div>
+      <div style="font-size:24px;font-weight:800;color:${T.ink};margin-top:3px">${value}</div>
+      ${sub?`<div style="font-size:12px;font-weight:700;color:${subCol||T.mut};margin-top:2px">${sub}</div>`:''}
+    </td>`;
+
+  // ---- números do resumo executivo
+  const cats=CONFIG.categorias.map(cat=>{
+    const g=data.groups[cat.nome], m=METAS[cat.nome]||emptyMeta();
+    return {cat,g,m,st:statusFull(cat,g,m),cov:covInfo(cat,g,m)};
+  });
+  const grand=cats.reduce((s,c)=>s+c.g.disponivel,0);
+  const drTot=cats.reduce((s,c)=>s+c.g.rejeitado,0);
+  const nBad=cats.filter(c=>c.st.k==='bad').length, nWarn=cats.filter(c=>c.st.k==='warn').length;
+  const covs=cats.filter(c=>c.cov); const covMin=covs.length?covs.reduce((a,b)=>a.cov.d<=b.cov.d?a:b):null;
+  const alertKind=nBad>0?'bad':(nWarn>0?'warn':'ok');
+  const alertVal=nBad+nWarn;
+  // variação de hoje (1ª leitura do dia -> agora)
+  let deltaHoje=null;
+  try{
+    let first=0,ok=true;
+    cats.forEach(c=>{ const h=(HIST[c.cat.nome]||[]).filter(p=>ehHoje(p.t)); if(h.length>=2) first+=h[0].v; else ok=false; });
+    if(ok&&covs.length) deltaHoje=grand-first;
+  }catch(e){}
+
+  // ---- resumo executivo (uma linha por peça em alerta)
+  const issues=cats.filter(c=>c.st.k==='bad'||c.st.k==='warn');
+  const sumBorder=S[alertKind].fill;
+  const sumRows=issues.length
+    ? issues.map(c=>`<div style="margin:4px 0;font-size:13px;color:${T.ink}">
+        <span style="color:${S[c.st.k].text};font-weight:800">${S[c.st.k].icon} ${esc(c.cat.nome)}</span>
+        — <b>${esc(c.st.label)}</b>${c.st.detail?` <span style="color:${T.sec}">(${esc(c.st.detail)})</span>`:''}</div>`).join('')
+    : `<div style="font-size:13px;color:${S.ok.text};font-weight:700">${S.ok.icon} Todas as peças dentro das metas, mínimos e coberturas.</div>`;
+
+  // ---- tabela-resumo com medidor de meta
+  const th=t=>`<th align="${t.a||'left'}" style="padding:9px 10px;font-size:11px;color:${T.mut};text-transform:uppercase;letter-spacing:.4px">${t.n}</th>`;
+  const sumTable=cats.map(c=>{
+    const pct=c.m.meta>0?Math.min(999,Math.round(c.g.disponivel/c.m.meta*100)):null;
+    const meterHtml=c.m.meta>0
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+           <td>${meter(pct,c.st.k==='mut'?'ok':c.st.k,8)}</td>
+           <td width="42" align="right" style="font-size:12px;font-weight:700;color:${T.ink};padding-left:6px">${pct}%</td></tr></table>`
+      : `<span style="color:${T.mut};font-size:12px">—</span>`;
+    const covHtml=c.cov
+      ? `<span style="color:${S[c.cov.k].text};font-weight:800;font-size:13px;white-space:nowrap">${S[c.cov.k].icon} ${fmtDays(c.cov.d)} d</span>`
+      : `<span style="color:${T.mut}">—</span>`;
+    return `<tr>
+      <td style="padding:9px 10px;border-top:1px solid ${T.line};font-weight:700;color:${T.ink};font-size:13px;white-space:nowrap">${esc(c.cat.nome)}</td>
+      <td align="right" style="padding:9px 10px;border-top:1px solid ${T.line};font-weight:800;color:${T.ink};font-size:14px">${fmtInt(c.g.disponivel)}</td>
+      <td style="padding:9px 10px;border-top:1px solid ${T.line}" width="170">${meterHtml}</td>
+      <td align="center" style="padding:9px 10px;border-top:1px solid ${T.line}">${covHtml}</td>
+      <td align="right" style="padding:9px 10px;border-top:1px solid ${T.line};font-size:13px;font-weight:700;color:${c.g.rejeitado>0?S.bad.text:T.mut}">${fmtInt(c.g.rejeitado)}</td>
+      <td align="center" style="padding:9px 10px;border-top:1px solid ${T.line}">${pill(c.st.k,c.st.label)}</td>
     </tr>`;
-  });
-  let detail='';
-  CONFIG.categorias.forEach(cat=>{
-    const g=data.groups[cat.nome]; const mt=METAS[cat.nome]||emptyMeta(); const cons=mt.consumoDia||0;
-    const covFonte=(cat.coberturaLocais&&cat.coberturaLocais.length)?(' — '+cat.coberturaLocais.join('+')):'';
-    const cob=cons>0?('≈ '+fmtDays(coberturaBase(cat,g)/cons)+' dias úteis (consumo '+fmtInt(cons)+'/dia'+covFonte+')'):'—';
-    const cobCol = cons>0 ? (g.disponivel/cons<CONFIG.cobertura.critico?C.bad:(g.disponivel/cons<CONFIG.cobertura.baixo?C.warn:C.ok)) : C.mut;
-    const locs=data.locais.filter(l=>!isRej(l)).map(l=>{const v=g.locais[l]||0;return v?esc(l)+': '+fmtInt(v):'';}).filter(Boolean).join(' · ');
-    let mods=''; if(cat.modelo&&g.modeloOrdem){ mods=g.modeloOrdem.map(mo=>{const mm=g.modelos[mo];return esc(mo)+': '+fmtInt(mm.disp)+(mm.rej>0?' (DR '+fmtInt(mm.rej)+')':'');}).join(' · '); }
-    detail+=`<div style="margin:0 0 10px"><b style="color:${C.txt}">${esc(cat.nome)}</b>
-      ${cons>0?`<div style="font-size:13px;font-weight:700;color:${cobCol}">Cobertura: ${cob}</div>`:''}
-      <div style="color:${C.mut};font-size:13px">Locais: ${locs||'—'}${g.rejeitado>0?' · DR: '+fmtInt(g.rejeitado):''}${g.impregna>0?' · '+esc(CONFIG.impregna.label)+': '+fmtInt(g.impregna):''}</div>
-      ${mods?`<div style="color:${C.mut};font-size:13px">Modelos: ${mods}</div>`:''}</div>`;
-  });
-  const grand=CONFIG.categorias.reduce((s,cc)=>s+data.groups[cc.nome].disponivel,0);
-  const corpo=`<div style="margin:0;padding:0;background:${C.bg}"><div style="max-width:640px;margin:0 auto;padding:20px;font-family:Arial,Helvetica,sans-serif">
-    <div style="background:${C.head};border-radius:12px 12px 0 0;padding:16px 20px;color:#fff">
-      <div style="font-size:20px;font-weight:800">📦 Gestão de Estoque | Powertrain</div>
-      <div style="font-size:13px;color:#9fb0cc;margin-top:2px">Atualizado em ${esc(dt)}</div>
+  }).join('');
+
+  // ---- detalhe por peça (barra de locais + modelos)
+  const detail=cats.map(c=>{
+    const {cat,g,m}=c;
+    const locItems=data.locais.filter(l=>!isRej(l)).map(l=>({label:l,color:locCol(l),val:g.locais[l]||0})).filter(i=>i.val>0);
+    const extra=[]; if(g.rejeitado>0) extra.push({label:'DR (rejeitado)',color:LC.DR,val:g.rejeitado});
+    if(g.impregna>0) extra.push({label:CONFIG.impregna.label,color:IMP_COL,val:g.impregna});
+    let modsHtml='';
+    if(cat.modelo && g.modeloOrdem && g.modeloOrdem.length){
+      modsHtml=`<div style="margin-top:8px;font-size:12px;color:${T.sec}">
+        <span style="font-weight:700;color:${T.mut};text-transform:uppercase;letter-spacing:.4px;font-size:11px">Modelos&nbsp;&nbsp;</span>`+
+        g.modeloOrdem.map(mo=>{
+          const mm=g.modelos[mo]||{disp:0,rej:0}; const mMeta=(m.modelos&&m.modelos[mo])||{};
+          const low=mMeta.minimo>0&&mm.disp<mMeta.minimo;
+          return `<span style="white-space:nowrap">${low?`<b style="color:${S.bad.text}">${S.bad.icon} </b>`:''}${esc(mo)} <b style="color:${low?S.bad.text:T.ink}">${fmtInt(mm.disp)}</b>${mMeta.minimo>0?`<span style="color:${T.mut}"> / mín ${fmtInt(mMeta.minimo)}</span>`:''}${mm.rej>0?` <span style="color:${S.bad.text};font-weight:700">DR ${fmtInt(mm.rej)}</span>`:''}</span>`;
+        }).join('&nbsp;&nbsp;·&nbsp;&nbsp;')+`</div>`;
+    }
+    const covLine=c.cov
+      ? `<div style="margin-top:8px;font-size:12px;font-weight:700;color:${S[c.cov.k].text}">${S[c.cov.k].icon} Cobertura ≈ ${fmtDays(c.cov.d)} dias úteis <span style="font-weight:400;color:${T.mut}">· consumo ${fmtInt(c.cov.cons)}/dia${c.cov.fonte?' · base '+esc(c.cov.fonte):''}</span></div>`
+      : '';
+    return `<div style="padding:14px 16px;border-top:1px solid ${T.line}">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td style="font-size:14px;font-weight:800;color:${T.ink}">${sw(cat.cor)}&nbsp;${esc(cat.nome)}
+          <span style="font-weight:800;color:${T.ink};font-size:16px">&nbsp;&nbsp;${fmtInt(g.disponivel)}</span>
+          <span style="font-size:12px;color:${T.mut};font-weight:400"> un disponíveis${m.meta>0?` · meta ${fmtInt(m.meta)}`:''}</span></td>
+        <td align="right">${pill(c.st.k,c.st.label)}</td>
+      </tr></table>
+      ${locItems.length?`<div style="margin-top:10px">${stackBar(locItems)}</div>
+      <div style="margin-top:6px">${legend(locItems.concat(extra))}</div>`:''}
+      ${covLine}${modsHtml}
+    </div>`;
+  }).join('');
+
+  const corpo=`<div style="margin:0;padding:0;background:${T.bg}"><div style="max-width:680px;margin:0 auto;padding:20px 14px;font-family:-apple-system,'Segoe UI',Arial,Helvetica,sans-serif">
+    <!-- cabeçalho -->
+    <div style="background:${T.head};border-radius:12px 12px 0 0;padding:18px 20px">
+      <div style="font-size:19px;font-weight:800;color:#ffffff">📦 Gestão de Estoque <span style="color:#7ea4e8">| Powertrain</span></div>
+      <div style="font-size:12px;color:#9fb0cc;margin-top:3px">Resumo executivo · atualizado em ${esc(dt)}</div>
     </div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#fff">
-      <tr style="background:#eef2f8">${th({n:'Peça'})}${th({n:'Disponível',a:'right'})}${th({n:'Meta',a:'right'})}${th({n:'%',a:'right'})}${th({n:'DR',a:'right'})}${th({n:'Situação',a:'center'})}</tr>
-      ${rows}
-      <tr style="background:#f7fafc"><td style="padding:10px 12px;font-weight:800;color:${C.txt}">Total</td><td style="padding:10px 12px;text-align:right;font-weight:800;color:${C.txt}">${fmtInt(grand)}</td><td colspan="4"></td></tr>
+    <!-- KPIs -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:${T.card}">
+      <tr>
+        ${kpi('Disponível total', fmtInt(grand)+'<span style="font-size:13px;color:'+T.mut+';font-weight:700"> un</span>',
+              deltaHoje!=null?((deltaHoje>=0?'▲ +':'▼ ')+fmtInt(Math.abs(deltaHoje))+' hoje'):'', deltaHoje!=null?(deltaHoje>=0?S.ok.text:S.bad.text):null)}
+        ${kpi('Peças em alerta', `<span style="color:${alertVal>0?S[alertKind].text:T.ink}">${alertVal}</span><span style="font-size:13px;color:${T.mut};font-weight:700"> de ${cats.length}</span>`,
+              alertVal>0?`${S[alertKind].icon} ${nBad>0?nBad+' crítico(s)':''}${nBad>0&&nWarn>0?' · ':''}${nWarn>0?nWarn+' atenção':''}`:S.ok.icon+' tudo OK',
+              alertVal>0?S[alertKind].text:S.ok.text)}
+        ${covMin?kpi('Menor cobertura', `<span style="color:${S[covMin.cov.k].text}">${fmtDays(covMin.cov.d)}</span><span style="font-size:13px;color:${T.mut};font-weight:700"> dias</span>`,
+              esc(covMin.cat.nome), T.mut):''}
+        ${kpi('DR (rejeitados)', `<span style="color:${drTot>0?S.bad.text:T.ink}">${fmtInt(drTot)}</span><span style="font-size:13px;color:${T.mut};font-weight:700"> un</span>`,'',null)}
+      </tr>
     </table>
-    <div style="background:#fff;border-radius:0 0 12px 12px;padding:16px 20px;border-top:1px solid ${C.line}">
-      <div style="font-size:14px;font-weight:800;color:${C.txt};margin-bottom:10px">Detalhe por local e modelo</div>${detail}
+    <!-- resumo executivo -->
+    <div style="background:${T.card};padding:14px 16px;border-top:1px solid ${T.line}">
+      <div style="border-left:4px solid ${sumBorder};padding:2px 0 2px 12px">
+        <div style="font-size:11px;font-weight:800;color:${T.mut};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Pontos de atenção</div>
+        ${sumRows}
+      </div>
     </div>
-    <div style="color:${C.mut};font-size:11px;text-align:center;margin-top:12px">Gerado automaticamente pelo painel de Gestão de Estoque.</div>
+    <!-- tabela-resumo -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:${T.card}">
+      <tr style="background:#f6f8fb">${th({n:'Peça'})}${th({n:'Disponível',a:'right'})}${th({n:'% da meta'})}${th({n:'Cobertura',a:'center'})}${th({n:'DR',a:'right'})}${th({n:'Situação',a:'center'})}</tr>
+      ${sumTable}
+    </table>
+    <!-- detalhe por peça -->
+    <div style="background:${T.card};border-radius:0 0 12px 12px;padding-bottom:4px">
+      <div style="padding:14px 16px 2px;font-size:13px;font-weight:800;color:${T.ink}">Detalhe por peça</div>
+      ${detail}
+    </div>
+    <div style="color:${T.mut};font-size:11px;text-align:center;margin-top:12px">Gerado automaticamente pelo painel de Gestão de Estoque | Powertrain.</div>
   </div></div>`;
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório de Estoque — ${esc(dt)}</title></head><body style="margin:0;background:${C.bg}">${corpo}</body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gestão de Estoque | Powertrain — ${esc(dt)}</title></head><body style="margin:0;background:${T.bg}">${corpo}</body></html>`;
 }
 function previewReport(){
   if(!lastData){ toast('Ainda sem dados da base','err'); return; }
