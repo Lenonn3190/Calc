@@ -122,10 +122,13 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .b-info{ color:var(--info); border-color:color-mix(in srgb,var(--info) 40%,transparent); background:rgba(56,189,248,.12); }
 
 /* chips por local dentro do card */
-.locs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:3px; align-items:center; }
-.locs.modelos{ margin-top:7px; padding-top:7px; border-top:1px dashed var(--line-2); }
+.locs{ display:flex; flex-wrap:wrap; gap:7px; margin-top:3px; align-items:center; }
+.locs.modelos{ margin-top:6px; padding-top:6px; border-top:1px dashed var(--line-2); gap:6px; }
+/* chips de modelo são detalhe secundário: um pouco mais compactos para o card
+   caber na TV mesmo com o mini gráfico n-5 */
+.locs.modelos .locchip{ padding:5px 10px; font-size:clamp(12px,1.02vw,16px); gap:6px; }
 .modlab{ flex:0 0 100%; color:var(--faint); font-weight:800; font-size:clamp(11px,.95vw,16px); text-transform:uppercase; letter-spacing:.6px; margin:0 0 2px; }
-.locchip{ display:inline-flex; align-items:center; gap:8px; padding:7px 13px; border-radius:10px; background:var(--panel); border:1px solid var(--line);
+.locchip{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:10px; background:var(--panel); border:1px solid var(--line);
   font-size:clamp(13px,1.15vw,19px); font-weight:800; font-variant-numeric:tabular-nums; }
 .locchip .sw{ width:12px; height:12px; border-radius:3px; flex:0 0 auto; }
 .locchip .lk{ color:var(--muted); font-weight:600; }
@@ -149,9 +152,9 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 
 /* cobertura / previsão (dias úteis) */
 .cover{ display:inline-flex; flex-direction:column; gap:1px; margin-top:auto; padding:7px 14px; border-radius:11px;
-  border:1px solid var(--line-2); background:var(--panel); align-self:flex-start; }
+  border:1px solid var(--line-2); background:var(--panel); align-self:flex-start; max-width:100%; box-sizing:border-box; }
 .cover .cov-main{ font-weight:800; font-size:clamp(16px,1.6vw,27px); font-variant-numeric:tabular-nums; line-height:1.05; color:var(--muted); white-space:nowrap; }
-.cover .cov-sub{ font-weight:600; font-size:clamp(10px,.9vw,15px); color:var(--faint); white-space:nowrap; }
+.cover .cov-sub{ font-weight:600; font-size:clamp(10px,.9vw,15px); color:var(--faint); line-height:1.2; }
 .cover.ok  { border-color:color-mix(in srgb,var(--ok) 40%,transparent); background:var(--ok-bg); }
 .cover.warn{ border-color:color-mix(in srgb,var(--warn) 40%,transparent); background:var(--warn-bg); }
 .cover.bad { border-color:color-mix(in srgb,var(--bad) 45%,transparent); background:var(--bad-bg); }
@@ -166,8 +169,11 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .prog.ok   .fill{ background:linear-gradient(90deg,var(--ok),#4ade80); }
 .prog.warn .fill{ background:linear-gradient(90deg,var(--warn),#fbbf24); }
 .prog.bad  .fill{ background:linear-gradient(90deg,var(--bad),#f87171); }
-.spark{ margin-top:6px; display:flex; align-items:center; gap:12px; }
-.spark svg{ flex:1 1 auto; height:clamp(34px,5vh,64px); }
+.spark{ margin-top:6px; display:flex; align-items:center; gap:10px; }
+.spark svg{ flex:1 1 auto; min-width:0; height:clamp(34px,5vh,64px); }
+/* gráfico de linha n-5 com rótulos: largura vem do flex, altura segue a
+   proporção do viewBox (5:1) — assim preenche o card e os rótulos não colidem */
+.spark svg.lc{ width:auto; height:auto; max-height:clamp(38px,4.8vh,58px); }
 .spark .scap{ font-size:clamp(11px,.95vw,15px); color:var(--faint); font-weight:700; white-space:nowrap; }
 .spark .sdelta{ font-weight:800; font-variant-numeric:tabular-nums; }
 .spark .up{ color:var(--ok);} .spark .down{ color:var(--bad);} .spark .flat{ color:var(--muted);}
@@ -772,6 +778,48 @@ function sparkline(points,color){
     <circle cx="${x(n-1).toFixed(1)}" cy="${y(vs[n-1]).toFixed(1)}" r="3" fill="${color}"/></svg>`;
 }
 
+/* MINI GRÁFICO DE LINHA (n-5) para o card da TV: fechamento dos 5 dias
+   anteriores + hoje, com rótulo de valor e de dia em cada ponto.
+   Escala ampliada na faixa dos dados (a variação diária é pequena); a linha
+   comunica a TENDÊNCIA — o valor exato vem do rótulo em cada ponto. */
+function lineChartDias(serie,color){
+  const n=serie.length; if(n<2) return '';
+  // viewBox largo (5:1) para o gráfico PREENCHER a largura do card em vez de
+  // ser reduzido pela altura (preserveAspectRatio "meet" escala pelo menor lado)
+  const W=160, H=38, padX=15, padT=7, padB=9.5;         // espaço p/ rótulos
+  const vs=serie.map(p=>p.v);
+  let mn=Math.min(...vs), mx=Math.max(...vs);
+  const amp=(mx-mn)||Math.max(1,Math.abs(mx)*0.1);
+  mx+=amp*0.12; mn-=amp*0.12;
+  const x=i=>padX+(i/(n-1))*(W-2*padX);
+  const y=v=>padT+(1-(v-mn)/((mx-mn)||1))*(H-padT-padB);
+  let d=''; serie.forEach((p,i)=> d+=(i?'L':'M')+x(i).toFixed(1)+' '+y(p.v).toFixed(1)+' ');
+  const area=d+`L ${x(n-1).toFixed(1)} ${H-padB} L ${x(0).toFixed(1)} ${H-padB} Z`;
+  // rótulo compacto (5.529 -> 5,5k) para caber no card
+  const curto=v=>Math.abs(v)>=10000?(v/1000).toFixed(1).replace('.',',')+'k':fmtInt(v);
+  // Rótulos: o DIA em todos os pontos (a linha do tempo) e o VALOR nas pontas
+  // (início e hoje). Um número em cada ponto, no tamanho que cabe aqui, fica
+  // ilegível de longe — os valores do meio vêm no relatório, que tem espaço.
+  const pts=serie.map((p,i)=>{
+    const cx=x(i), cy=y(p.v), ult=(i===n-1), pri=(i===0);
+    let valTxt='';
+    if(pri||ult){
+      const alto=cy<padT+4;                        // se o ponto está no topo, rótulo abaixo
+      const ty=alto?cy+7.2:cy-3.6;
+      valTxt=`<text x="${(cx+(pri?-4.5:4.5)).toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="${pri?'start':'end'}"
+        fill="${ult?'var(--txt)':'var(--muted)'}" font-size="8.2" font-weight="${ult?800:700}">${curto(p.v)}</text>`;
+    }
+    return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${ult?2.6:1.8}" fill="${color}" stroke="var(--panel)" stroke-width="1"/>
+      ${valTxt}
+      <text x="${cx.toFixed(1)}" y="${(H-1.8).toFixed(1)}" text-anchor="middle"
+        fill="${ult?'var(--muted)':'var(--faint)'}" font-size="6.6" font-weight="700">${ult?'hoje':xmlEsc(labelDia(p.d).slice(0,5))}</text>`;
+  }).join('');
+  return `<svg class="lc" viewBox="0 0 ${W} ${H}">
+    <path d="${area}" fill="${color}" fill-opacity=".12"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts}</svg>`;
+}
+
 /* ============================================================
    RENDER
    ============================================================ */
@@ -845,15 +893,20 @@ function renderCards(data){
         <div class="bar"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div></div>`;
     }
 
-    // sparkline (histórico — só do dia atual)
-    const hist=(HIST[cat.nome]||[]).filter(p=>ehHoje(p.t));
+    // mini gráfico de linha: fechamento dos 5 dias anteriores + hoje (n-5)
+    const serie=serieDias(cat.nome,5);
     let sparkHtml;
-    if(hist.length>=2){
-      const delta=hist[hist.length-1].v-hist[hist.length-2].v;
+    if(serie.length>=2){
+      const delta=serie[serie.length-1].v-serie[0].v;
       const dc=delta>0?'up':delta<0?'down':'flat', ar=delta>0?'▲':delta<0?'▼':'▬';
-      sparkHtml=`<div class="spark">${sparkline(hist,cat.cor)}<span class="scap">${hist.length} Updates hoje<br><span class="sdelta ${dc}">${ar} ${fmtInt(Math.abs(delta))}</span></span></div>`;
+      sparkHtml=`<div class="spark">${lineChartDias(serie,cat.cor)}
+        <span class="scap">${serie.length-1} dias<br><span class="sdelta ${dc}">${ar} ${fmtInt(Math.abs(delta))}</span></span></div>`;
     } else {
-      sparkHtml=`<div class="spark"><span class="scap">Coletando histórico…</span></div>`;
+      // 1º dia de uso: mostra o intradiário até o histórico diário se formar
+      const hoje=(HIST[cat.nome]||[]).filter(p=>ehHoje(p.t));
+      sparkHtml=hoje.length>=2
+        ? `<div class="spark">${sparkline(hoje,cat.cor)}<span class="scap">${hoje.length} Updates hoje</span></div>`
+        : `<div class="spark"><span class="scap">Coletando histórico…</span></div>`;
     }
 
     // chips por local (com status vs meta do local) + DR
