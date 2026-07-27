@@ -151,13 +151,16 @@ O painel **gera** o `estoque_email.html`; quem **envia** é um script no Windows
 
 ## A planilha (`estoque.xlsx`)
 
-Primeira linha é o cabeçalho. Colunas da base (JDE) — nomes flexíveis:
+Primeira linha é o cabeçalho. Colunas da base (JDE) — nomes flexíveis. A **ordem
+das colunas não importa**: o painel localiza cada uma pelo nome do cabeçalho
+(pode mover o `LILOCN` para o fim, por exemplo).
 
 | Coluna     | Obrigatória | Descrição                                                        |
 |------------|:-----------:|------------------------------------------------------------------|
 | **IMDSC1** | ✅          | Descrição — classifica em Cabeçote / Bloco / Cilindro / Motor / Transmissão |
 | **QTD**    | ✅          | Quantidade (aceita `1.234` ou `1234`)                            |
 | **LILOCN** | ✅*         | Local: FND / MMO / USI / LMO / TRA / DLI e `ESTREJ`→DR (rejeitado)     |
+| ↳ sublocal | —           | `ESTUSI OP140` conta **dentro de USI** e aparece detalhado abaixo do chip de USI |
 | IMLITM     | —           | Código do item (conta os "tipos" por peça)                       |
 | LILOTN     | —           | Lote (usado nas linhas de rejeitado)                             |
 

@@ -139,6 +139,13 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .locchip.low .lv, .locchip.bad .lv{ color:var(--bad); }
 .locchip.imp{ border-color:color-mix(in srgb,#c084fc 45%,transparent); background:color-mix(in srgb,#c084fc 14%,transparent); }
 .locchip.imp .lv{ color:#c084fc; }
+/* local + seus sublocais (ex.: USI e, abaixo, OP140) */
+.locgrp{ display:inline-flex; flex-direction:column; gap:4px; align-items:flex-start; }
+.subwrap{ display:inline-flex; flex-wrap:wrap; gap:4px; padding-left:12px; }
+.locchip.sub{ padding:5px 11px; border-style:dashed; background:transparent;
+  font-size:clamp(12px,1.05vw,17px); gap:6px; }
+.locchip.sub .lk{ color:var(--faint); font-weight:700; }
+.locchip.sub .lv{ color:var(--muted); }
 
 /* cobertura / previsão (dias úteis) */
 .cover{ display:inline-flex; flex-direction:column; gap:1px; margin-top:auto; padding:7px 14px; border-radius:11px;
@@ -567,6 +574,20 @@ function locLabel(raw){
   if(n.includes('REJ')) return CONFIG.locais.rejeitado;
   return n.replace(/^EST/,'')||n;
 }
+/* separa o LILOCN em LOCAL + SUBLOCAL.
+   Ex.: "ESTUSI OP140" -> { base:'USI', sub:'OP140' } — a quantidade conta
+   dentro de USI e o sublocal aparece detalhado abaixo do chip de USI. */
+function locParts(raw){
+  const n=String(raw||'').trim().toUpperCase().replace(/\s+/g,' ');
+  if(!n) return { base:'—', sub:'' };
+  const sp=n.indexOf(' ');
+  if(sp<0) return { base:locLabel(n), sub:'' };
+  const first=n.slice(0,sp), rest=n.slice(sp+1).trim();
+  // só trata como sublocal se o 1º token for um local reconhecido
+  if(CONFIG.locais.map[first] || /^EST/.test(first) || first.includes('REJ'))
+    return { base:locLabel(first), sub:rest };
+  return { base:locLabel(n), sub:'' };
+}
 function locColor(label){ return CONFIG.locais.cor[label] || CONFIG.locais.paleta[(CONFIG.locais.ordem.indexOf(label)+CONFIG.locais.paleta.length)%CONFIG.locais.paleta.length] || '#94a3b8'; }
 function isRej(label){ return label===CONFIG.locais.rejeitado; }
 /* extrai o MODELO/variante do item.
@@ -593,7 +614,7 @@ function interpret(rows){
   if(idx.qtd<0)  throw new Error('Coluna de quantidade (QTD) não encontrada.');
 
   const groups={};
-  CONFIG.categorias.forEach(c=>groups[c.nome]={cat:c, bom:0, rejeitado:0, disponivel:0, impregna:0, locais:{}, modelos:{}, tipos:new Set(), linhas:0});
+  CONFIG.categorias.forEach(c=>groups[c.nome]={cat:c, bom:0, rejeitado:0, disponivel:0, impregna:0, locais:{}, sublocais:{}, modelos:{}, tipos:new Set(), linhas:0});
   const locaisSet=new Set();      // locais encontrados (bons)
   const impLimcu=norm((CONFIG.impregna&&CONFIG.impregna.limcu)||'');
   let totalLinhas=0;
@@ -607,9 +628,12 @@ function interpret(rows){
     const g=groups[catName];
     // LIMCU especial "Impregna": nao entra no disponivel, conta à parte
     if(impLimcu && idx.limcu>=0 && norm(row[idx.limcu])===impLimcu){ g.impregna+=qtd; g.tipos.add(item); totalLinhas++; continue; }
-    const loc=locLabel(idx.local>=0?row[idx.local]:'');
+    const lp=locParts(idx.local>=0?row[idx.local]:'');
+    const loc=lp.base;
     const rej=isRej(loc);
     g.locais[loc]=(g.locais[loc]||0)+qtd;
+    // sublocal (ex.: "ESTUSI OP140"): soma dentro do local e guarda o detalhe
+    if(lp.sub){ const sl=g.sublocais[loc]||(g.sublocais[loc]={}); sl[lp.sub]=(sl[lp.sub]||0)+qtd; }
     if(rej) g.rejeitado+=qtd; else { g.bom+=qtd; locaisSet.add(loc); }
     g.tipos.add(item);
     // sub-divisão por MODELO (se a categoria tiver)
@@ -800,11 +824,20 @@ function renderCards(data){
     }
 
     // chips por local (com status vs meta do local) + DR
+    // sublocais (ex.: USI OP140) entram numa linha própria ABAIXO do chip do local
+    const subChips=l=>{
+      const sl=(g&&g.sublocais&&g.sublocais[l])||null; if(!sl) return '';
+      const keys=Object.keys(sl).filter(k=>sl[k]).sort();
+      if(!keys.length) return '';
+      return `<span class="subwrap">`+keys.map(k=>
+        `<span class="locchip sub"><span class="lk">↳ ${xmlEsc(k)}</span><span class="lv">${fmtInt(sl[k])}</span></span>`
+      ).join('')+`</span>`;
+    };
     const chips=data.locais.filter(l=>!isRej(l)).map(l=>{
       const v=(g&&g.locais[l])||0; if(!v) return '';
       const lm=(m.locais&&m.locais[l])||{}; const lst=statusClass(v,lm.meta||0,lm.minimo||0);
       const alvo=(lm.meta>0)?` <span style="color:var(--faint);font-weight:600">/ ${fmtInt(lm.meta)}</span>`:'';
-      return `<span class="locchip ${lst}"><span class="sw" style="background:${locColor(l)}"></span><span class="lk">${l}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>`;
+      return `<span class="locgrp"><span class="locchip ${lst}"><span class="sw" style="background:${locColor(l)}"></span><span class="lk">${l}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>${subChips(l)}</span>`;
     }).join('');
     const drOver=(m.drMax>0 && rej>m.drMax);
     const drChip = rej>0 ? `<span class="locchip rej"><span class="sw" style="background:${locColor(CONFIG.locais.rejeitado)}"></span><span class="lk">${CONFIG.locais.rejeitado} (rejeitado)${drOver?' ⚠':''}</span><span class="lv">−${fmtInt(rej)}${m.drMax>0?` <span style="color:var(--faint);font-weight:600">/ máx ${fmtInt(m.drMax)}</span>`:''}</span></span>` : '';
@@ -1084,6 +1117,19 @@ function buildEmailHtml(data){
     const covLine=c.cov
       ? `<div style="margin-top:8px;font-size:12px;font-weight:700;color:${S[c.cov.k].text}">${S[c.cov.k].icon} Cobertura ≈ ${fmtDays(c.cov.d)} dias úteis <span style="font-weight:400;color:${T.mut}">· consumo ${fmtInt(c.cov.cons)}/dia${c.cov.fonte?' · base '+esc(c.cov.fonte):''}</span></div>`
       : '';
+    // sublocais (ex.: USI OP140) — já somados dentro do local
+    let subHtml='';
+    if(g.sublocais){
+      const parts=[];
+      data.locais.forEach(l=>{
+        const sl=g.sublocais[l]; if(!sl) return;
+        Object.keys(sl).sort().forEach(k=>{ if(sl[k]) parts.push(
+          `<span style="white-space:nowrap">${esc(l)} ↳ ${esc(k)} <b style="color:${T.ink}">${fmtInt(sl[k])}</b></span>`); });
+      });
+      if(parts.length) subHtml=`<div style="margin-top:6px;font-size:12px;color:${T.sec}">
+        <span style="font-weight:700;color:${T.mut};text-transform:uppercase;letter-spacing:.4px;font-size:11px">Sublocais&nbsp;&nbsp;</span>`+
+        parts.join('&nbsp;&nbsp;·&nbsp;&nbsp;')+`</div>`;
+    }
     return `<div style="padding:14px 16px;border-top:1px solid ${T.line}">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
         <td style="font-size:14px;font-weight:800;color:${T.ink}">${sw(cat.cor)}&nbsp;${esc(cat.nome)}
@@ -1093,7 +1139,7 @@ function buildEmailHtml(data){
       </tr></table>
       ${locItems.length?`<div style="margin-top:10px">${stackBar(locItems)}</div>
       <div style="margin-top:6px">${legend(locItems.concat(extra))}</div>`:''}
-      ${covLine}${modsHtml}
+      ${subHtml}${covLine}${modsHtml}
     </div>`;
   }).join('');
 
