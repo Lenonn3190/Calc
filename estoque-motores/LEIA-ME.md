@@ -90,13 +90,9 @@ O que o painel passa a mostrar:
   mínimo, quando **qualquer local** fica abaixo do mínimo dele, ou quando **qualquer
   modelo** (Cilindro) fica abaixo do mínimo. O selo indica o motivo ("Abaixo do
   mínimo" / "Local abaixo do mínimo" / "Modelo abaixo do mínimo") e o chip fica vermelho.
-- **Mini-gráfico de linha (n-5)** em cada card: o **fechamento (23:59) dos 5 dias
-  anteriores** mais o valor de hoje, com o **dia rotulado em cada ponto** e o
-  **valor nas pontas** (início e hoje), além da variação total do período (▲/▼).
-  Os valores intermediários vêm no relatório de e-mail, que tem mais espaço — no
-  card, um número em cada ponto ficaria ilegível à distância da TV. No primeiro
-  dia de uso, enquanto o histórico diário se forma, o card mostra a tendência
-  das leituras do próprio dia.
+- **Mini-gráfico de tendência** (sparkline) por peça, com as leituras do dia e a
+  variação desde a leitura anterior (▲/▼). *(A evolução dos 5 dias fica no
+  relatório de e-mail.)*
 
 **Salvar / carregar parâmetros:** as metas ficam salvas neste navegador e podem ser
 **exportadas** (`⬇ Exportar .json`) e **importadas** (`⬆ Importar .json`). Para o
