@@ -111,8 +111,25 @@ No cadastro de metas (🎯), seção **"Pasta & Relatório por e-mail"**, clique
 
 O relatório é gerado **automaticamente nos horários configurados** (por padrão
 **08:30** e **12:30**), e também pelos botões **"Gerar relatório agora"** e
-**"Pré-visualizar"**. O HTML traz uma tabela resumo (disponível, meta, %, DR e
-situação por peça) e o detalhe por local e por modelo.
+**"Pré-visualizar"**. Formato **executivo**, de cima para baixo:
+
+1. **KPIs** — disponível total (com a variação do dia), peças em alerta, menor
+   cobertura e DR total;
+2. **Pontos de atenção** — uma linha por peça em alerta, com o motivo e os números;
+3. **Cards por peça** — número grande, selo de situação, % da meta e cobertura
+   (a leitura rápida do gerente);
+4. **Detalhe por peça** — distribuição por local, sublocais, cobertura, modelos e
+   o gráfico de **evolução (n-5)**.
+
+**Evolução (n-5):** mostra o **fechamento (23:59) dos 5 dias anteriores** mais o
+valor atual, com rótulo de série e a variação vs. o primeiro dia. O painel grava
+esse fechamento sozinho (`estoque-hist-dia` no navegador): a cada leitura o valor
+do dia é sobrescrito, então ao virar o dia sobra a última leitura daquele dia. O
+gráfico usa **marcadores posicionados** (não barras) com **escala ampliada na
+faixa dos dados** — a variação diária costuma ser pequena (~15%) e, com posição em
+vez de comprimento, a escala ampliada mostra a evolução sem distorcer a leitura.
+A faixa usada vem escrita embaixo do gráfico. O histórico se forma com o uso: com
+o painel aberto todo dia, em 5 dias o gráfico fica completo.
 
 > Requisitos: funciona no **Chrome/Edge** servindo em **localhost** ou **https**
 > (recurso *File System Access API*). A pasta escolhida fica lembrada entre

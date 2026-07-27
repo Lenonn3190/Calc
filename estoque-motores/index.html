@@ -730,6 +730,36 @@ function recordHist(data){
   try{ localStorage.setItem(HIST_KEY, JSON.stringify(h)); }catch(e){}
   return h;
 }
+
+/* ---- HISTÓRICO DIÁRIO (fechamento do dia) — usado no relatório (evolução n-5).
+   A cada leitura o valor do dia é SOBRESCRITO, então ao virar o dia sobra a
+   última leitura daquele dia (o valor "das 23:59"). ---- */
+let HISTD = {};
+const HISTD_KEY='estoque-hist-dia', HISTD_DIAS=12;
+function loadHistD(){ try{ return JSON.parse(localStorage.getItem(HISTD_KEY)||'{}')||{}; }catch(e){ return {}; } }
+function diaKey(t){ const d=new Date(t); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function recordHistD(data){
+  const h=loadHistD(), k=diaKey(Date.now());
+  CONFIG.categorias.forEach(c=>{
+    const g=data.groups[c.nome]; if(!g) return;
+    const arr=(h[c.nome]||[]).filter(p=>p&&p.d);
+    const i=arr.findIndex(p=>p.d===k);
+    if(i>=0) arr[i].v=g.disponivel; else arr.push({d:k,v:g.disponivel});
+    arr.sort((a,b)=>a.d<b.d?-1:1);
+    h[c.nome]=arr.slice(-HISTD_DIAS);
+  });
+  try{ localStorage.setItem(HISTD_KEY, JSON.stringify(h)); }catch(e){}
+  return h;
+}
+/* série p/ o gráfico: os n dias ANTERIORES (fechamento) + hoje (valor atual) */
+function serieDias(nome,n){
+  const arr=(HISTD[nome]||[]), hoje=diaKey(Date.now());
+  const ant=arr.filter(p=>p.d<hoje).slice(-n);
+  const hj=arr.filter(p=>p.d===hoje)[0];
+  return ant.concat(hj?[Object.assign({hoje:true},hj)]:[]);
+}
+function labelDia(k){ const p=String(k).split('-'); return p.length===3?(p[2]+'/'+p[1]):k; }
+
 function sparkline(points,color){
   const n=points.length, W=100,H=40,pad=4;
   const vs=points.map(p=>p.v); let mn=Math.min(...vs), mx=Math.max(...vs); if(mx===mn){ mx=mn+1; mn=Math.max(0,mn-1); }
@@ -866,7 +896,7 @@ function renderCards(data){
         ${badge}
       </div>
       <div class="qty-wrap"><span class="qty">${fmtInt(disp)}</span><span class="unit">${CONFIG.unidade}</span></div>
-      <div class="sub"><b>disponível</b> · estoque bom ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}</div>
+      <div class="sub"><b>disponível</b> · estoque ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}</div>
       ${progHtml}
       ${sparkHtml}
       <div class="locs">${chips}${drChip}</div>
@@ -1044,6 +1074,42 @@ function buildEmailHtml(data){
   };
   const sw=c=>`<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};vertical-align:baseline"></span>`;
   const legend=items=>items.map(it=>`<span style="white-space:nowrap;color:${T.sec};font-size:12px">${sw(it.color)}&nbsp;${esc(it.label)}&nbsp;<b style="color:${T.ink}">${fmtInt(it.val)}</b></span>`).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+  /* EVOLUÇÃO n-5: fechamento (23:59) dos 5 dias anteriores + hoje.
+     Marcadores POSICIONADOS (não barras): a variação típica aqui é pequena
+     (~15%), então uma escala ampliada é necessária para a evolução ser visível —
+     e com posição (não comprimento) a escala ampliada não distorce a leitura.
+     Só tabelas/bgcolor — sem SVG/imagem, para o Outlook renderizar. */
+  const colChart=(serie,cor,nomeSerie)=>{
+    if(serie.length<2) return '';
+    const H=66, D=13;                                    // altura útil e diâmetro
+    const vs=serie.map(p=>p.v), max=Math.max(...vs), min=Math.min(...vs);
+    const amp=(max-min)||Math.max(1,Math.abs(max)*0.1);  // faixa (evita divisão por 0)
+    const hi=max+amp*0.25, lo=min-amp*0.25;              // folga p/ não colar nas bordas
+    const topo=v=>Math.round((hi-v)/((hi-lo)||1)*(H-D));
+    const prim=serie[0].v, ult=serie[serie.length-1].v, dif=ult-prim;
+    const difCol=dif>0?S.ok.text:(dif<0?S.bad.text:T.mut);
+    const difTxt=(dif>0?'▲ +':(dif<0?'▼ ':'▬ '))+fmtInt(Math.abs(dif));
+    const vals=serie.map(p=>`<td align="center" style="font-size:11px;font-weight:800;color:${p.hoje?T.ink:T.sec};padding:0 2px 3px">${fmtInt(p.v)}</td>`).join('');
+    const dots=serie.map(p=>{
+      const d=p.hoje?D+2:D;
+      return `<td align="center" valign="top" height="${H}" style="padding:0 3px;background:${p.hoje?'#f2f6fc':'#f8fafc'}">
+        <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
+          <td height="${Math.max(0,topo(p.v))}" style="font-size:0;line-height:0">&nbsp;</td></tr><tr>
+          <td width="${d}" height="${d}" bgcolor="${cor}" style="font-size:0;line-height:0;border-radius:50%">&nbsp;</td>
+        </tr></table></td>`;
+    }).join('');
+    const labs=serie.map(p=>`<td align="center" style="font-size:10px;font-weight:700;color:${p.hoje?T.ink:T.mut};padding-top:4px">${p.hoje?'Hoje':esc(labelDia(p.d))}</td>`).join('');
+    return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid ${T.line}">
+      <div style="font-size:11px;font-weight:800;color:${T.mut};text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">
+        Evolução (n-5) &nbsp;<span style="font-weight:700;color:${T.sec};text-transform:none;letter-spacing:0">${sw(cor)}&nbsp;${esc(nomeSerie)} — disponível (un)</span>
+        &nbsp;·&nbsp;<span style="color:${difCol};text-transform:none;letter-spacing:0">${difTxt} vs ${esc(labelDia(serie[0].d))}</span>
+      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+        <tr>${vals}</tr><tr>${dots}</tr><tr>${labs}</tr>
+      </table>
+      <div style="font-size:10px;color:${T.mut};margin-top:3px">Fechamento de cada dia (23:59) · último ponto = valor atual · escala ampliada na faixa ${fmtInt(min)}–${fmtInt(max)} un</div>
+    </div>`;
+  };
   const kpi=(label,value,sub,subCol)=>`
     <td width="25%" valign="top" style="padding:14px 12px;border-right:1px solid ${T.line}">
       <div style="font-size:11px;font-weight:700;color:${T.mut};text-transform:uppercase;letter-spacing:.5px">${esc(label)}</div>
@@ -1079,27 +1145,27 @@ function buildEmailHtml(data){
         — <b>${esc(c.st.label)}</b>${c.st.detail?` <span style="color:${T.sec}">(${esc(c.st.detail)})</span>`:''}</div>`).join('')
     : `<div style="font-size:13px;color:${S.ok.text};font-weight:700">${S.ok.icon} Todas as peças dentro das metas, mínimos e coberturas.</div>`;
 
-  // ---- tabela-resumo com medidor de meta
-  const th=t=>`<th align="${t.a||'left'}" style="padding:9px 10px;font-size:11px;color:${T.mut};text-transform:uppercase;letter-spacing:.4px">${t.n}</th>`;
-  const sumTable=cats.map(c=>{
-    const pct=c.m.meta>0?Math.min(999,Math.round(c.g.disponivel/c.m.meta*100)):null;
-    const meterHtml=c.m.meta>0
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-           <td>${meter(pct,c.st.k==='mut'?'ok':c.st.k,8)}</td>
-           <td width="42" align="right" style="font-size:12px;font-weight:700;color:${T.ink};padding-left:6px">${pct}%</td></tr></table>`
-      : `<span style="color:${T.mut};font-size:12px">—</span>`;
-    const covHtml=c.cov
-      ? `<span style="color:${S[c.cov.k].text};font-weight:800;font-size:13px;white-space:nowrap">${S[c.cov.k].icon} ${fmtDays(c.cov.d)} d</span>`
-      : `<span style="color:${T.mut}">—</span>`;
-    return `<tr>
-      <td style="padding:9px 10px;border-top:1px solid ${T.line};font-weight:700;color:${T.ink};font-size:13px;white-space:nowrap">${esc(c.cat.nome)}</td>
-      <td align="right" style="padding:9px 10px;border-top:1px solid ${T.line};font-weight:800;color:${T.ink};font-size:14px">${fmtInt(c.g.disponivel)}</td>
-      <td style="padding:9px 10px;border-top:1px solid ${T.line}" width="170">${meterHtml}</td>
-      <td align="center" style="padding:9px 10px;border-top:1px solid ${T.line}">${covHtml}</td>
-      <td align="right" style="padding:9px 10px;border-top:1px solid ${T.line};font-size:13px;font-weight:700;color:${c.g.rejeitado>0?S.bad.text:T.mut}">${fmtInt(c.g.rejeitado)}</td>
-      <td align="center" style="padding:9px 10px;border-top:1px solid ${T.line}">${pill(c.st.k,c.st.label)}</td>
-    </tr>`;
-  }).join('');
+  // ---- RESUMO SUPERIOR: um mini-card por peça (leitura rápida do gerente)
+  const miniCard=c=>{
+    const pct=c.m.meta>0?Math.round(c.g.disponivel/c.m.meta*100):null;
+    return `<td width="33%" valign="top" style="padding:5px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${T.card};border:1px solid ${T.line};border-radius:10px;border-collapse:separate">
+        <tr><td height="4" bgcolor="${c.cat.cor}" style="font-size:0;line-height:0;border-radius:10px 10px 0 0">&nbsp;</td></tr>
+        <tr><td style="padding:9px 11px 11px">
+          <div style="font-size:12px;font-weight:800;color:${T.sec};white-space:nowrap">${esc(c.cat.nome)}</div>
+          <div style="font-size:27px;font-weight:800;color:${T.ink};line-height:1.15;margin:1px 0 5px">${fmtInt(c.g.disponivel)}<span style="font-size:11px;color:${T.mut};font-weight:700"> un</span></div>
+          ${pill(c.st.k,c.st.label)}
+          ${c.m.meta>0?`<div style="margin-top:8px">${meter(Math.min(100,pct),c.st.k==='mut'?'ok':c.st.k,7)}</div>`:''}
+          <div style="font-size:11px;color:${T.mut};margin-top:5px;font-weight:700">${c.m.meta>0?pct+'% da meta':'sem meta'}${c.cov?` &nbsp;·&nbsp; <span style="color:${S[c.cov.k].text}">${fmtDays(c.cov.d)} dias</span>`:''}${c.g.rejeitado>0?` &nbsp;·&nbsp; <span style="color:${S.bad.text}">DR ${fmtInt(c.g.rejeitado)}</span>`:''}</div>
+        </td></tr>
+      </table></td>`;
+  };
+  let cardsGrid='';
+  for(let i=0;i<cats.length;i+=3){
+    const linha=cats.slice(i,i+3);
+    const vazias=3-linha.length;
+    cardsGrid+=`<tr>${linha.map(miniCard).join('')}${'<td width="33%">&nbsp;</td>'.repeat(vazias)}</tr>`;
+  }
 
   // ---- detalhe por peça (barra de locais + modelos)
   const detail=cats.map(c=>{
@@ -1143,8 +1209,11 @@ function buildEmailHtml(data){
       ${locItems.length?`<div style="margin-top:10px">${stackBar(locItems)}</div>
       <div style="margin-top:6px">${legend(locItems.concat(extra))}</div>`:''}
       ${subHtml}${covLine}${modsHtml}
+      ${colChart(serieDias(cat.nome,5),cat.cor,cat.nome)}
     </div>`;
   }).join('');
+  // aviso quando ainda não há histórico diário suficiente para a evolução n-5
+  const semHist=cats.every(c=>serieDias(c.cat.nome,5).length<2);
 
   const corpo=`<div style="margin:0;padding:0;background:${T.bg}"><div style="max-width:680px;margin:0 auto;padding:20px 14px;font-family:-apple-system,'Segoe UI',Arial,Helvetica,sans-serif">
     <!-- cabeçalho -->
@@ -1166,20 +1235,19 @@ function buildEmailHtml(data){
       </tr>
     </table>
     <!-- resumo executivo -->
-    <div style="background:${T.card};padding:14px 16px;border-top:1px solid ${T.line}">
+    <div style="background:${T.card};padding:14px 16px;border-top:1px solid ${T.line};border-radius:0 0 12px 12px">
       <div style="border-left:4px solid ${sumBorder};padding:2px 0 2px 12px">
         <div style="font-size:11px;font-weight:800;color:${T.mut};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Pontos de atenção</div>
         ${sumRows}
       </div>
     </div>
-    <!-- tabela-resumo -->
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:${T.card}">
-      <tr style="background:#f6f8fb">${th({n:'Peça'})}${th({n:'Disponível',a:'right'})}${th({n:'% da meta'})}${th({n:'Cobertura',a:'center'})}${th({n:'DR',a:'right'})}${th({n:'Situação',a:'center'})}</tr>
-      ${sumTable}
-    </table>
+    <!-- resumo em cards (leitura rápida) -->
+    <div style="background:${T.bg};padding:6px 8px 10px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${cardsGrid}</table>
+    </div>
     <!-- detalhe por peça -->
-    <div style="background:${T.card};border-radius:0 0 12px 12px;padding-bottom:4px">
-      <div style="padding:14px 16px 2px;font-size:13px;font-weight:800;color:${T.ink}">Detalhe por peça</div>
+    <div style="background:${T.card};border-radius:12px;padding-bottom:4px;border:1px solid ${T.line}">
+      <div style="padding:14px 16px 2px;font-size:13px;font-weight:800;color:${T.ink}">Detalhe por peça${semHist?` <span style="font-size:11px;font-weight:400;color:${T.mut}">— a evolução n-5 aparece conforme o histórico diário é formado</span>`:''}</div>
       ${detail}
     </div>
     <div style="color:${T.mut};font-size:11px;text-align:center;margin-top:12px">Gerado automaticamente pelo painel de Gestão de Estoque | Powertrain.</div>
@@ -1374,6 +1442,7 @@ async function refresh(manualRows){
     else { rows=await loadFromServer(); currentSource='server'; currentFileName=CONFIG.arquivo; }
     const data=interpret(rows);
     HIST=recordHist(data);                  // registra ponto no histórico
+    HISTD=recordHistD(data);                // fechamento diário (evolução n-5)
     render(data);
     lastUpdate=new Date();
     $('#stLast').textContent=fmtDateTime(lastUpdate);
@@ -1477,6 +1546,7 @@ function init(){
   // metas + histórico
   METAS = loadMetas() || defaultMetas();
   HIST  = loadHist();
+  HISTD = loadHistD();
 
   $('#stFile').textContent=CONFIG.arquivo;
   $('#dlgFile').textContent=CONFIG.arquivo;
