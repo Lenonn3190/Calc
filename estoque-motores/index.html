@@ -1081,7 +1081,7 @@ function buildEmailHtml(data){
      Só tabelas/bgcolor — sem SVG/imagem, para o Outlook renderizar. */
   const miniSpark=(serie,cor)=>{
     if(serie.length<2) return '';
-    const H=30, D=7;                                     // altura útil e diâmetro
+    const H=42, D=8;                                     // altura útil e diâmetro
     const vs=serie.map(p=>p.v), max=Math.max(...vs), min=Math.min(...vs);
     const amp=(max-min)||Math.max(1,Math.abs(max)*0.1);  // faixa (evita divisão por 0)
     const hi=max+amp*0.2, lo=min-amp*0.2;                // folga p/ não colar nas bordas
@@ -1089,6 +1089,8 @@ function buildEmailHtml(data){
     const prim=serie[0].v, ult=serie[serie.length-1].v, dif=ult-prim;
     const difCol=dif>0?S.ok.text:(dif<0?S.bad.text:T.mut);
     const difTxt=(dif>0?'▲ +':(dif<0?'▼ ':'▬ '))+fmtInt(Math.abs(dif));
+    // rótulo de dados em TODOS os dias (cards em 2 colunas dão a largura p/ isso)
+    const vals=serie.map(p=>`<td align="center" style="font-size:10px;font-weight:${p.hoje?800:700};color:${p.hoje?T.ink:T.sec};padding:0 1px 2px;white-space:nowrap">${fmtInt(p.v)}</td>`).join('');
     const dots=serie.map(p=>{
       const d=p.hoje?D+2:D;
       return `<td align="center" valign="top" height="${H}" style="padding:0 1px;background:${p.hoje?'#eaf1fb':'#f7fafc'}">
@@ -1097,17 +1099,13 @@ function buildEmailHtml(data){
           <td width="${d}" height="${d}" bgcolor="${cor}" style="font-size:0;line-height:0;border-radius:50%">&nbsp;</td>
         </tr></table></td>`;
     }).join('');
-    const labs=serie.map(p=>`<td align="center" style="font-size:9px;font-weight:700;color:${p.hoje?T.sec:T.mut};padding-top:3px">${p.hoje?'hoje':esc(labelDia(p.d).slice(0,2))}</td>`).join('');
-    const meio=Math.ceil(serie.length/2);
+    const labs=serie.map(p=>`<td align="center" style="font-size:10px;font-weight:700;color:${p.hoje?T.sec:T.mut};padding-top:3px;white-space:nowrap">${p.hoje?'hoje':esc(labelDia(p.d))}</td>`).join('');
     return `<div style="margin-top:9px;padding-top:8px;border-top:1px solid ${T.line}">
-      <div style="font-size:10px;font-weight:700;color:${T.mut};margin-bottom:3px">
-        ${serie.length-1} dias &nbsp;<span style="color:${difCol};font-weight:800">${difTxt}</span></div>
+      <div style="font-size:10px;font-weight:700;color:${T.mut};margin-bottom:4px">
+        Últimos ${serie.length-1} dias &nbsp;<span style="color:${difCol};font-weight:800">${difTxt}</span>
+        <span style="color:${T.mut};font-weight:400"> · fechamento 23:59</span></div>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
-        <tr>
-          <td colspan="${meio}" style="font-size:9px;font-weight:700;color:${T.mut};padding-bottom:2px">${fmtInt(prim)}</td>
-          <td colspan="${serie.length-meio}" align="right" style="font-size:9px;font-weight:800;color:${T.ink};padding-bottom:2px">${fmtInt(ult)}</td>
-        </tr>
-        <tr>${dots}</tr><tr>${labs}</tr>
+        <tr>${vals}</tr><tr>${dots}</tr><tr>${labs}</tr>
       </table></div>`;
   };
   const kpi=(label,value,sub,subCol)=>`
@@ -1148,7 +1146,7 @@ function buildEmailHtml(data){
   // ---- RESUMO SUPERIOR: um mini-card por peça (leitura rápida do gerente)
   const miniCard=c=>{
     const pct=c.m.meta>0?Math.round(c.g.disponivel/c.m.meta*100):null;
-    return `<td width="33%" valign="top" style="padding:5px">
+    return `<td width="50%" valign="top" style="padding:5px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${T.card};border:1px solid ${T.line};border-radius:10px;border-collapse:separate">
         <tr><td height="4" bgcolor="${c.cat.cor}" style="font-size:0;line-height:0;border-radius:10px 10px 0 0">&nbsp;</td></tr>
         <tr><td style="padding:9px 11px 11px">
@@ -1161,11 +1159,12 @@ function buildEmailHtml(data){
         </td></tr>
       </table></td>`;
   };
+  // 2 cards por linha: dá largura para o rótulo de dados de cada dia no sparkline
   let cardsGrid='';
-  for(let i=0;i<cats.length;i+=3){
-    const linha=cats.slice(i,i+3);
-    const vazias=3-linha.length;
-    cardsGrid+=`<tr>${linha.map(miniCard).join('')}${'<td width="33%">&nbsp;</td>'.repeat(vazias)}</tr>`;
+  for(let i=0;i<cats.length;i+=2){
+    const linha=cats.slice(i,i+2);
+    const vazias=2-linha.length;
+    cardsGrid+=`<tr>${linha.map(miniCard).join('')}${'<td width="50%">&nbsp;</td>'.repeat(vazias)}</tr>`;
   }
 
   // ---- detalhe por peça (barra de locais + modelos)

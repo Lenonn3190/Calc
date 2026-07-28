@@ -122,8 +122,9 @@ O relatório é gerado **automaticamente nos horários configurados** (por padr�
 4. **Detalhe por peça** — distribuição por local, sublocais, cobertura e modelos.
 
 **Sparkline de 5 dias (n-5), dentro de cada card:** mostra o **fechamento (23:59)
-dos 5 dias anteriores** mais o valor atual, com o valor das pontas, o dia de cada
-ponto e a variação do período (▲/▼). O painel grava
+dos 5 dias anteriores** mais o valor atual, com **rótulo de dados em todos os
+dias**, a data de cada ponto e a variação do período (▲/▼). Os cards ficam em
+**2 por linha** justamente para caber esses rótulos sem se sobrepor. O painel grava
 esse fechamento sozinho (`estoque-hist-dia` no navegador): a cada leitura o valor
 do dia é sobrescrito, então ao virar o dia sobra a última leitura daquele dia. O
 gráfico usa **marcadores posicionados** (não barras) com **escala ampliada na
