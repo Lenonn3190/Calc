@@ -174,20 +174,18 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .spark .sdelta{ font-weight:800; font-variant-numeric:tabular-nums; }
 .spark .up{ color:var(--ok);} .spark .down{ color:var(--bad);} .spark .flat{ color:var(--muted);}
 
-/* alerta: card abaixo do mínimo pisca — reforçado para ser visto de longe na TV
-   (anel grosso + fundo avermelhado pulsando + faixa lateral e nome em destaque) */
+/* alerta: card abaixo do mínimo pisca. Borda/anel com a SUAVIDADE e o TEMPO
+   originais (anel suave, 1.25s ease-in-out), só um pouco mais grossa; e o fundo
+   interno avermelhado pulsando, mantido da versão reforçada. */
 @keyframes alarm{
-  0%,100%{ box-shadow:0 0 0 2px color-mix(in srgb,var(--bad) 30%,transparent), var(--shadow);
-           border-color:color-mix(in srgb,var(--bad) 55%,var(--line));
+  0%,100%{ box-shadow:var(--shadow); border-color:var(--line);
            background:var(--panel); }
-  50%    { box-shadow:0 0 0 8px color-mix(in srgb,var(--bad) 75%,transparent),
-                      0 0 34px 6px color-mix(in srgb,var(--bad) 45%,transparent), var(--shadow);
+  50%    { box-shadow:0 0 0 4px color-mix(in srgb,var(--bad) 55%,transparent), var(--shadow);
            border-color:var(--bad);
            background:color-mix(in srgb,var(--bad) 14%,var(--panel)); }
 }
-@keyframes alarmBar{ 0%,100%{ opacity:.55; } 50%{ opacity:1; } }
-.card.alarm{ animation:alarm 1s ease-in-out infinite; }
-.card.alarm::before{ background:var(--bad); width:14px; animation:alarmBar 1s ease-in-out infinite; }
+.card.alarm{ animation:alarm 1.25s ease-in-out infinite; }
+.card.alarm::before{ background:var(--bad); width:12px; }
 .card.alarm .name{ color:var(--bad); }
 /* o selo do motivo fica SÓLIDO (não pulsa): piscar a opacidade dele deixava o
    texto do alerta mais difícil de ler, o contrário do objetivo */
@@ -195,8 +193,8 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .card.alarm .badge.b-bad .dot{ background:#fff; box-shadow:none; animation:none; }
 /* respeita quem desativa animações no sistema: mantém o alerta, sem piscar */
 @media (prefers-reduced-motion:reduce){
-  .card.alarm, .card.alarm::before{ animation:none; }
-  .card.alarm{ border-color:var(--bad); box-shadow:0 0 0 5px color-mix(in srgb,var(--bad) 55%,transparent), var(--shadow);
+  .card.alarm{ animation:none; border-color:var(--bad);
+    box-shadow:0 0 0 4px color-mix(in srgb,var(--bad) 55%,transparent), var(--shadow);
     background:color-mix(in srgb,var(--bad) 12%,var(--panel)); }
 }
 
