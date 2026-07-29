@@ -113,7 +113,7 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .card .qty-wrap{ display:flex; align-items:baseline; gap:10px; }
 .card .qty{ font-size:clamp(44px,4.6vw,92px); font-weight:900; line-height:.9; letter-spacing:-2px; font-variant-numeric:tabular-nums; color:var(--txt); }
 .card .unit{ font-size:clamp(16px,1.55vw,27px); font-weight:800; color:var(--muted); white-space:nowrap; }
-.card .sub{ color:var(--muted); font-size:clamp(14px,1.35vw,23px); font-weight:700; margin-top:0; }
+.card .sub{ color:var(--muted); font-size:clamp(14px,1.35vw,23px); font-weight:700; margin-top:0; white-space:nowrap; }
 .card .sub b{ color:var(--txt); }
 .card .meta{ display:flex; gap:clamp(8px,.8vw,14px); flex-wrap:wrap; }
 .badge{ display:inline-flex; align-items:center; gap:8px; padding:8px 15px; border-radius:999px; font-size:clamp(13px,1.25vw,22px); font-weight:700; border:1px solid var(--line-2); background:var(--panel); color:var(--muted); }
@@ -164,7 +164,8 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 
 /* barra de progresso da meta + sparkline */
 .prog{ margin-top:4px; }
-.prog .ptop{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:clamp(14px,1.25vw,22px); font-weight:700; color:var(--muted); margin-bottom:5px; }
+.prog .ptop{ display:flex; flex-wrap:nowrap; justify-content:space-between; align-items:baseline; gap:8px; font-size:clamp(14px,1.25vw,22px); font-weight:700; color:var(--muted); margin-bottom:5px; }
+.prog .ptop>span{ white-space:nowrap; }
 .prog .ptop .pv{ color:var(--txt); font-weight:800; }
 .prog .bar{ height:13px; border-radius:999px; background:var(--panel); border:1px solid var(--line); overflow:hidden; }
 .prog .fill{ height:100%; border-radius:999px; transition:width .6s ease; }
@@ -793,13 +794,23 @@ function sparkline(points,color){
 /* ============================================================
    RENDER
    ============================================================ */
-function render(data){ lastData=data; renderCards(data); fitQty(); }
+function render(data){ lastData=data; renderCards(data); fitQty(); fitLines(); }
 /* encolhe o número em destaque só o necessário para caber na largura do card */
 function fitQty(){
   document.querySelectorAll('.card .qty').forEach(q=>{
     q.style.fontSize=''; const wrap=q.parentElement;
     let size=parseFloat(getComputedStyle(q).fontSize), guard=0;
     while(wrap.scrollWidth>wrap.clientWidth && size>26 && guard++<48){ size-=2; q.style.fontSize=size+'px'; }
+  });
+}
+/* garante que as linhas "disponível · estoque…" e "Meta · mín · %" fiquem em UMA
+   linha só: encolhe a fonte apenas o necessário para caber na largura do card
+   (mantém o maior tamanho possível em cada peça/resolução) */
+function fitLines(){
+  document.querySelectorAll('.card .sub, .card .prog .ptop').forEach(el=>{
+    el.style.fontSize='';
+    let size=parseFloat(getComputedStyle(el).fontSize), guard=0;
+    while(el.scrollWidth>el.clientWidth+1 && size>11 && guard++<40){ size-=0.5; el.style.fontSize=size+'px'; }
   });
 }
 
@@ -1639,7 +1650,7 @@ function init(){
   setInterval(keepAwake,60000);   // reforço periódico
 
   // re-render dos gráficos ao redimensionar (ajusta escala/tamanho à tela)
-  let rz; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ fitQty(); },180); });
+  let rz; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ fitQty(); fitLines(); },180); });
 
   // relógio
   tick(); setInterval(tick,1000);
