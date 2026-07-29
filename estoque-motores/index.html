@@ -954,12 +954,16 @@ function renderCards(data){
 /* ---- formulário de metas ---- */
 function renderMetasForm(){
   const host=$('#metasForm'); if(!host) return;
-  const locs=CONFIG.locais.ordem.filter(l=>l!==CONFIG.locais.rejeitado);
+  const allLocs=CONFIG.locais.ordem.filter(l=>l!==CONFIG.locais.rejeitado);
   host.innerHTML=CONFIG.categorias.map(c=>{
     const m=METAS[c.nome]||emptyMeta();
+    // ordem dos locais deste card (config primeiro) + rótulo podendo virar MSC etc.
+    const locs=(c.locaisOrdem&&c.locaisOrdem.length)
+      ? c.locaisOrdem.filter(l=>allLocs.includes(l)).concat(allLocs.filter(l=>!c.locaisOrdem.includes(l)))
+      : allLocs;
     const locRows=locs.map(l=>{ const lm=(m.locais&&m.locais[l])||{meta:0,minimo:0};
       return `<div class="mrow">
-        <span class="rlab"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${locColor(l)};margin-right:8px;vertical-align:middle"></span>${l}</span>
+        <span class="rlab"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${locColor(l)};margin-right:8px;vertical-align:middle"></span>${xmlEsc(labelLocal(c,l))}</span>
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-loc="${l}" data-f="meta" type="number" min="0" value="${lm.meta||''}">
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-loc="${l}" data-f="minimo" type="number" min="0" value="${lm.minimo||''}">
         <span></span></div>`;
