@@ -98,12 +98,12 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .card{
   position:relative; overflow:hidden; border-radius:var(--radius);
   border:1px solid var(--line); background:linear-gradient(180deg,var(--panel-2),var(--panel));
-  box-shadow:var(--shadow); padding:clamp(14px,1.8vh,26px) clamp(14px,1.3vw,26px);
-  display:flex; flex-direction:column; gap:clamp(5px,.9vh,12px);
+  box-shadow:var(--shadow); padding:clamp(13px,1.6vh,24px) clamp(14px,1.3vw,26px);
+  display:flex; flex-direction:column; gap:clamp(4px,.75vh,10px);
 }
 .card::before{ content:""; position:absolute; inset:0 auto 0 0; width:9px; background:var(--c,var(--brand)); }
 .card .card-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-.card .name{ display:flex; align-items:center; gap:12px; min-width:0; font-size:clamp(20px,2vw,38px); font-weight:800; letter-spacing:-.5px; }
+.card .name{ display:flex; align-items:center; gap:12px; min-width:0; font-size:clamp(21px,2.15vw,42px); font-weight:800; letter-spacing:-.5px; }
 .card .name .pic{
   width:clamp(46px,3.6vw,68px); height:clamp(46px,3.6vw,68px); border-radius:15px; display:grid; place-items:center;
   background:color-mix(in srgb, var(--c) 18%, transparent); color:var(--c);
@@ -112,11 +112,11 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .card .name .pic svg{ width:66%; height:66%; display:block; }
 .card .qty-wrap{ display:flex; align-items:baseline; gap:10px; }
 .card .qty{ font-size:clamp(44px,4.6vw,92px); font-weight:900; line-height:.9; letter-spacing:-2px; font-variant-numeric:tabular-nums; color:var(--txt); }
-.card .unit{ font-size:clamp(15px,1.4vw,24px); font-weight:800; color:var(--muted); white-space:nowrap; }
-.card .sub{ color:var(--muted); font-size:clamp(13px,1.15vw,19px); font-weight:600; margin-top:0; }
+.card .unit{ font-size:clamp(16px,1.55vw,27px); font-weight:800; color:var(--muted); white-space:nowrap; }
+.card .sub{ color:var(--muted); font-size:clamp(14px,1.35vw,23px); font-weight:700; margin-top:0; }
 .card .sub b{ color:var(--txt); }
 .card .meta{ display:flex; gap:clamp(8px,.8vw,14px); flex-wrap:wrap; }
-.badge{ display:inline-flex; align-items:center; gap:8px; padding:7px 13px; border-radius:999px; font-size:clamp(12px,1.05vw,18px); font-weight:700; border:1px solid var(--line-2); background:var(--panel); color:var(--muted); }
+.badge{ display:inline-flex; align-items:center; gap:8px; padding:8px 15px; border-radius:999px; font-size:clamp(13px,1.25vw,22px); font-weight:700; border:1px solid var(--line-2); background:var(--panel); color:var(--muted); }
 .badge .dot{ width:10px; height:10px; }
 .b-ok{ color:var(--ok); border-color:color-mix(in srgb,var(--ok) 40%,transparent); background:var(--ok-bg); }
 .b-warn{ color:var(--warn); border-color:color-mix(in srgb,var(--warn) 40%,transparent); background:var(--warn-bg); }
@@ -125,10 +125,13 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 
 /* chips por local dentro do card */
 .locs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:3px; align-items:center; }
-.locs.modelos{ margin-top:7px; padding-top:7px; border-top:1px dashed var(--line-2); }
+.locs.modelos{ margin-top:6px; padding-top:6px; border-top:1px dashed var(--line-2); gap:6px; }
+/* chips de MODELO são detalhe secundário: ficam compactos para sobrar altura
+   aos textos principais (número, disponível, meta, locais), que foram ampliados */
+.locs.modelos .locchip{ padding:6px 11px; font-size:clamp(12px,1.05vw,17px); }
 .modlab{ flex:0 0 100%; color:var(--faint); font-weight:800; font-size:clamp(11px,.95vw,16px); text-transform:uppercase; letter-spacing:.6px; margin:0 0 2px; }
-.locchip{ display:inline-flex; align-items:center; gap:8px; padding:7px 13px; border-radius:10px; background:var(--panel); border:1px solid var(--line);
-  font-size:clamp(13px,1.15vw,19px); font-weight:800; font-variant-numeric:tabular-nums; }
+.locchip{ display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:10px; background:var(--panel); border:1px solid var(--line);
+  font-size:clamp(14px,1.3vw,22px); font-weight:800; font-variant-numeric:tabular-nums; }
 .locchip .sw{ width:12px; height:12px; border-radius:3px; flex:0 0 auto; }
 .locchip .lk{ color:var(--muted); font-weight:600; }
 .locchip.rej{ border-color:color-mix(in srgb,var(--bad) 45%,transparent); }
@@ -161,7 +164,7 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 
 /* barra de progresso da meta + sparkline */
 .prog{ margin-top:4px; }
-.prog .ptop{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:clamp(12px,1.05vw,18px); font-weight:700; color:var(--muted); margin-bottom:5px; }
+.prog .ptop{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:clamp(14px,1.25vw,22px); font-weight:700; color:var(--muted); margin-bottom:5px; }
 .prog .ptop .pv{ color:var(--txt); font-weight:800; }
 .prog .bar{ height:13px; border-radius:999px; background:var(--panel); border:1px solid var(--line); overflow:hidden; }
 .prog .fill{ height:100%; border-radius:999px; transition:width .6s ease; }
