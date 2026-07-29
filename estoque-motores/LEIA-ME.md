@@ -37,9 +37,16 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
     (o card mostra "· MMO+USI" ao lado do consumo). As demais peças usam o
     disponível total. Isso é configurável em `CONFIG` → categoria →
     `coberturaLocais: ['MMO','USI']`.
-- Sempre mostra: **última atualização** (data/hora) e **próxima atualização**
-  (contagem regressiva). A atualização automática ocorre **de hora em hora, no
+- **Rodapé** — status da conexão, **última atualização** (data/hora), **próxima
+  atualização** (contagem regressiva) e o arquivo da base. Ficam no rodapé para
+  liberar o topo: o **título é grande** (o painel é lido de longe na TV) e os
+  cards ganham altura. A atualização automática ocorre **de hora em hora, no
   minuto :00** (topo de cada hora).
+- **Alerta reforçado:** quando uma peça entra em alerta, o card **pisca em
+  vermelho** com anel grosso, fundo avermelhado, faixa lateral larga, o nome em
+  vermelho e o selo do motivo sólido (branco no vermelho) — pensado para ser
+  notado de longe. Quem tiver "reduzir animações" ligado no sistema vê o mesmo
+  destaque, sem piscar.
 - **Tela sempre ligada:** o painel usa o *Screen Wake Lock* para impedir que a
   tela apague/bloqueie enquanto estiver aberto (Chrome/Edge em localhost/https).
   Para garantia total, configure também o Windows para **nunca suspender** e
