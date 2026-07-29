@@ -448,11 +448,13 @@ const CONFIG = {
   // ORDEM: só a sequência visual dos cards. A classificação é por palavra-chave
   // (Cabeçote/Bloco batem antes de Cilindro; Cabeçote bate antes de Motor).
   categorias: [
-    { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'], consumoDia:511, coberturaLocais:['MMO','USI'] },
-    { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'], consumoDia:511, coberturaLocais:['MMO','USI'] },
-    { nome:'Transmissão', svg:SVG_TRANSMISSAO, cor:'#06b6d4', chaves:['transmiss'], consumoDia:511 },
+    // locaisOrdem = sequência dos chips de local no card (locais não listados
+    // entram no fim); locaisLabel = renomeia o rótulo de um local só neste card.
+    { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'], consumoDia:511, coberturaLocais:['MMO','USI'], locaisOrdem:['FND','USI','MMO'] },
+    { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'], consumoDia:511, coberturaLocais:['MMO','USI'], locaisOrdem:['FND','USI','MMO'] },
+    { nome:'Transmissão', svg:SVG_TRANSMISSAO, cor:'#06b6d4', chaves:['transmiss'], consumoDia:511, locaisOrdem:['MMO','TRA','DLI','LMO'], locaisLabel:{ MMO:'MSC' } },
     // cor violeta (nao vermelha) para nao confundir a identidade do card com alerta
-    { nome:'Motor', svg:SVG_MOTOR, cor:'#8b5cf6', chaves:['motor'], consumoDia:511,
+    { nome:'Motor', svg:SVG_MOTOR, cor:'#8b5cf6', chaves:['motor'], consumoDia:511, locaisOrdem:['MMO','TRA','LMO'],
       // agrupa o Motor em 1.5 Turbo (tem "TURBO") e 1.5 (as demais)
       modelo:{ fonte:'desc',
                grupos:[ { nome:'1.5 Turbo', chaves:['turbo'] }, { nome:'1.5', chaves:[''] } ],
@@ -612,6 +614,19 @@ function locParts(raw){
 }
 function locColor(label){ return CONFIG.locais.cor[label] || CONFIG.locais.paleta[(CONFIG.locais.ordem.indexOf(label)+CONFIG.locais.paleta.length)%CONFIG.locais.paleta.length] || '#94a3b8'; }
 function isRej(label){ return label===CONFIG.locais.rejeitado; }
+/* ordem dos locais (não-rejeitado) de uma peça: usa cat.locaisOrdem quando
+   definida (locais presentes fora da lista vão para o fim), senão a ordem global */
+function ordemLocais(cat,g,todos){
+  const base=todos.filter(l=>!isRej(l));
+  if(cat&&cat.locaisOrdem&&cat.locaisOrdem.length){
+    const ord=cat.locaisOrdem.filter(l=>base.includes(l));
+    base.forEach(l=>{ if(!ord.includes(l)) ord.push(l); });
+    return ord;
+  }
+  return base;
+}
+/* rótulo do local podendo ser renomeado só nesta peça (ex.: Transmissão MMO→MSC) */
+function labelLocal(cat,l){ return (cat&&cat.locaisLabel&&cat.locaisLabel[l])||l; }
 /* extrai o MODELO/variante do item.
    - grupos: classifica por palavra-chave (1ª que casar), preservando o nome do grupo
    - regex:  captura do IMLITM (padrão) ou da descrição (fonte:'desc') */
@@ -895,11 +910,11 @@ function renderCards(data){
         `<span class="locchip sub"><span class="lk">↳ ${xmlEsc(k)}</span><span class="lv">${fmtInt(sl[k])}</span></span>`
       ).join('')+`</span>`;
     };
-    const chips=data.locais.filter(l=>!isRej(l)).map(l=>{
+    const chips=ordemLocais(cat,g,data.locais).map(l=>{
       const v=(g&&g.locais[l])||0; if(!v) return '';
       const lm=(m.locais&&m.locais[l])||{}; const lst=statusClass(v,lm.meta||0,lm.minimo||0);
       const alvo=(lm.meta>0)?` <span style="color:var(--faint);font-weight:600">/ ${fmtInt(lm.meta)}</span>`:'';
-      return `<span class="locgrp"><span class="locchip ${lst}"><span class="sw" style="background:${locColor(l)}"></span><span class="lk">${l}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>${subChips(l)}</span>`;
+      return `<span class="locgrp"><span class="locchip ${lst}"><span class="sw" style="background:${locColor(l)}"></span><span class="lk">${xmlEsc(labelLocal(cat,l))}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>${subChips(l)}</span>`;
     }).join('');
     const drOver=(m.drMax>0 && rej>m.drMax);
     const drChip = rej>0 ? `<span class="locchip rej"><span class="sw" style="background:${locColor(CONFIG.locais.rejeitado)}"></span><span class="lk">${CONFIG.locais.rejeitado} (rejeitado)${drOver?' ⚠':''}</span><span class="lv">−${fmtInt(rej)}${m.drMax>0?` <span style="color:var(--faint);font-weight:600">/ máx ${fmtInt(m.drMax)}</span>`:''}</span></span>` : '';
@@ -1196,7 +1211,7 @@ function buildEmailHtml(data){
   // ---- detalhe por peça (barra de locais + modelos)
   const detail=cats.map(c=>{
     const {cat,g,m}=c;
-    const locItems=data.locais.filter(l=>!isRej(l)).map(l=>({label:l,color:locCol(l),val:g.locais[l]||0})).filter(i=>i.val>0);
+    const locItems=ordemLocais(cat,g,data.locais).map(l=>({label:labelLocal(cat,l),color:locCol(l),val:g.locais[l]||0})).filter(i=>i.val>0);
     const extra=[]; if(g.rejeitado>0) extra.push({label:'DR (rejeitado)',color:LC.DR,val:g.rejeitado});
     if(g.impregna>0) extra.push({label:CONFIG.impregna.label,color:IMP_COL,val:g.impregna});
     let modsHtml='';
@@ -1219,7 +1234,7 @@ function buildEmailHtml(data){
       data.locais.forEach(l=>{
         const sl=g.sublocais[l]; if(!sl) return;
         Object.keys(sl).sort().forEach(k=>{ if(sl[k]) parts.push(
-          `<span style="white-space:nowrap">${esc(l)} ↳ ${esc(k)} <b style="color:${T.ink}">${fmtInt(sl[k])}</b></span>`); });
+          `<span style="white-space:nowrap">${esc(labelLocal(cat,l))} ↳ ${esc(k)} <b style="color:${T.ink}">${fmtInt(sl[k])}</b></span>`); });
       });
       if(parts.length) subHtml=`<div style="margin-top:6px;font-size:12px;color:${T.sec}">
         <span style="font-weight:700;color:${T.mut};text-transform:uppercase;letter-spacing:.4px;font-size:11px">Sublocais&nbsp;&nbsp;</span>`+
