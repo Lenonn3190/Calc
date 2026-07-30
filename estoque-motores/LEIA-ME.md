@@ -88,9 +88,11 @@ por peça **e por local**:
 - **Mínimo** — abaixo dele o card **pisca em vermelho** (alerta na TV);
 - **DR máx.** — quantidade de rejeitados aceitável (acima disso marca ⚠);
 - **Consumo/dia útil** — usado para calcular a **cobertura em dias** (previsão);
-- **Decremento** — quando preenchido, **subtrai esse valor do disponível** da peça
-  (ajuste manual). Reflete no número do card, na %, na cobertura e no e-mail, e
-  aparece como "− N dec" na linha do estoque. Deixe 0 para nenhum.
+- **Decremento** — quando preenchido, **subtrai esse valor do disponível** (ajuste
+  manual), **por peça** (seção Total) e/ou **por local** (coluna *Decr.* na seção
+  Por local). Entra apenas **no cálculo**: reflete no número do card, na %, no
+  alarme, na cobertura e no e-mail, **sem aparecer como texto** em nenhum lugar.
+  Deixe 0 para nenhum.
 
 O alerta de cor segue a **% da meta**: abaixo do **mínimo** = vermelho; acima do
 mínimo mas abaixo de **95%** da meta = laranja; a partir de 95% = sem alarme.

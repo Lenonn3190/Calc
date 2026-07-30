@@ -940,14 +940,11 @@ function renderCards(data){
         `<span class="locchip sub"><span class="lk">↳ ${xmlEsc(k)}</span><span class="lv">${fmtInt(sl[k])}</span></span>`
       ).join('')+`</span>`;
     };
-    // nota de decremento por local (valor do chip já é líquido)
-    const decChip=l=>{ const d=(g&&g.decLocais&&g.decLocais[l])||0; return d>0
-      ? `<span class="subwrap"><span class="locchip sub dec"><span class="lk">↓ decremento</span><span class="lv">−${fmtInt(d)}</span></span></span>` : ''; };
     const chips=ordemLocais(cat,g,data.locais).map(l=>{
-      const v=(g&&g.locais[l])||0; if(!v && !(g&&g.decLocais&&g.decLocais[l])) return '';
+      const v=(g&&g.locais[l])||0; if(!v) return '';
       const lm=(m.locais&&m.locais[l])||{}; const lst=statusClass(v,lm.meta||0,lm.minimo||0);
       const alvo=(lm.meta>0)?` <span style="color:var(--faint);font-weight:600">/ ${fmtInt(lm.meta)}</span>`:'';
-      return `<span class="locgrp"><span class="locchip ${lst}"><span class="sw" style="background:${locColor(l)}"></span><span class="lk">${xmlEsc(labelLocal(cat,l))}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>${subChips(l)}${decChip(l)}</span>`;
+      return `<span class="locgrp"><span class="locchip ${lst}"><span class="sw" style="background:${locColor(l)}"></span><span class="lk">${xmlEsc(labelLocal(cat,l))}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>${subChips(l)}</span>`;
     }).join('');
     const drOver=(m.drMax>0 && rej>m.drMax);
     const drChip = rej>0 ? `<span class="locchip rej"><span class="sw" style="background:${locColor(CONFIG.locais.rejeitado)}"></span><span class="lk">${CONFIG.locais.rejeitado} (rejeitado)${drOver?' ⚠':''}</span><span class="lv">−${fmtInt(rej)}${m.drMax>0?` <span style="color:var(--faint);font-weight:600">/ máx ${fmtInt(m.drMax)}</span>`:''}</span></span>` : '';
@@ -975,7 +972,7 @@ function renderCards(data){
         ${badge}
       </div>
       <div class="qty-wrap"><span class="qty">${fmtInt(disp)}</span><span class="unit">${CONFIG.unidade}</span></div>
-      <div class="sub"><b>disponível</b> · estoque ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}${(g&&g.decTotal>0)?` − ${fmtInt(g.decTotal)} dec`:''}</div>
+      <div class="sub"><b>disponível</b> · estoque ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}</div>
       ${progHtml}
       ${sparkHtml}
       <div class="locs">${chips}${drChip}</div>
@@ -1283,26 +1280,17 @@ function buildEmailHtml(data){
         <span style="font-weight:700;color:${T.mut};text-transform:uppercase;letter-spacing:.4px;font-size:11px">Sublocais&nbsp;&nbsp;</span>`+
         parts.join('&nbsp;&nbsp;·&nbsp;&nbsp;')+`</div>`;
     }
-    // decrementos por local (valores dos locais já são líquidos)
-    let decHtml='';
-    if(g.decLocais){
-      const dp=Object.keys(g.decLocais).filter(l=>g.decLocais[l]>0)
-        .map(l=>`<span style="white-space:nowrap">${esc(labelLocal(cat,l))} <b style="color:${S.bad.text}">−${fmtInt(g.decLocais[l])}</b></span>`);
-      if(g.decremento>0) dp.unshift(`<span style="white-space:nowrap">peça <b style="color:${S.bad.text}">−${fmtInt(g.decremento)}</b></span>`);
-      if(dp.length) decHtml=`<div style="margin-top:6px;font-size:12px;color:${T.sec}">
-        <span style="font-weight:700;color:${T.mut};text-transform:uppercase;letter-spacing:.4px;font-size:11px">Decrementos&nbsp;&nbsp;</span>`+
-        dp.join('&nbsp;&nbsp;·&nbsp;&nbsp;')+`</div>`;
-    }
+    // decremento é aplicado só nos cálculos (não é exibido)
     return `<div style="padding:14px 16px;border-top:1px solid ${T.line}">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
         <td style="font-size:14px;font-weight:800;color:${T.ink}">${sw(cat.cor)}&nbsp;${esc(cat.nome)}
           <span style="font-weight:800;color:${T.ink};font-size:16px">&nbsp;&nbsp;${fmtInt(g.disponivel)}</span>
-          <span style="font-size:12px;color:${T.mut};font-weight:400"> un disponíveis${m.meta>0?` · meta ${fmtInt(m.meta)}`:''}${g.decTotal>0?` · −${fmtInt(g.decTotal)} dec`:''}</span></td>
+          <span style="font-size:12px;color:${T.mut};font-weight:400"> un disponíveis${m.meta>0?` · meta ${fmtInt(m.meta)}`:''}</span></td>
         <td align="right">${pill(c.st.k,c.st.label)}</td>
       </tr></table>
       ${locItems.length?`<div style="margin-top:10px">${stackBar(locItems)}</div>
       <div style="margin-top:6px">${legend(locItems.concat(extra))}</div>`:''}
-      ${subHtml}${decHtml}${covLine}${modsHtml}
+      ${subHtml}${covLine}${modsHtml}
     </div>`;
   }).join('');
   // aviso quando ainda não há histórico diário suficiente para o sparkline n-5
