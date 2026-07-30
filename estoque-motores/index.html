@@ -698,7 +698,10 @@ function interpret(rows){
   const porLocal={}; locais.forEach(l=>porLocal[l]=0);
   CONFIG.categorias.forEach(c=>{
     const g=groups[c.nome];
-    g.disponivel=g.bom-g.rejeitado;
+    // decremento manual (parâmetro nas Metas): subtrai do disponível quando preenchido
+    const dec=(typeof METAS!=='undefined' && METAS[c.nome] && +METAS[c.nome].decremento)||0;
+    g.decremento=dec;
+    g.disponivel=g.bom-g.rejeitado-dec;
     locais.forEach(l=>{ porLocal[l]+=(g.locais[l]||0); });
     // finaliza modelos: disponível por modelo + ordem (config primeiro, extras depois)
     if(c.modelo){
@@ -721,13 +724,16 @@ function interpret(rows){
    ============================================================ */
 let METAS = {};
 let lastData = null;
+let lastRows = null;   // últimas linhas lidas da base (para reinterpretar ao mudar metas)
+/* recalcula a partir das últimas linhas (aplica mudanças de metas como o decremento) */
+function reinterpretar(){ if(lastRows){ render(interpret(lastRows)); } else if(lastData){ render(lastData); } }
 const METAS_KEY='estoque-metas';
-function emptyMeta(){ return {meta:0,minimo:0,drMax:0,consumoDia:0,locais:{},modelos:{}}; }
+function emptyMeta(){ return {meta:0,minimo:0,drMax:0,decremento:0,consumoDia:0,locais:{},modelos:{}}; }
 function defaultMetas(){ const o={}; CONFIG.categorias.forEach(c=>{ o[c.nome]=emptyMeta(); o[c.nome].consumoDia=c.consumoDia||0; }); return o; }
 function normalizeMetas(j){
   const src=(j&&j.metas)?j.metas:(j||{}); const o=defaultMetas();
   CONFIG.categorias.forEach(c=>{ const m=src[c.nome]||{}; const t=o[c.nome];
-    t.meta=+m.meta||0; t.minimo=+m.minimo||0; t.drMax=+m.drMax||0;
+    t.meta=+m.meta||0; t.minimo=+m.minimo||0; t.drMax=+m.drMax||0; t.decremento=+m.decremento||0;
     t.consumoDia=(m.consumoDia!=null)?(+m.consumoDia||0):(c.consumoDia||0);
     const ml=m.locais||{}; Object.keys(ml).forEach(l=>{ const x=ml[l]||{}; t.locais[l]={meta:+x.meta||0,minimo:+x.minimo||0}; });
     const mm=m.modelos||{}; Object.keys(mm).forEach(k=>{ const x=mm[k]||{}; t.modelos[k]={meta:+x.meta||0,minimo:+x.minimo||0}; });
@@ -839,9 +845,10 @@ function fitLines(){
 function coberturaBase(cat,g){
   if(!g) return 0;
   if(cat.coberturaLocais && cat.coberturaLocais.length){
-    return cat.coberturaLocais.reduce((s,l)=>s+((g.locais&&g.locais[l])||0),0);
+    // soma só os locais definidos, já descontando o decremento manual da peça
+    return Math.max(0, cat.coberturaLocais.reduce((s,l)=>s+((g.locais&&g.locais[l])||0),0) - (g.decremento||0));
   }
-  return g.disponivel;
+  return g.disponivel;   // já vem com o decremento subtraído
 }
 
 function renderCards(data){
@@ -953,7 +960,7 @@ function renderCards(data){
         ${badge}
       </div>
       <div class="qty-wrap"><span class="qty">${fmtInt(disp)}</span><span class="unit">${CONFIG.unidade}</span></div>
-      <div class="sub"><b>disponível</b> · estoque ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}</div>
+      <div class="sub"><b>disponível</b> · estoque ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}${(g&&g.decremento>0)?` − ${fmtInt(g.decremento)} dec`:''}</div>
       ${progHtml}
       ${sparkHtml}
       <div class="locs">${chips}${drChip}</div>
@@ -1006,6 +1013,10 @@ function renderMetasForm(){
       <div class="mrow" style="grid-template-columns:120px 1fr">
         <span class="rlab">Consumo/dia útil</span>
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-f="consumoDia" type="number" min="0" value="${m.consumoDia||''}" placeholder="0 = sem previsão">
+      </div>
+      <div class="mrow" style="grid-template-columns:120px 1fr">
+        <span class="rlab">Decremento</span>
+        <input class="inp" data-cat="${xmlEsc(c.nome)}" data-f="decremento" type="number" min="0" value="${m.decremento||''}" placeholder="0 = nenhum · subtrai do disponível">
       </div>
       <div class="mrow head"><span class="rlab">Por local</span><span>Meta</span><span>Mínimo</span><span></span></div>
       ${locRows}
@@ -1261,7 +1272,7 @@ function buildEmailHtml(data){
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
         <td style="font-size:14px;font-weight:800;color:${T.ink}">${sw(cat.cor)}&nbsp;${esc(cat.nome)}
           <span style="font-weight:800;color:${T.ink};font-size:16px">&nbsp;&nbsp;${fmtInt(g.disponivel)}</span>
-          <span style="font-size:12px;color:${T.mut};font-weight:400"> un disponíveis${m.meta>0?` · meta ${fmtInt(m.meta)}`:''}</span></td>
+          <span style="font-size:12px;color:${T.mut};font-weight:400"> un disponíveis${m.meta>0?` · meta ${fmtInt(m.meta)}`:''}${g.decremento>0?` · −${fmtInt(g.decremento)} dec`:''}</span></td>
         <td align="right">${pill(c.st.k,c.st.label)}</td>
       </tr></table>
       ${locItems.length?`<div style="margin-top:10px">${stackBar(locItems)}</div>
@@ -1498,6 +1509,7 @@ async function refresh(manualRows){
     let rows;
     if(manualRows){ rows=manualRows; }
     else { rows=await loadFromServer(); currentSource='server'; currentFileName=CONFIG.arquivo; }
+    lastRows=rows;                           // guarda as linhas p/ reinterpretar ao editar metas (ex.: decremento)
     const data=interpret(rows);
     HIST=recordHist(data);                  // registra ponto no histórico
     HISTD=recordHistD(data);                // fechamento diário (evolução n-5)
@@ -1634,7 +1646,7 @@ function init(){
   $('#btnMetasClose').onclick=()=>$('#metasOverlay').classList.remove('show');
   $('#btnMetasSave').onclick=()=>{
     readMetasForm(); saveMetas(); applyIntervalLabels(); scheduleNext(); saveMetasToFolder();
-    if(lastData) render(lastData);
+    reinterpretar();
     $('#metasOverlay').classList.remove('show'); toast('Metas salvas');
   };
   // Pasta & relatório
@@ -1651,7 +1663,7 @@ function init(){
   $('#btnMetasImport').onclick=()=>mf.click();
   mf.onchange=async()=>{ const f=mf.files[0]; mf.value=''; if(!f) return;
     try{ const txt=await f.text(); METAS=normalizeMetas(JSON.parse(txt)); saveMetas(); applyIntervalLabels(); scheduleNext();
-      renderMetasForm(); if(lastData) render(lastData); toast('Metas importadas de '+f.name);
+      renderMetasForm(); reinterpretar(); toast('Metas importadas de '+f.name);
     }catch(e){ $('#metasErr').textContent='Arquivo .json inválido: '+(e.message||e); $('#metasErr').classList.remove('hidden'); }
   };
 
@@ -1689,7 +1701,7 @@ function init(){
 
   // sem metas salvas? tenta carregar metas.json do servidor (parâmetros de deploy)
   if(!localStorage.getItem(METAS_KEY)){
-    fetchMetasFile().then(f=>{ if(f){ METAS=f; saveMetas(); applyIntervalLabels(); scheduleNext(); renderMetasForm(); if(lastData) render(lastData); } });
+    fetchMetasFile().then(f=>{ if(f){ METAS=f; saveMetas(); applyIntervalLabels(); scheduleNext(); renderMetasForm(); reinterpretar(); } });
   }
 
   // reabrir JÁ CONECTADO: mostra a última base salva na hora e SEMPRE tenta

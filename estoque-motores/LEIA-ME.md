@@ -87,7 +87,13 @@ por peça **e por local**:
 - **Meta (alvo)** — quanto se quer ter em estoque;
 - **Mínimo** — abaixo dele o card **pisca em vermelho** (alerta na TV);
 - **DR máx.** — quantidade de rejeitados aceitável (acima disso marca ⚠);
-- **Consumo/dia útil** — usado para calcular a **cobertura em dias** (previsão).
+- **Consumo/dia útil** — usado para calcular a **cobertura em dias** (previsão);
+- **Decremento** — quando preenchido, **subtrai esse valor do disponível** da peça
+  (ajuste manual). Reflete no número do card, na %, na cobertura e no e-mail, e
+  aparece como "− N dec" na linha do estoque. Deixe 0 para nenhum.
+
+O alerta de cor segue a **% da meta**: abaixo do **mínimo** = vermelho; acima do
+mínimo mas abaixo de **95%** da meta = laranja; a partir de 95% = sem alarme.
 
 O que o painel passa a mostrar:
 
