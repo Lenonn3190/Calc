@@ -178,28 +178,30 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .spark .sdelta{ font-weight:800; font-variant-numeric:tabular-nums; }
 .spark .up{ color:var(--ok);} .spark .down{ color:var(--bad);} .spark .flat{ color:var(--muted);}
 
-/* alerta: card abaixo do mínimo pisca. Borda/anel com a SUAVIDADE e o TEMPO
-   originais (anel suave, 1.25s ease-in-out), só um pouco mais grossa; e o fundo
-   interno avermelhado pulsando, mantido da versão reforçada. */
+/* alerta: card pisca. VERMELHO = abaixo do mínimo/crítico; LARANJA = abaixo de
+   metaAlerta% da meta. A cor do alarme vem de --alarmc (borda/anel/fundo). Borda
+   com a suavidade e o tempo originais (anel suave, 1.25s ease-in-out). */
+.card.alarm{ --alarmc:var(--bad); }
+.card.alarm.alarm-warn{ --alarmc:var(--warn); }
 @keyframes alarm{
   0%,100%{ box-shadow:var(--shadow); border-color:var(--line);
            background:var(--panel); }
-  50%    { box-shadow:0 0 0 4px color-mix(in srgb,var(--bad) 55%,transparent), var(--shadow);
-           border-color:var(--bad);
-           background:color-mix(in srgb,var(--bad) 14%,var(--panel)); }
+  50%    { box-shadow:0 0 0 4px color-mix(in srgb,var(--alarmc) 55%,transparent), var(--shadow);
+           border-color:var(--alarmc);
+           background:color-mix(in srgb,var(--alarmc) 14%,var(--panel)); }
 }
 .card.alarm{ animation:alarm 1.25s ease-in-out infinite; }
-.card.alarm::before{ background:var(--bad); width:12px; }
-.card.alarm .name{ color:var(--bad); }
+.card.alarm::before{ background:var(--alarmc); width:12px; }
+.card.alarm .name{ color:var(--alarmc); }
 /* o selo do motivo fica SÓLIDO (não pulsa): piscar a opacidade dele deixava o
    texto do alerta mais difícil de ler, o contrário do objetivo */
-.card.alarm .badge.b-bad{ background:var(--bad); color:#fff; border-color:var(--bad); }
-.card.alarm .badge.b-bad .dot{ background:#fff; box-shadow:none; animation:none; }
+.card.alarm .badge.b-bad, .card.alarm.alarm-warn .badge.b-warn{ background:var(--alarmc); color:#fff; border-color:var(--alarmc); }
+.card.alarm .badge.b-bad .dot, .card.alarm.alarm-warn .badge.b-warn .dot{ background:#fff; box-shadow:none; animation:none; }
 /* respeita quem desativa animações no sistema: mantém o alerta, sem piscar */
 @media (prefers-reduced-motion:reduce){
-  .card.alarm{ animation:none; border-color:var(--bad);
-    box-shadow:0 0 0 4px color-mix(in srgb,var(--bad) 55%,transparent), var(--shadow);
-    background:color-mix(in srgb,var(--bad) 12%,var(--panel)); }
+  .card.alarm{ animation:none; border-color:var(--alarmc);
+    box-shadow:0 0 0 4px color-mix(in srgb,var(--alarmc) 55%,transparent), var(--shadow);
+    background:color-mix(in srgb,var(--alarmc) 12%,var(--panel)); }
 }
 
 /* ============ GRÁFICOS ============ */
@@ -441,6 +443,8 @@ const CONFIG = {
   relatorio: { horarios: ['08:30','12:30'] },  // horários que geram o HTML de e-mail na pasta mapeada
   // cobertura (previsão em dias úteis): limiares de alerta
   cobertura: { critico: 1, baixo: 5 },         // < crítico = vermelho/pisca ; < baixo = amarelo
+  // alerta pela % da meta: < mínimo = vermelho ; entre mínimo e metaAlerta% = laranja ; >= metaAlerta% = sem alarme
+  metaAlerta: 95,
   // "Impregna": linhas com este LIMCU nao entram no disponivel; aparecem à parte no card
   impregna: { limcu: 'TERCHAB3', label: 'Impregna', cor: '#c084fc' },
 
@@ -878,7 +882,14 @@ function renderCards(data){
     const covHtml = cobertura!=null
       ? `<div class="cover ${covClass}"><div class="cov-main">📅 ≈ ${fmtDays(cobertura)} dias</div><div class="cov-sub">úteis · consumo ${fmtInt(cons)}/dia${covFonte}</div></div>`
       : '';
-    const alarm=(m.minimo>0 && disp<m.minimo) || locAlarm || modAlarm || covCritico;
+    // NÍVEIS DE ALARME:
+    //  vermelho  = abaixo do mínimo (total, local ou modelo) ou cobertura crítica
+    //  laranja   = acima do mínimo, mas abaixo de metaAlerta% da meta
+    //  sem alarme= >= metaAlerta% da meta
+    const redAlarm=(m.minimo>0 && disp<m.minimo) || locAlarm || modAlarm || covCritico;
+    const metaLimite=m.meta>0 ? (CONFIG.metaAlerta/100)*m.meta : 0;
+    const orangeAlarm=!redAlarm && m.meta>0 && disp<metaLimite;
+    const alarm=redAlarm||orangeAlarm;
 
     // barra de progresso da meta
     let progHtml='';
@@ -923,17 +934,19 @@ function renderCards(data){
     const impChip = imp>0 ? `<span class="locchip imp"><span class="sw" style="background:${CONFIG.impregna.cor}"></span><span class="lk">${xmlEsc(CONFIG.impregna.label)}</span><span class="lv">${fmtInt(imp)}</span></span>` : '';
 
     const totalLow=(m.minimo>0 && disp<m.minimo);
+    const pctMeta=m.meta>0?Math.round(disp/m.meta*100):null;
     const badge = totalLow ? `<span class="badge b-bad"><span class="dot err"></span>Abaixo do mínimo</span>`
                 : covCritico ? `<span class="badge b-bad"><span class="dot err"></span>Cobertura crítica</span>`
                 : modAlarm ? `<span class="badge b-bad"><span class="dot err"></span>Modelo abaixo do mínimo</span>`
                 : locAlarm ? `<span class="badge b-bad"><span class="dot err"></span>Local abaixo do mínimo</span>`
-                : (st==='warn') ? `<span class="badge b-warn"><span class="dot"></span>Abaixo da meta</span>`
+                : orangeAlarm ? `<span class="badge b-warn"><span class="dot"></span>Abaixo da meta (${pctMeta}%)</span>`
+                : (m.meta>0 && disp<m.meta) ? `<span class="badge b-warn"><span class="dot"></span>Abaixo da meta (${pctMeta}%)</span>`
                 : (st==='ok') ? `<span class="badge b-ok"><span class="dot live"></span>Meta atingida</span>`
                 : tipos ? `<span class="badge b-info"><span class="dot"></span>${tipos} item(ns)</span>`
                         : `<span class="badge b-warn"><span class="dot"></span>Sem dados</span>`;
 
     const card=document.createElement('div');
-    card.className='card'+(alarm?' alarm':''); card.style.setProperty('--c',cat.cor);
+    card.className='card'+(redAlarm?' alarm':orangeAlarm?' alarm alarm-warn':''); card.style.setProperty('--c',cat.cor);
     card.innerHTML=`
       <div class="card-top">
         <div class="name"><span class="pic">${cat.svg}</span>${xmlEsc(cat.nome)}</div>
