@@ -151,6 +151,8 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
   font-size:clamp(12px,1.05vw,17px); gap:6px; }
 .locchip.sub .lk{ color:var(--faint); font-weight:700; }
 .locchip.sub .lv{ color:var(--muted); }
+.locchip.sub.dec{ border-color:color-mix(in srgb,var(--bad) 40%,transparent); }
+.locchip.sub.dec .lv{ color:var(--bad); }
 
 /* cobertura / previsão (dias úteis) */
 .cover{ display:inline-flex; flex-direction:column; gap:1px; margin-top:auto; padding:7px 14px; border-radius:11px;
@@ -698,10 +700,20 @@ function interpret(rows){
   const porLocal={}; locais.forEach(l=>porLocal[l]=0);
   CONFIG.categorias.forEach(c=>{
     const g=groups[c.nome];
-    // decremento manual (parâmetro nas Metas): subtrai do disponível quando preenchido
-    const dec=(typeof METAS!=='undefined' && METAS[c.nome] && +METAS[c.nome].decremento)||0;
-    g.decremento=dec;
-    g.disponivel=g.bom-g.rejeitado-dec;
+    // DECREMENTO manual (parâmetro nas Metas): subtrai do disponível quando preenchido.
+    // Por peça (dec) e POR LOCAL (reduz o valor do local, o estoque bom e a cobertura).
+    const mCat=(typeof METAS!=='undefined' && METAS[c.nome])||{};
+    const dec=+mCat.decremento||0;
+    const mLoc=mCat.locais||{};
+    g.decLocais={}; let decLocTot=0;
+    locais.forEach(l=>{
+      const dl=+((mLoc[l]||{}).decremento)||0;
+      if(dl>0){ g.locais[l]=(g.locais[l]||0)-dl; g.decLocais[l]=dl; decLocTot+=dl; }  // reduz só o local (chip/cobertura); g.bom fica bruto
+    });
+    g.decremento=dec;                    // decremento da peça
+    g.decLocalTotal=decLocTot;           // soma dos decrementos por local
+    g.decTotal=dec+decLocTot;            // total removido do disponível
+    g.disponivel=g.bom-g.rejeitado-g.decTotal;
     locais.forEach(l=>{ porLocal[l]+=(g.locais[l]||0); });
     // finaliza modelos: disponível por modelo + ordem (config primeiro, extras depois)
     if(c.modelo){
@@ -735,7 +747,7 @@ function normalizeMetas(j){
   CONFIG.categorias.forEach(c=>{ const m=src[c.nome]||{}; const t=o[c.nome];
     t.meta=+m.meta||0; t.minimo=+m.minimo||0; t.drMax=+m.drMax||0; t.decremento=+m.decremento||0;
     t.consumoDia=(m.consumoDia!=null)?(+m.consumoDia||0):(c.consumoDia||0);
-    const ml=m.locais||{}; Object.keys(ml).forEach(l=>{ const x=ml[l]||{}; t.locais[l]={meta:+x.meta||0,minimo:+x.minimo||0}; });
+    const ml=m.locais||{}; Object.keys(ml).forEach(l=>{ const x=ml[l]||{}; t.locais[l]={meta:+x.meta||0,minimo:+x.minimo||0,decremento:+x.decremento||0}; });
     const mm=m.modelos||{}; Object.keys(mm).forEach(k=>{ const x=mm[k]||{}; t.modelos[k]={meta:+x.meta||0,minimo:+x.minimo||0}; });
   });
   if(j&&j.intervaloMin) CONFIG.intervaloMin=Math.max(1,+j.intervaloMin||CONFIG.intervaloMin);
@@ -845,10 +857,10 @@ function fitLines(){
 function coberturaBase(cat,g){
   if(!g) return 0;
   if(cat.coberturaLocais && cat.coberturaLocais.length){
-    // soma só os locais definidos, já descontando o decremento manual da peça
+    // soma os locais (já líquidos do decremento por local) e desconta o decremento da peça
     return Math.max(0, cat.coberturaLocais.reduce((s,l)=>s+((g.locais&&g.locais[l])||0),0) - (g.decremento||0));
   }
-  return g.disponivel;   // já vem com o decremento subtraído
+  return g.disponivel;   // já vem com todos os decrementos subtraídos
 }
 
 function renderCards(data){
@@ -928,11 +940,14 @@ function renderCards(data){
         `<span class="locchip sub"><span class="lk">↳ ${xmlEsc(k)}</span><span class="lv">${fmtInt(sl[k])}</span></span>`
       ).join('')+`</span>`;
     };
+    // nota de decremento por local (valor do chip já é líquido)
+    const decChip=l=>{ const d=(g&&g.decLocais&&g.decLocais[l])||0; return d>0
+      ? `<span class="subwrap"><span class="locchip sub dec"><span class="lk">↓ decremento</span><span class="lv">−${fmtInt(d)}</span></span></span>` : ''; };
     const chips=ordemLocais(cat,g,data.locais).map(l=>{
-      const v=(g&&g.locais[l])||0; if(!v) return '';
+      const v=(g&&g.locais[l])||0; if(!v && !(g&&g.decLocais&&g.decLocais[l])) return '';
       const lm=(m.locais&&m.locais[l])||{}; const lst=statusClass(v,lm.meta||0,lm.minimo||0);
       const alvo=(lm.meta>0)?` <span style="color:var(--faint);font-weight:600">/ ${fmtInt(lm.meta)}</span>`:'';
-      return `<span class="locgrp"><span class="locchip ${lst}"><span class="sw" style="background:${locColor(l)}"></span><span class="lk">${xmlEsc(labelLocal(cat,l))}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>${subChips(l)}</span>`;
+      return `<span class="locgrp"><span class="locchip ${lst}"><span class="sw" style="background:${locColor(l)}"></span><span class="lk">${xmlEsc(labelLocal(cat,l))}</span><span class="lv">${fmtInt(v)}${alvo}</span></span>${subChips(l)}${decChip(l)}</span>`;
     }).join('');
     const drOver=(m.drMax>0 && rej>m.drMax);
     const drChip = rej>0 ? `<span class="locchip rej"><span class="sw" style="background:${locColor(CONFIG.locais.rejeitado)}"></span><span class="lk">${CONFIG.locais.rejeitado} (rejeitado)${drOver?' ⚠':''}</span><span class="lv">−${fmtInt(rej)}${m.drMax>0?` <span style="color:var(--faint);font-weight:600">/ máx ${fmtInt(m.drMax)}</span>`:''}</span></span>` : '';
@@ -960,7 +975,7 @@ function renderCards(data){
         ${badge}
       </div>
       <div class="qty-wrap"><span class="qty">${fmtInt(disp)}</span><span class="unit">${CONFIG.unidade}</span></div>
-      <div class="sub"><b>disponível</b> · estoque ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}${(g&&g.decremento>0)?` − ${fmtInt(g.decremento)} dec`:''}</div>
+      <div class="sub"><b>disponível</b> · estoque ${fmtInt(g?g.bom:0)}${rej>0?` − ${fmtInt(rej)} DR`:''}${(g&&g.decTotal>0)?` − ${fmtInt(g.decTotal)} dec`:''}</div>
       ${progHtml}
       ${sparkHtml}
       <div class="locs">${chips}${drChip}</div>
@@ -981,12 +996,12 @@ function renderMetasForm(){
     const locs=(c.locaisOrdem&&c.locaisOrdem.length)
       ? c.locaisOrdem.filter(l=>allLocs.includes(l)).concat(allLocs.filter(l=>!c.locaisOrdem.includes(l)))
       : allLocs;
-    const locRows=locs.map(l=>{ const lm=(m.locais&&m.locais[l])||{meta:0,minimo:0};
+    const locRows=locs.map(l=>{ const lm=(m.locais&&m.locais[l])||{meta:0,minimo:0,decremento:0};
       return `<div class="mrow">
         <span class="rlab"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${locColor(l)};margin-right:8px;vertical-align:middle"></span>${xmlEsc(labelLocal(c,l))}</span>
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-loc="${l}" data-f="meta" type="number" min="0" value="${lm.meta||''}">
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-loc="${l}" data-f="minimo" type="number" min="0" value="${lm.minimo||''}">
-        <span></span></div>`;
+        <input class="inp" data-cat="${xmlEsc(c.nome)}" data-loc="${l}" data-f="decremento" type="number" min="0" value="${lm.decremento||''}"></div>`;
     }).join('');
     // seção por MODELO (só p/ categorias com modelo)
     let modBlock='';
@@ -1018,7 +1033,7 @@ function renderMetasForm(){
         <span class="rlab">Decremento</span>
         <input class="inp" data-cat="${xmlEsc(c.nome)}" data-f="decremento" type="number" min="0" value="${m.decremento||''}" placeholder="0 = nenhum · subtrai do disponível">
       </div>
-      <div class="mrow head"><span class="rlab">Por local</span><span>Meta</span><span>Mínimo</span><span></span></div>
+      <div class="mrow head"><span class="rlab">Por local</span><span>Meta</span><span>Mínimo</span><span>Decr.</span></div>
       ${locRows}
       ${modBlock}
     </div>`;
@@ -1268,16 +1283,26 @@ function buildEmailHtml(data){
         <span style="font-weight:700;color:${T.mut};text-transform:uppercase;letter-spacing:.4px;font-size:11px">Sublocais&nbsp;&nbsp;</span>`+
         parts.join('&nbsp;&nbsp;·&nbsp;&nbsp;')+`</div>`;
     }
+    // decrementos por local (valores dos locais já são líquidos)
+    let decHtml='';
+    if(g.decLocais){
+      const dp=Object.keys(g.decLocais).filter(l=>g.decLocais[l]>0)
+        .map(l=>`<span style="white-space:nowrap">${esc(labelLocal(cat,l))} <b style="color:${S.bad.text}">−${fmtInt(g.decLocais[l])}</b></span>`);
+      if(g.decremento>0) dp.unshift(`<span style="white-space:nowrap">peça <b style="color:${S.bad.text}">−${fmtInt(g.decremento)}</b></span>`);
+      if(dp.length) decHtml=`<div style="margin-top:6px;font-size:12px;color:${T.sec}">
+        <span style="font-weight:700;color:${T.mut};text-transform:uppercase;letter-spacing:.4px;font-size:11px">Decrementos&nbsp;&nbsp;</span>`+
+        dp.join('&nbsp;&nbsp;·&nbsp;&nbsp;')+`</div>`;
+    }
     return `<div style="padding:14px 16px;border-top:1px solid ${T.line}">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
         <td style="font-size:14px;font-weight:800;color:${T.ink}">${sw(cat.cor)}&nbsp;${esc(cat.nome)}
           <span style="font-weight:800;color:${T.ink};font-size:16px">&nbsp;&nbsp;${fmtInt(g.disponivel)}</span>
-          <span style="font-size:12px;color:${T.mut};font-weight:400"> un disponíveis${m.meta>0?` · meta ${fmtInt(m.meta)}`:''}${g.decremento>0?` · −${fmtInt(g.decremento)} dec`:''}</span></td>
+          <span style="font-size:12px;color:${T.mut};font-weight:400"> un disponíveis${m.meta>0?` · meta ${fmtInt(m.meta)}`:''}${g.decTotal>0?` · −${fmtInt(g.decTotal)} dec`:''}</span></td>
         <td align="right">${pill(c.st.k,c.st.label)}</td>
       </tr></table>
       ${locItems.length?`<div style="margin-top:10px">${stackBar(locItems)}</div>
       <div style="margin-top:6px">${legend(locItems.concat(extra))}</div>`:''}
-      ${subHtml}${covLine}${modsHtml}
+      ${subHtml}${decHtml}${covLine}${modsHtml}
     </div>`;
   }).join('');
   // aviso quando ainda não há histórico diário suficiente para o sparkline n-5
