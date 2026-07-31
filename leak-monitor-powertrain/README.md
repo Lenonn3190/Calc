@@ -1,14 +1,15 @@
 # Leak Test | Powertrain — Monitor de Estanqueidade
 
-Painel de acompanhamento dos resultados de **leak test** (teste de estanqueidade), no
-mesmo formato e mecanismo do painel de Gestão de Estoque: TV escura com um card por
-posto, leitura automática de uma base compartilhada, metas configuráveis e alarme.
+Painel de acompanhamento dos resultados de **leak test** (teste de estanqueidade) em
+formato **andon / SCADA**: uma coluna por posto, tarja colorida com a situação, números
+grandes para leitura à distância, leitura automática de uma base compartilhada, metas
+configuráveis e alarme sonoro. Fora o título, a tela não tem nenhum outro elemento fixo.
 
 Postos monitorados:
 
 | Área | Posto | O que mostra |
 |---|---|---|
-| Usinagem | **Bloco** | FPY, NOK, motivos de vazamento, modelos |
+| Usinagem | **Bloco** | FPY, testadas/aprovadas/NOK, principal reprovação, lâmpadas dos últimos testes |
 | Usinagem | **Cabeçote** | idem |
 | Montagem de Motores | **Leak Zero** | idem |
 | Montagem de Motores | **Water Leak** | idem |
@@ -19,21 +20,25 @@ já existente.
 
 ## Recursos
 
-- **Card por posto** com FPY (aprovação de 1ª passagem), aprovadas/testadas/NOK,
-  atingimento da meta, tendência do período, ranking de motivos de reprovação,
-  retestes, refugo, vazamento médio × limite e FPY por modelo de motor.
-- **Cores por situação**: verde (meta atingida), amarelo (abaixo da meta), vermelho
-  (abaixo do mínimo ou NOK acima do limite) — com **alarme sonoro** na virada para crítico.
+- **Coluna por posto** com FPY (aprovação de 1ª passagem), testadas/aprovadas/NOK,
+  atingimento da meta, principal motivo de reprovação, retestes, vazamento médio ×
+  limite e o **painel de lâmpadas** com o resultado dos últimos testes (verde/vermelho).
+- **Cores por situação** na tarja do posto: verde (meta atingida), amarelo (abaixo da
+  meta), vermelho (abaixo do mínimo ou NOK acima do limite) — a tarja pisca e o
+  **alarme sonoro** dispara na virada para crítico.
+- **Tela limpa**: só o cabeçalho do título. A barra de controle (período, atualizar,
+  metas, registros, alarme, tela cheia, configurações) aparece ao mexer o mouse e some
+  sozinha; avisos de base offline/desatualizada surgem ao lado do título.
 - **Períodos**: turno atual, dia de produção, 24 h, 7 dias ou base completa.
 - **Base compartilhada** em `dados\leak.csv`, relida automaticamente (intervalo configurável),
   com metas em `dados\config.json` valendo para todos os painéis da rede.
 - **Leitor de CSV tolerante**: separador `;`, `,` ou tabulação, nomes de coluna
   flexíveis, datas em formato BR ou ISO, decimal com vírgula. Sem a coluna de
   resultado, deduz OK/NOK comparando o vazamento medido com o limite.
-- **Registros e exportação**: tabela dos testes do período, export de registros e de
-  resumo por posto em CSV.
-- **Modo TV**: tela cheia, escala ajustável, cards que se adaptam à altura da tela,
-  atalhos de teclado e `.bat` de quiosque.
+- **Registros e exportação**: clique em uma coluna para ver os testes do período, o
+  FPY por modelo de motor e exportar registros e resumo por posto em CSV.
+- **Modo TV**: tela cheia, escala ajustável, colunas dimensionadas para a altura da
+  tela, atalhos de teclado e `.bat` de quiosque.
 - **Sem servidor**: dá para carregar um CSV à mão (fica no aparelho) ou usar dados de
   demonstração para treinar/apresentar.
 
@@ -56,7 +61,7 @@ Veja **`app/LEIA-ME.md`**. Resumo:
   `Iniciar-Servidor-LeakTest.bat`, coloque o arquivo em `dados\leak.csv` e acesse pelo
   IP mostrado (ex.: `http://192.168.0.10:8090/`).
 - **TV**: `Abrir-TV-Tela-Cheia.bat` (ajuste o IP dentro do arquivo) ou tecla **F**.
-- **Pasta de rede / avulso**: abra `index.html` e carregue o CSV pelo rodapé → Fonte de dados.
+- **Pasta de rede / avulso**: abra `index.html` e carregue o CSV pela barra de controle → Fonte de dados.
 
 ### Formato do CSV (uma linha por peça testada)
 

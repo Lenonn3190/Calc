@@ -6,9 +6,10 @@ Painel de acompanhamento dos resultados de **leak test** (estanqueidade):
 - **Montagem de Motores** — Leak Zero e Water Leak
 
 O painel lê um arquivo **CSV** com um registro por peça testada e mostra, por posto,
-o **FPY** (aprovação de primeira passagem), os NOK, os motivos de reprovação,
-o desempenho por modelo e a tendência do período. Atualiza sozinho e apita quando
-um posto entra em situação crítica.
+o **FPY** (aprovação de primeira passagem), os NOK, o principal motivo de reprovação
+e o resultado dos últimos testes. Formato **andon**: uma coluna por posto, tarja
+colorida com a situação, números grandes para leitura à distância e nenhuma outra
+informação na tela. Atualiza sozinho e apita quando um posto entra em situação crítica.
 
 ---
 
@@ -37,9 +38,9 @@ dados\backups\        cópias automáticas a cada gravação
 ## 2) Modo pasta de rede / avulso (sem servidor)
 
 Copie a pasta do painel para um compartilhamento e abra **`Abrir-Painel-da-Rede.bat`**
-(ou o próprio `index.html`). Nesse modo o painel não lê a base sozinho: use o rodapé
-→ **Fonte de dados** para carregar um CSV manualmente. O último arquivo lido fica
-guardado no aparelho.
+(ou o próprio `index.html`). Nesse modo o painel não lê a base sozinho: mexa o mouse
+para abrir a barra de controle e use **Fonte de dados** para carregar um CSV
+manualmente. O último arquivo lido fica guardado no aparelho.
 
 ---
 
@@ -60,7 +61,7 @@ data_hora;posto;modelo;serie;resultado;vazamento;limite;unidade;motivo;turno;ret
 |--------------|-------------|-------------|
 | `data_hora`  | recomendada | `dd/mm/aaaa hh:mm`, `aaaa-mm-dd hh:mm:ss` ou só `hh:mm` |
 | `posto`      | **sim**     | Bloco / Cabeçote / Leak Zero / Water Leak (ou `USI_BLOCO`, `USI_CABECOTE`, `MON_ZERO`, `MON_WATER`) |
-| `modelo`     | opcional    | usado no bloco "Modelos" do card |
+| `modelo`     | opcional    | alimenta o FPY por modelo na janela de registros |
 | `serie`      | recomendada | número de série da peça — é o que separa 1ª passagem de reteste |
 | `resultado`  | recomendada | OK/NOK, Aprovado/Reprovado, PASS/FAIL. Sem ela, o painel compara `vazamento` com `limite` |
 | `vazamento`  | opcional    | valor medido (vírgula ou ponto decimal) |
@@ -88,32 +89,36 @@ corpo: 2026-07-31 07:41:02;Cabeçote;1.5;CAB88121;NOK;6,30;4;cc/min;Sede de vál
 
 | Elemento | Significado |
 |---|---|
+| Tarja do posto | situação: **verde** meta atingida · **amarelo** abaixo da meta · **vermelho** abaixo do mínimo ou NOK acima do limite (pisca e dispara o alarme) |
 | Número grande | **FPY %** — aprovadas na 1ª passagem ÷ testadas na 1ª passagem |
-| `aprovadas · testadas · NOK` | contagens da 1ª passagem no período |
-| `Meta / mín` + barra | atingimento da meta de FPY (FPY ÷ meta) |
-| Tendência | FPY em 12 blocos de tempo dentro do período |
-| Motivos de reprovação | ranking dos pontos de vazamento (quantidade e % dos NOK) |
-| Caixa NOK | NOK de 1ª passagem contra o limite configurado |
-| Retestes / Refugo | peças reapresentadas e peças que seguem reprovadas |
-| Vazamento médio | média medida no período contra o limite |
-| Modelos | FPY por modelo de motor |
-| Rodapé do card | tempo desde o último NOK, cadência (pç/h) e horário do último teste |
+| Meta / atingimento + barra | meta de FPY e quanto dela foi atingido (FPY ÷ meta) |
+| Testadas · Aprov. 1ª · NOK | contagens de 1ª passagem no período; o NOK vem com o limite configurado |
+| Principal reprovação | ponto de vazamento que mais reprovou e a quantidade |
+| Retestes · Vazamento | peças reapresentadas e média medida contra o limite |
+| Painel de lâmpadas | resultado dos últimos testes, um quadrado por peça (verde OK / vermelho NOK) |
+| Rodapé da coluna | tempo desde o último NOK e cadência (pç/h) |
 
-Cores: **verde** = meta atingida · **amarelo** = abaixo da meta · **vermelho** =
-abaixo do mínimo ou NOK acima do limite (dispara o alarme sonoro).
+Fora isso a tela fica limpa: **nada aparece no topo além do título**. Só quando a
+base falha, envelhece ou o painel está em demonstração é que surge uma tarja de
+aviso ao lado do título. Toque a tela ou mexa o mouse para a barra de controle
+aparecer (some sozinha em 5 s).
+
+Clique em uma coluna para abrir os registros daquele posto (com o FPY por modelo de motor).
 
 ## 5) Atalhos de teclado
 
 `R` atualizar · `F` tela cheia · `M` alarme on/off · `T` metas · `C` configurações ·
 `D` registros · `1`–`5` período (turno, hoje, 24 h, 7 dias, tudo) · `Esc` fechar janela.
 
+Qualquer tecla ou movimento do mouse também traz de volta a barra de controle.
+
 ## 6) Configurações
 
 - **Metas** (botão alvo): meta e mínimo de FPY, máximo de NOK, limite de vazamento e
   unidade — por posto. Também dá para ocultar um posto do painel.
 - **Configurações** (engrenagem): arquivo da base, intervalo de atualização, período
-  padrão, horários dos turnos, início do dia de produção, tamanho do painel (TV),
-  alarme sonoro e tema.
+  padrão, quantidade de testes no painel de lâmpadas, horários dos turnos, início do
+  dia de produção, tamanho do painel (TV) e alarme sonoro.
 
 Com o servidor ligado, as metas ficam em `dados\config.json` e valem para todos os
 painéis da rede.

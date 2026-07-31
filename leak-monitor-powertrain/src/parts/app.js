@@ -83,10 +83,10 @@ function toast(msg, kind='ok'){
    POSTOS MONITORADOS
    ============================================================ */
 const POSTOS = [
-  { key:'USI_BLOCO',    nome:'Bloco',      area:'Usinagem',            icone:'bloco',    cor:'#2dd4bf' },
-  { key:'USI_CABECOTE', nome:'Cabeçote',   area:'Usinagem',            icone:'cabecote', cor:'#f59e0b' },
-  { key:'MON_ZERO',     nome:'Leak Zero',  area:'Montagem de Motores', icone:'zero',     cor:'#a78bfa' },
-  { key:'MON_WATER',    nome:'Water Leak', area:'Montagem de Motores', icone:'drop',     cor:'#38bdf8' },
+  { key:'USI_BLOCO',    nome:'Bloco',      area:'Usinagem',            curta:'Usinagem', icone:'bloco',    cor:'#2dd4bf' },
+  { key:'USI_CABECOTE', nome:'Cabeçote',   area:'Usinagem',            curta:'Usinagem', icone:'cabecote', cor:'#f59e0b' },
+  { key:'MON_ZERO',     nome:'Leak Zero',  area:'Montagem de Motores', curta:'Montagem', icone:'zero',     cor:'#a78bfa' },
+  { key:'MON_WATER',    nome:'Water Leak', area:'Montagem de Motores', curta:'Montagem', icone:'drop',     cor:'#38bdf8' },
 ];
 const POSTO_BY = Object.fromEntries(POSTOS.map(p=>[p.key,p]));
 
@@ -113,8 +113,7 @@ function cfgPadrao(){
     alarme:true,
     tema:'dark',
     escala:'auto',               // auto | p | m | g | gg
-    topMotivos:3,
-    mostrarModelos:true,
+    lampadas:40,                 // testes exibidos no painel de lâmpadas
     inicioDia:'00:00',
     turnos:[
       { id:'1', nome:'1º turno', ini:'06:00', fim:'14:20' },
@@ -409,14 +408,14 @@ function agregarPosto(key, regs, jan){
     key, cfg, total:lista.length,
     testadas:0, ok1:0, nok1:0, fpy:0, retestes:0,
     pecas:0, aprovadas:0, refugo:0, yieldFinal:0,
-    motivos:[], modelos:[], turnos:[], hist:[],
+    motivos:[], modelos:[], turnos:[], hist:[], ultimos:[],
     mediaVal:NaN, maxVal:NaN, limite: isFinite(numBR(cfg.limite))? numBR(cfg.limite) : NaN,
     unid: cfg.unid||'cc/min', ultimoNOK:null, ultimoTeste:null,
     cadencia:0, status:'off', atingimento:0,
   };
   if(!lista.length) return st;
 
-  const vistos = new Set(), porPeca = new Map();
+  const vistos = new Set(), porPeca = new Map(), seq = [];
   const mMot = new Map(), mMod = new Map(), mTur = new Map();
   let somaVal=0, nVal=0;
 
@@ -427,6 +426,7 @@ function agregarPosto(key, regs, jan){
 
     if(primeira){
       st.testadas++;
+      seq.push(r.res);
       if(r.res==='OK') st.ok1++;
       else{
         st.nok1++;
@@ -478,6 +478,7 @@ function agregarPosto(key, regs, jan){
   st.cadencia = st.testadas / Math.max(0.25, span || 0.25);
 
   st.hist = tendencia(lista, jan);
+  st.ultimos = seq.slice(-80);            // painel de lâmpadas do andon
 
   const meta = numBR(cfg.metaFpy) || 98, min = numBR(cfg.minFpy) || 95, maxNok = numBR(cfg.maxNok);
   st.atingimento = meta? clamp((st.fpy/meta)*100, 0, 100) : 0;
