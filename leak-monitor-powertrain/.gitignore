@@ -1,0 +1,10 @@
+# Base de dados gerada em produção (fica no PC servidor, não no repositório)
+dados/
+app/dados/
+src/dados/
+
+# Sistema / editores
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
