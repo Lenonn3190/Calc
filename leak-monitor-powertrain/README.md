@@ -42,10 +42,24 @@ já existente.
 - **Sem servidor**: dá para carregar um CSV à mão (fica no aparelho) ou usar dados de
   demonstração para treinar/apresentar.
 
+## Como o painel aparece
+
+![Painel com dados simulados](docs/painel-exemplo.png)
+
+Exemplo acima com a base simulada de `docs/leak-simulado.csv` (~1.200 testes em 6 h):
+Bloco na meta, Cabeçote abaixo da meta, Leak Zero crítico e Water Leak na meta.
+
+O quadro de referência com todas as condições possíveis — estados dos postos, avisos
+de base e a regra de classificação — está em **`docs/condicoes-painel.png`**, bom para
+imprimir e deixar ao lado da TV.
+
+![Condições do painel](docs/condicoes-painel.png)
+
 ## Estrutura
 
 ```
 app/    Pacote pronto para rodar (index.html + servidor + ícones + CSV de exemplo)
+docs/   Imagens de referência do painel e uma base simulada para testes
 src/    Código-fonte e build
         parts/    head.html (layout/CSS), app.js (dados), app2.js (interface)
         server/   servir.ps1, .bat, manifest.json, LEIA-ME.md
