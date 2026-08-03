@@ -35,9 +35,9 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   bloco + 1 transmissão por motor → 511/dia cada. Sem consumo definido, a peça não mostra previsão.
   - A base da cobertura é configurável por peça em `CONFIG` → categoria →
     `coberturaLocais`. Cada item pode ser um **local inteiro** (`'MMO'`) ou um
-    **sublocal específico** (`'USI OP_OFF'` = só o OP_OFF de USI). Ex.: o **Bloco**
-    usa `['MMO','USI OP_OFF']` (o card mostra "· MMO+USI OP_OFF"); o **Cabeçote**
-    usa `['MMO','USI']`. As demais peças usam o disponível total.
+    **sublocal específico** (`'USI OP_OFF'` = só o OP_OFF de USI). **Bloco** e
+    **Cabeçote** usam `['MMO','USI OP_OFF']` (o card mostra "· MMO+USI OP_OFF").
+    As demais peças usam o disponível total.
 - **Rodapé** — status da conexão, **última atualização** (data/hora), **próxima
   atualização** (contagem regressiva) e o arquivo da base. Ficam no rodapé para
   liberar o topo: o **título é grande** (o painel é lido de longe na TV) e os
