@@ -583,11 +583,12 @@ function download(name,blob){ const url=URL.createObjectURL(blob); const a=docum
    ============================================================ */
 function mapHeader(head){
   const H=head.map(norm); const idx={desc:-1,item:-1,qtd:-1,local:-1,lote:-1,limcu:-1};
-  const find=(...keys)=>H.findIndex(h=>keys.some(k=>h===k||h.startsWith(k)));
+  // 1ª passada: nome EXATO (prioriza LILOCN sobre LOCAL_AS400, p.ex.); 2ª: começa com
+  const find=(...keys)=>{ let i=H.findIndex(h=>keys.some(k=>h===k)); return i>=0?i:H.findIndex(h=>keys.some(k=>h.startsWith(k))); };
   idx.desc  = find('imdsc','descricao','peca','peça','produto','tipo');          // IMDSC1
   idx.item  = find('imlitm','codigo','sku','material','item');                   // IMLITM
   idx.qtd   = find('qtd','quantidade','qtde','saldo','estoque','disponivel');    // QTD
-  idx.local = find('lilocn','local','deposito','deposito','loc','setor');        // LILOCN
+  idx.local = find('lilocn','local','deposito','deposito','loc','setor');        // LILOCN (nunca LOCAL_AS400)
   idx.lote  = find('lilotn','lote','lot');                                       // LILOTN
   idx.limcu = find('limcu','filial','unidade','planta','mcu');                   // LIMCU (filial/planta)
   return idx;

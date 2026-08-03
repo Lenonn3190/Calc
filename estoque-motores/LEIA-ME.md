@@ -195,6 +195,10 @@ das colunas não importa**: o painel localiza cada uma pelo nome do cabeçalho
 | **QTD**    | ✅          | Quantidade (aceita `1.234` ou `1234`)                            |
 | **LILOCN** | ✅*         | Local: FND / MMO / USI / LMO / TRA / DLI e `ESTREJ`→DR (rejeitado)     |
 | ↳ sublocal | —           | `ESTUSI OP140` conta **dentro de USI** e aparece detalhado abaixo do chip de USI |
+
+> Se a base tiver **duas colunas** de local (ex.: `LOCAL_AS400` original + `LILOCN`
+> ajustada com os OP), o painel usa **sempre a `LILOCN`** (nome exato) e ignora a
+> `LOCAL_AS400`.
 | IMLITM     | —           | Código do item (conta os "tipos" por peça)                       |
 | LILOTN     | —           | Lote (usado nas linhas de rejeitado)                             |
 
