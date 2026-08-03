@@ -456,7 +456,7 @@ const CONFIG = {
   categorias: [
     // locaisOrdem = sequência dos chips de local no card (locais não listados
     // entram no fim); locaisLabel = renomeia o rótulo de um local só neste card.
-    { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'], consumoDia:511, coberturaLocais:['MMO','USI'], locaisOrdem:['FND','USI','MMO'] },
+    { nome:'Bloco',    svg:SVG_BLOCO,    cor:'#14b8a6', chaves:['bloco'], consumoDia:511, coberturaLocais:['MMO','USI OP_OFF'], locaisOrdem:['FND','USI','MMO'] },
     { nome:'Cabeçote', svg:SVG_CABECOTE, cor:'#3b82f6', chaves:['cabecote'], consumoDia:511, coberturaLocais:['MMO','USI'], locaisOrdem:['FND','USI','MMO'] },
     { nome:'Transmissão', svg:SVG_TRANSMISSAO, cor:'#06b6d4', chaves:['transmiss'], consumoDia:511, locaisOrdem:['MMO','TRA','DLI','LMO'], locaisLabel:{ MMO:'MSC' } },
     // cor violeta (nao vermelha) para nao confundir a identidade do card com alerta
@@ -855,11 +855,21 @@ function fitLines(){
 // Base usada no cálculo de cobertura (dias). Se a categoria definir
 // coberturaLocais, soma SÓ o estoque bom nesses locais (ex.: Bloco/Cabeçote =
 // MMO + USI); senão usa o disponível total.
+// valor de uma entrada de coberturaLocais: "MMO" = o local inteiro; "USI OP_OFF"
+// = apenas o sublocal OP_OFF de USI.
+function valorCob(g,entry){
+  const parts=String(entry).trim().split(/\s+/);
+  if(parts.length>=2){
+    const base=parts[0], sub=parts.slice(1).join(' ');
+    return (g.sublocais&&g.sublocais[base]&&g.sublocais[base][sub])||0;
+  }
+  return (g.locais&&g.locais[entry])||0;
+}
 function coberturaBase(cat,g){
   if(!g) return 0;
   if(cat.coberturaLocais && cat.coberturaLocais.length){
-    // soma os locais (já líquidos do decremento por local) e desconta o decremento da peça
-    return Math.max(0, cat.coberturaLocais.reduce((s,l)=>s+((g.locais&&g.locais[l])||0),0) - (g.decremento||0));
+    // soma os locais/sublocais definidos e desconta o decremento da peça
+    return Math.max(0, cat.coberturaLocais.reduce((s,l)=>s+valorCob(g,l),0) - (g.decremento||0));
   }
   return g.disponivel;   // já vem com todos os decrementos subtraídos
 }
