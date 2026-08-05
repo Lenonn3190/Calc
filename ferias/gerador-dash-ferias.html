@@ -114,8 +114,20 @@ const CONFIG = {
     limiteTotal:   6,     // no time inteiro
     limitePorArea: 3,     // dentro de uma mesma área
 
-    /* Alerta de apontamento no sistema: lançar até N dias antes do retorno. */
+    /* Regra N-40 do DRH — limite para lançar as férias no sistema:
+         LIMITE = DATA DE RETORNO − (40 + DIAS DE FÉRIAS)
+       Ou seja: 40 dias de antecedência contados a partir do INÍCIO do gozo,
+       que por sua vez está "dias" antes do retorno.                        */
     diasApontamento: 40,
+
+    /* Quantos dias antes do limite o lançamento entra como "programar" */
+    avisoApontamento: 15,
+
+    /* Para quem ainda não agendou não existe data de retorno. O painel projeta
+       o retorno no limite legal (a data de VENCIMENTO do período concessivo)
+       e usa DIAS VENCIDOS + DIAS PROPORCIONAIS como duração.
+       Deixe false para deixar os pendentes fora da fila N-40.              */
+    projetarPendentes: true,
 
     /* Quantas linhas nas tabelas de apoio */
     topPicos: 8,
@@ -143,7 +155,9 @@ const CAMPOS = [
   {k:'dias',        rot:'Dias do período',    req:false, syn:['dias','qtddias','quantidadedias','diasgozo','diasferias','duracao','periodo','numerodias']},
   {k:'status',      rot:'Status do período',  req:false, syn:['status','situacao','condicao','estagio','aprovacao']},
   {k:'apontado',    rot:'Apontado no sistema',req:false, syn:['apontado','lancado','sistema','apontamento','lancamento','registrado','sap']},
-  {k:'vencimento',  rot:'Limite / vencimento',req:false, syn:['vencimento','datalimite','limite','limiteconcessivo','periodoconcessivo','vencimentoferias','prazo']}
+  {k:'vencimento',  rot:'Limite / vencimento',req:false, syn:['vencimento','datalimite','limite','limiteconcessivo','periodoconcessivo','vencimentoferias','prazo']},
+  {k:'diasVenc',    rot:'Dias vencidos',      req:false, syn:['diasvencido','diasvencidos','vencidos','diasemaberto']},
+  {k:'diasProp',    rot:'Dias proporcionais', req:false, syn:['diasproporcionais','diasproporcional','proporcionais','proporcional']}
 ];
 
 /* ───────────────────────── Utilitários ───────────────────────── */
@@ -468,6 +482,15 @@ function detectar(cabecalho){
   return mapa;
 }
 
+/* Regra N-40 do DRH: limite = retorno − (40 + dias de férias).
+   Os 40 dias de antecedência valem a partir do início do gozo, e o início
+   está "dias" antes do retorno — por isso os dois se somam.              */
+function limiteN40(retorno, dias){
+  if(!retorno) return null;
+  const d = Math.round(CONFIG.regras.diasApontamento + (dias||0));
+  return new Date(retorno.getFullYear(), retorno.getMonth(), retorno.getDate()-d);
+}
+
 /* ═════════════ Cálculo: períodos → quinzenas ═════════════ */
 function calcular(tabela, mapa){
   const R=CONFIG.regras, hoje=new Date();
@@ -485,19 +508,29 @@ function calcular(tabela, mapa){
     let   fim    = paraData(val(l,'fim'));
     const dias   = num(val(l,'dias'));
 
-    if(!inicio){ semData.push({nome,area,status,vencimento:paraData(val(l,'vencimento'))}); continue; }
+    const dVenc = num(val(l,'diasVenc')), dProp = num(val(l,'diasProp'));
+    if(!inicio){
+      semData.push({nome, area, status, vencimento:paraData(val(l,'vencimento')),
+                    diasVenc:dVenc, diasProp:dProp});
+      continue;
+    }
     if(!fim && dias!=null && dias>0) fim = new Date(inicio.getFullYear(),inicio.getMonth(),inicio.getDate()+dias-1);
     if(!fim) fim = inicio;
     if(fim<inicio){ const t=fim; fim=inicio; inicio=t; }
 
     const apontadoRaw = norm(val(l,'apontado')??'');
     const apontado = ['sim','s','x','ok','true','1','apontado','lancado','concluido'].includes(apontadoRaw);
-    const limiteApont = new Date(fim.getFullYear(),fim.getMonth(),fim.getDate()-R.diasApontamento);
+    const nDias = dias!=null ? dias : (dInt(fim)-dInt(inicio)+1);
+
+    /* N-40: volta no dia seguinte ao fim; o limite recua 40 dias + a duração */
+    const retorno = new Date(fim.getFullYear(),fim.getMonth(),fim.getDate()+1);
 
     periodos.push({
-      nome, area, status, inicio, fim,
-      dias: dias!=null ? dias : (dInt(fim)-dInt(inicio)+1),
-      apontado, temColunaApont: mapa.apontado!=null, limiteApont,
+      nome, area, status, inicio, fim, retorno,
+      dias: nDias,
+      apontado, temColunaApont: mapa.apontado!=null,
+      limiteApont: limiteN40(retorno, nDias),
+      projetado: false,
       vencimento: paraData(val(l,'vencimento'))
     });
   }
@@ -554,10 +587,35 @@ function calcular(tabela, mapa){
   const picos = quinzenas.filter(q=>q.excede)
     .sort((x,y)=>y.total-x.total).slice(0,R.topPicos);
 
-  const apontar = periodos
-    .filter(p => p.temColunaApont && !p.apontado && p.fim>=hoje)
-    .sort((x,y)=>x.limiteApont-y.limiteApont)
-    .slice(0,R.topPicos);
+  /* ── Fila N-40: tudo que ainda precisa ser lançado no sistema ──
+     Períodos agendados que ainda não voltaram, mais — quando configurado —
+     os pendentes, com retorno projetado no vencimento legal.            */
+  const fila = [];
+  for(const p of periodos){
+    if(p.apontado) continue;               // já lançado
+    if(p.fim < hoje) continue;             // férias já ocorreram
+    if(!p.limiteApont) continue;
+    fila.push({nome:p.nome, area:p.area, dias:p.dias, retorno:p.retorno,
+               limite:p.limiteApont, projetado:false});
+  }
+  if(R.projetarPendentes) for(const s of semAgenda){
+    if(!s.vencimento) continue;            // sem data limite não dá para projetar
+    const dias = (s.diasVenc??0) + (s.diasProp??0);
+    if(dias<=0) continue;
+    fila.push({nome:s.nome, area:s.area, dias, retorno:s.vencimento,
+               limite:limiteN40(s.vencimento, dias), projetado:true});
+  }
+  /* Retorno já no passado é outra coisa: o período concessivo estourou e não
+     existe mais "40 dias de antecedência" a cumprir. Fica na fila, mas no fim
+     e sem contagem regressiva — senão um vencimento de 2016 vira "3808 dias
+     de atraso" e sepulta o caso que ainda dá para resolver.               */
+  fila.forEach(f => f.concessivoVencido = f.retorno < hoje);
+  fila.sort((x,y)=> (x.concessivoVencido?1:0)-(y.concessivoVencido?1:0) || x.limite-y.limite);
+
+  const acionaveis = fila.filter(f=>!f.concessivoVencido);
+  const atrasados  = acionaveis.filter(f=>f.limite < hoje);
+  const proximo    = acionaveis.find(f=>f.limite >= hoje) || null;
+  const apontar    = fila.slice(0,R.topPicos);
 
   const vencidos = periodos.filter(p=>p.vencimento && p.vencimento<p.inicio).length;
 
@@ -570,6 +628,7 @@ function calcular(tabela, mapa){
 
   return {
     periodos, quinzenas, colunas, picos, apontar, semAgenda, pico, vencidos, folgas,
+    fila, atrasados, proximo,
     temApont: mapa.apontado!=null,
     kpi:{
       pessoas:   nomes.length + semAgenda.length,
@@ -579,7 +638,10 @@ function calcular(tabela, mapa){
       pico:      pico.total,
       picoRot:   pico.rotulo+' · '+pico.faixa,
       excedidas: quinzenas.filter(q=>q.excede).length,
-      vazias:    quinzenas.filter(q=>q.total===0).length
+      vazias:    quinzenas.filter(q=>q.total===0).length,
+      atrasados: atrasados.length,
+      naFila:    fila.length,
+      proximoRot: proximo ? fmtData(proximo.limite) : '—'
     }
   };
 }
@@ -709,15 +771,26 @@ function montarEmail(d){
   const ciclo = CONFIG.ciclo || (d.quinzenas.length
     ? d.quinzenas[0].rotulo+' a '+d.quinzenas[d.quinzenas.length-1].rotulo : '');
 
+  const terco = Math.floor((M-2*14)/3);
   const kpis=[
-    cartaoKpi('👥', fmtInt(k.pessoas),   'Colaboradores',        C.indigo),
-    cartaoKpi('✅', fmtInt(k.periodos),  'Períodos agendados',   C.verde),
+    cartaoKpi('👥', fmtInt(k.pessoas),   'Colaboradores',              C.indigo),
+    cartaoKpi('✅', fmtInt(k.periodos),  'Períodos agendados',         C.verde),
+    cartaoKpi('⏳', fmtInt(k.pendentes), 'Pendentes de agendamento',   C.ciano),
     cartaoKpi('📈', fmtInt(k.pico),      'Pico simultâneo — '+k.picoRot, C.ambar),
-    cartaoKpi('🚨', fmtInt(k.excedidas), 'Quinzenas acima do limite', C.vermelho)
+    cartaoKpi('🚨', fmtInt(k.excedidas), 'Quinzenas acima do limite',  '#c2410c'),
+    cartaoKpi('📮', fmtInt(k.atrasados),
+              `Limite N-${R.diasApontamento} vencido${k.proximoRot!=='—'?' · próx. '+k.proximoRot:''}`,
+              C.vermelho)
   ];
+  const linhaKpi = ks => `<tr>
+    <td width="${terco}" valign="top" style="width:${terco}px;padding-bottom:14px;">${ks[0]}</td>
+    <td width="14" style="width:14px;font-size:0;">&nbsp;</td>
+    <td width="${terco}" valign="top" style="width:${terco}px;padding-bottom:14px;">${ks[1]}</td>
+    <td width="14" style="width:14px;font-size:0;">&nbsp;</td>
+    <td width="${terco}" valign="top" style="width:${terco}px;padding-bottom:14px;">${ks[2]}</td>
+  </tr>`;
   const blocoKpi = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-    <tr><td width="${meia}" style="width:${meia}px;padding-bottom:16px;">${kpis[0]}</td><td width="16" style="width:16px;font-size:0;">&nbsp;</td><td width="${meia}" style="width:${meia}px;padding-bottom:16px;">${kpis[1]}</td></tr>
-    <tr><td style="padding-bottom:16px;">${kpis[2]}</td><td style="font-size:0;">&nbsp;</td><td style="padding-bottom:16px;">${kpis[3]}</td></tr></table>`;
+    ${linhaKpi(kpis.slice(0,3))}${linhaKpi(kpis.slice(3,6))}</table>`;
 
   /* Picos de risco */
   const colsPico=[{t:'Quinzena'},{t:'Total',al:'center'},{t:'Onde estoura'},{t:'Quem está fora'}];
@@ -737,24 +810,38 @@ function montarEmail(d){
     linhasPico.length ? tabelaDados(colsPico,linhasPico)
       : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Nenhuma quinzena ultrapassa os limites de ${R.limitePorArea} por área e ${R.limiteTotal} no time. Escala equilibrada.</p>`);
 
-  /* Fila de apontamento */
-  const colsAp=[{t:'Área'},{t:'Colaborador'},{t:'Dias',al:'center'},{t:'Retorno',al:'center'},{t:'Limite N-'+R.diasApontamento,al:'center'},{t:'Status',al:'center'}];
+  /* Fila de apontamento — regra N-40 do DRH */
+  const hojeD=new Date();
+  const aviso=new Date(hojeD.getFullYear(),hojeD.getMonth(),hojeD.getDate()+R.avisoApontamento);
+  const colsAp=[{t:'Área'},{t:'Colaborador'},{t:'Dias',al:'center'},{t:'Retorno',al:'center'},
+                {t:`Limite N-${R.diasApontamento}`,al:'center'},{t:'Status',al:'center'}];
   const linhasAp=d.apontar.map(p=>{
-    const atrasado = p.limiteApont < new Date();
+    const atrasado = p.limite < hojeD, perto = !atrasado && p.limite <= aviso;
+    const dias = Math.round((dInt(p.limite)-dInt(hojeD)));
+    const cor = p.concessivoVencido ? C.muted : atrasado ? C.vermelho : perto ? '#b45309' : C.ink;
     return [
       etiqueta(p.area),
-      `<b>${esc(p.nome)}</b>`,
+      `<b>${esc(p.nome)}</b>${p.projetado?` <span style="color:${C.muted};font-size:10px;">projetado</span>`:''}`,
       fmtInt(p.dias),
-      fmtData(new Date(p.fim.getFullYear(),p.fim.getMonth(),p.fim.getDate()+1)),
-      `<span style="color:${atrasado?C.vermelho:'#b45309'};font-weight:bold;">${fmtData(p.limiteApont)}</span>`,
-      atrasado ? selo('🔴 Apontar agora','#fee2e2',C.vermelho) : selo('🟡 Programar','#fef3c7','#b45309')
+      fmtData(p.retorno),
+      `<span style="color:${cor};font-weight:bold;">${fmtData(p.limite)}</span>`,
+      p.concessivoVencido ? selo('⚫ Concessivo vencido','#f1f5f9',C.muted)
+      : atrasado ? selo(`🔴 ${Math.abs(dias)} d em atraso`,'#fee2e2',C.vermelho)
+      : perto    ? selo(`🟡 faltam ${dias} d`,'#fef3c7','#b45309')
+                 : selo('🟢 No prazo','#dcfce7',C.verde)
     ];
   });
-  const blocoApont = d.temApont
-    ? bloco(`Fila de apontamento no sistema — regra N-${R.diasApontamento}`, C.ambar,
-        linhasAp.length ? tabelaDados(colsAp,linhasAp)
-          : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Todos os períodos futuros já estão apontados no sistema.</p>`)
-    : '';
+  const blocoApont = bloco(`Fila de lançamento no sistema — regra N-${R.diasApontamento} (DRH)`,
+    d.atrasados.length?C.vermelho:C.ambar,
+    (linhasAp.length ? tabelaDados(colsAp,linhasAp)
+      : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Nada pendente de lançamento.</p>`) +
+    `<p style="${FONTE}font-size:11px;color:${C.muted};margin:10px 0 0;line-height:1.5;">
+      <b>Limite = data de retorno − (${R.diasApontamento} + dias de férias)</b> — os ${R.diasApontamento} dias
+      de antecedência do DRH contam a partir do início do gozo, que está "dias" antes do retorno.
+      ${d.fila.some(f=>f.projetado)?` Quem ainda não agendou entra como <b>projetado</b>: o retorno é estimado no vencimento do período concessivo e a duração em dias vencidos + proporcionais.`:''}
+      ${d.fila.some(f=>f.concessivoVencido)?` <b>${fmtInt(d.fila.filter(f=>f.concessivoVencido).length)}</b> com o período concessivo já vencido vão para o fim da fila e sem contagem regressiva — ali o prazo do DRH não se aplica mais, o caso é regularizar com o RH.`:''}
+      ${d.fila.length>linhasAp.length?` Mostrando ${linhasAp.length} de ${d.fila.length}.`:''}
+    </p>`);
 
   /* Pendentes de agendamento */
   const colsPend=[{t:'Área'},{t:'Colaborador'},{t:'Vencimento',al:'center'}];
@@ -829,8 +916,8 @@ function montarEmail(d){
   <tr><td>${blocoPicos}</td></tr>
   <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>
 
-  ${blocoApont?`<tr><td>${blocoApont}</td></tr>
-  <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>`:''}
+  <tr><td>${blocoApont}</td></tr>
+  <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>
 
   <tr><td>${blocoPend}</td></tr>
   <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>

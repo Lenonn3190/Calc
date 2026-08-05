@@ -135,6 +135,46 @@ Sinônimos são reconhecidos ignorando acento e caixa: `INÍCIO FÉRIAS`, `Saíd
 Se só houver **Dias**, o fim é calculado como `início + dias − 1` (dias
 corridos, como manda a CLT). Se houver as duas colunas, **Data de fim** manda.
 
+## A regra N-40 do DRH
+
+```
+LIMITE DE LANÇAMENTO = DATA DE RETORNO − (40 + DIAS DE FÉRIAS)
+```
+
+Os 40 dias de antecedência valem a partir do **início do gozo**, e o início
+está `dias` antes do retorno — por isso os dois se somam. Exemplo real:
+Vanessa Pires sai 10/08, volta 25/08 (15 dias) → limite = 25/08 − 55 =
+**01/07/2026**.
+
+O KPI **Limite N-40 vencido** conta quantos lançamentos já passaram do prazo e
+mostra a próxima data limite a vencer.
+
+### De onde vem a data de retorno
+
+| Situação | Retorno | Dias |
+|---|---|---|
+| Período agendado | dia seguinte ao fim | duração do período |
+| Sem agendamento (`projetarPendentes: true`) | data de `VENCIMENTO` | `DIAS VENCIDO` + `DIAS PROPORCIONAIS` |
+
+As linhas projetadas aparecem marcadas como **projetado** na tabela. Ponha
+`projetarPendentes: false` para deixar os pendentes fora da fila.
+
+### Período concessivo já vencido
+
+Quem tem a data de retorno no passado sai da contagem regressiva e recebe o selo
+**⚫ Concessivo vencido**, indo para o fim da fila. Sem isso, um vencimento de
+2016 vira "3808 dias de atraso" e sepulta o caso que ainda dá para resolver —
+e, de todo modo, ali não há mais prazo de 40 dias a cumprir: o caso é
+regularizar com o RH.
+
+### Parâmetros
+
+```js
+diasApontamento:   40,     // o "N" da regra
+avisoApontamento:  15,     // dias antes do limite em que entra como "programar"
+projetarPendentes: true
+```
+
 ## Conferência da base
 
 A cada geração o painel revisa a base e lista o que encontrou de errado, com a
@@ -154,9 +194,7 @@ Períodos com data inválida ficam **fora** do mapa de calor — não são chuta
 
 - **Picos de ausência** — só as quinzenas que ultrapassam algum limite, com
   selos mostrando onde estourou (`Time 8/6`, `NMG 3/2`) e quem está fora.
-- **Fila de apontamento N-40** — períodos futuros ainda não lançados no sistema,
-  ordenados pela data limite (retorno − 40 dias). Aparece só se a base tiver a
-  coluna *Apontado*.
+- **Fila de lançamento no sistema — regra N-40 (DRH)** — ver abaixo.
 - **Pendentes de agendamento** — quem ainda não tem período marcado, com o
   vencimento, seguido das **quinzenas com folga** para encaixar essas pessoas.
 
