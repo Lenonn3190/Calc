@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador do Painel de Estoque • HTML para e-mail</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#fff; --ink:#1e293b; --muted:#64748b; --line:#e8ecf3;
+    --shadow:0 1px 3px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);padding:24px;line-height:1.45}
+  .wrap{max-width:1180px;margin:0 auto}
+  .hero{background:linear-gradient(120deg,#4f46e5,#6366f1 55%,#8b5cf6);color:#fff;border-radius:20px;padding:24px 30px;box-shadow:var(--shadow);margin-bottom:20px}
+  .hero h1{font-size:22px;font-weight:700}
+  .hero p{opacity:.9;font-size:13.5px;margin-top:6px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:20px 24px;margin-bottom:18px}
+  h2{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  h2 .dot{width:8px;height:8px;border-radius:50%;background:#6366f1}
+  .btn{border:0;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:#eef2ff;color:#4f46e5;transition:filter .15s}
+  .btn:hover{filter:brightness(.95)}
+  .btn.primary{background:#4f46e5;color:#fff}
+  .btn.ok{background:#059669;color:#fff}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .drop{border:2px dashed #c7d2fe;border-radius:14px;padding:26px;text-align:center;background:#fafbff;cursor:pointer;transition:.15s}
+  .drop:hover,.drop.over{background:#eef2ff;border-color:#6366f1}
+  .drop b{display:block;font-size:14px;margin-bottom:4px}
+  .drop small{color:var(--muted);font-size:12px}
+  .hidden{display:none}
+  .msg{padding:10px 14px;border-radius:10px;font-size:12.5px;font-weight:600;margin-top:12px}
+  .msg.err{background:#fee2e2;color:#b91c1c}
+  .msg.ok{background:#ecfdf5;color:#047857}
+  .msg.info{background:#eff6ff;color:#1d4ed8}
+  table.map{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  table.map th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:7px 8px;border-bottom:2px solid var(--line)}
+  table.map td{padding:6px 8px;border-bottom:1px solid var(--line)}
+  table.map select{width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:12.5px;background:#fff;color:var(--ink)}
+  .req{color:#dc2626;font-weight:700}
+  iframe{width:100%;height:1500px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  code{background:#eef2ff;color:#4338ca;padding:1px 6px;border-radius:5px;font-size:12px}
+  .steps{font-size:13px;color:var(--muted)}
+  .steps li{margin:5px 0 5px 18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>⚙️ Gerador do Painel Gerencial de Estoque</h1>
+    <p>Aponte a base de dados, confira o painel e exporte o HTML pronto para colar no corpo do e-mail.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span>1 · Base de dados</h2>
+    <div id="drop" class="drop">
+      <b>📂 Arraste a planilha aqui</b>
+      <small>ou clique para selecionar — <code>.xlsx</code>, <code>.csv</code> ou <code>.json</code></small>
+      <input type="file" id="file" accept=".xlsx,.csv,.json" class="hidden">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="btnUrl">🔗 Carregar da URL do CONFIG</button>
+      <button class="btn" id="btnModelo">📄 Baixar modelo (.csv)</button>
+      <button class="btn" id="btnDemo">🧪 Ver com dados de exemplo</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="card hidden" id="cardMap">
+    <h2><span class="dot"></span>2 · Conferência das colunas</h2>
+    <p class="steps">Detectamos as colunas automaticamente. Ajuste se algo ficou errado — as marcadas com <span class="req">*</span> são obrigatórias.</p>
+    <table class="map"><thead><tr><th style="width:34%">Campo do painel</th><th>Coluna da sua planilha</th></tr></thead><tbody id="mapBody"></tbody></table>
+    <div class="row" style="margin-top:14px"><button class="btn primary" id="btnGerar">📊 Gerar painel</button></div>
+  </div>
+
+  <div class="card hidden" id="cardOut">
+    <h2><span class="dot"></span>3 · Painel gerado — exportar para e-mail</h2>
+    <div class="row">
+      <button class="btn ok" id="btnCopiar">📋 Copiar para colar no e-mail</button>
+      <button class="btn primary" id="btnBaixar">⬇️ Baixar .html</button>
+      <button class="btn" id="btnAbrir">🖥️ Abrir em nova aba</button>
+    </div>
+    <div id="msg2"></div>
+    <p class="steps" style="margin-top:14px">
+      <b>Como enviar:</b>
+    </p>
+    <ol class="steps">
+      <li><b>Outlook:</b> clique em <b>Copiar</b>, abra uma nova mensagem e cole com <code>Ctrl+V</code> no corpo do e-mail.</li>
+      <li><b>Gmail:</b> use <b>Abrir em nova aba</b>, selecione tudo (<code>Ctrl+A</code>), copie e cole no corpo da mensagem.</li>
+      <li>Se preferir anexar, use <b>Baixar .html</b> — mas colar no corpo tem muito mais leitura.</li>
+    </ol>
+  </div>
+
+  <div class="card hidden" id="cardPrev">
+    <h2><span class="dot"></span>Pré-visualização — é exatamente o que chega no e-mail</h2>
+    <iframe id="prev"></iframe>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   ▼▼▼  CONFIGURE AQUI  ▼▼▼
+   Este é o único bloco que você precisa mexer para apontar a sua base.
+   ══════════════════════════════════════════════════════════════════════════ */
+const CONFIG = {
+
+  /* Caminho/URL da base. Deixe '' para escolher o arquivo pelo botão na tela.
+     Só funciona se o painel estiver servido por http (ex.: o Iniciar-Servidor
+     do CheckSync). Abrindo o arquivo direto do disco (file://) o navegador
+     bloqueia a leitura — nesse caso use o seletor de arquivo acima.
+     Exemplos:
+       fonte: 'dados/base_estoque.xlsx'
+       fonte: 'http://servidor-etg/estoque/base.json'                       */
+  fonte: '',
+
+  /* Cabeçalho do painel */
+  titulo:    'Painel Gerencial de Estoque',
+  unidade:   'ETG 103ki',
+  rodape:    'Painel Gerencial de Estoque • ETG 103ki — gerado a partir da base de estoque',
+  moeda:     'R$',
+
+  /* Regras de classificação */
+  regras: {
+    coberturaCriticaDias: 15,   // abaixo disso o item entra como crítico
+    coberturaAtencaoDias: 30,   // abaixo disso entra como atenção
+    diasSemGiro:          90,   // sem movimentação há mais tempo = capital parado
+    topReposicao:         10,   // linhas na tabela de reposição
+    topExcesso:            8    // linhas na tabela de capital parado
+  },
+
+  /* Mapa de colunas. Deixe null para detecção automática pelo cabeçalho.
+     Para fixar manualmente, escreva o nome exato da coluna da planilha:
+       colunas: { codigo:'CÓD. MATERIAL', saldo:'SALDO ATUAL', ... }        */
+  colunas: null
+};
+/* ══════════════════════════════════════════════════════════════════════════
+   ▲▲▲  FIM DA CONFIGURAÇÃO — daqui para baixo não precisa alterar  ▲▲▲
+   ══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────── Campos do painel ───────────────────────── */
+const CAMPOS = [
+  {k:'codigo',    rot:'Código / SKU',            req:true,  syn:['codigo','cod','sku','item','material','partnumber','pn','referencia','ref']},
+  {k:'descricao', rot:'Descrição',               req:true,  syn:['descricao','produto','nome','denominacao','especificacao','discriminacao']},
+  {k:'categoria', rot:'Categoria / Área',        req:false, syn:['categoria','familia','grupo','area','linha','classe','setor','tipo','segmento']},
+  {k:'saldo',     rot:'Saldo atual',             req:true,  syn:['saldo','quantidade','qtd','qtde','estoque','disponivel','saldoatual','quantidadeatual','existencia']},
+  {k:'minimo',    rot:'Estoque mínimo',          req:false, syn:['minimo','min','estoqueminimo','pontodepedido','pontopedido','seguranca','estoqueseguranca','rop']},
+  {k:'maximo',    rot:'Estoque máximo',          req:false, syn:['maximo','max','estoquemaximo','capacidade']},
+  {k:'unidade',   rot:'Unidade (UN, KG…)',       req:false, syn:['unidade','un','um','undmedida','unidademedida','medida']},
+  {k:'custo',     rot:'Custo unitário',          req:false, syn:['custo','custounitario','preco','precounitario','valorunitario','unitario','vlrunit']},
+  {k:'consumo',   rot:'Consumo médio mensal',    req:false, syn:['consumo','consumomedio','consumomensal','mediamensal','demanda','giro','mediaconsumo','saidamedia']},
+  {k:'local',     rot:'Localização',             req:false, syn:['local','localizacao','endereco','deposito','almoxarifado','prateleira','armazem','posicao']},
+  {k:'ultima',    rot:'Última movimentação',     req:false, syn:['ultimamovimentacao','ultimamov','ultimasaida','ultimaentrada','datamovimentacao','data','dtmov','ultimouso']}
+];
+
+/* ───────────────────────── Utilitários ───────────────────────── */
+const $ = s => document.querySelector(s);
+const norm = s => String(s==null?'':s).trim().toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function num(v){
+  if(v==null||v==='') return null;
+  if(typeof v==='number') return isFinite(v)?v:null;
+  let s=String(v).trim().replace(/[^\d.,\-]/g,'');
+  if(!s||s==='-') return null;
+  // "1.234,56" (pt-BR) vs "1,234.56" (en-US): manda o separador mais à direita
+  const lv=s.lastIndexOf(','), lp=s.lastIndexOf('.');
+  if(lv>lp)      s=s.replace(/\./g,'').replace(',','.');
+  else if(lp>lv) s=s.replace(/,/g,'');
+  else           s=s.replace(',','.');
+  const n=parseFloat(s);
+  return isFinite(n)?n:null;
+}
+const fmtInt = n => (n==null?'—':Math.round(n).toLocaleString('pt-BR'));
+const fmtNum = n => (n==null?'—':n.toLocaleString('pt-BR',{maximumFractionDigits:1}));
+function fmtMoeda(n){
+  if(n==null) return '—';
+  const a=Math.abs(n);
+  if(a>=1e6) return CONFIG.moeda+' '+(n/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';
+  if(a>=1e3) return CONFIG.moeda+' '+(n/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil';
+  return CONFIG.moeda+' '+n.toLocaleString('pt-BR',{maximumFractionDigits:0});
+}
+const fmtData = d => (d instanceof Date && !isNaN(d)) ? d.toLocaleDateString('pt-BR') : '—';
+
+function paraData(v){
+  if(v==null||v==='') return null;
+  if(v instanceof Date) return isNaN(v)?null:v;
+  if(typeof v==='number' && v>20000 && v<70000){          // serial do Excel
+    return new Date(Math.round((v-25569)*86400000));
+  }
+  const s=String(v).trim();
+  let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);  // dd/mm/aaaa
+  if(m){ let a=+m[3]; if(a<100) a+=2000; const d=new Date(a,+m[2]-1,+m[1]); return isNaN(d)?null:d; }
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);                        // aaaa-mm-dd
+  if(m){ const d=new Date(+m[1],+m[2]-1,+m[3]); return isNaN(d)?null:d; }
+  const n=num(s); if(n!=null&&n>20000&&n<70000) return new Date(Math.round((n-25569)*86400000));
+  return null;
+}
+function msg(el,txt,tipo){ $(el).innerHTML = txt ? `<div class="msg ${tipo||'info'}">${txt}</div>` : ''; }
+
+/* ───────────────────────── Leitura da base ───────────────────────── */
+function lerCsv(texto){
+  texto = texto.replace(/^﻿/,'');
+  const prim = texto.split('\n')[0];
+  const delim = (prim.match(/;/g)||[]).length >= (prim.match(/,/g)||[]).length ? ';' : ',';
+  const linhas=[]; let linha=[], cur='', aspas=false;
+  for(let i=0;i<texto.length;i++){
+    const c=texto[i];
+    if(aspas){
+      if(c==='"'){ if(texto[i+1]==='"'){ cur+='"'; i++; } else aspas=false; } else cur+=c;
+    } else {
+      if(c==='"') aspas=true;
+      else if(c===delim){ linha.push(cur); cur=''; }
+      else if(c==='\n'){ linha.push(cur); linhas.push(linha); linha=[]; cur=''; }
+      else if(c!=='\r') cur+=c;
+    }
+  }
+  if(cur!==''||linha.length){ linha.push(cur); linhas.push(linha); }
+  return linhas;
+}
+
+/* Descompacta o .xlsx usando DecompressionStream nativo — sem biblioteca externa */
+async function descompactar(buffer){
+  const dv=new DataView(buffer), u8=new Uint8Array(buffer);
+  let eocd=-1;
+  for(let i=u8.length-22;i>=0 && i>u8.length-66000;i--){ if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; } }
+  if(eocd<0) throw new Error('Arquivo .xlsx inválido');
+  const total=dv.getUint16(eocd+10,true);
+  let off=dv.getUint32(eocd+16,true);
+  const dec=new TextDecoder(), arquivos={};
+  for(let k=0;k<total;k++){
+    if(off+46>u8.length || dv.getUint32(off,true)!==0x02014b50) break;
+    const metodo   = dv.getUint16(off+10,true);
+    const compSize = dv.getUint32(off+20,true);
+    const nomeLen  = dv.getUint16(off+28,true);
+    const extraLen = dv.getUint16(off+30,true);
+    const cmtLen   = dv.getUint16(off+32,true);
+    const lho      = dv.getUint32(off+42,true);
+    const nome     = dec.decode(u8.subarray(off+46,off+46+nomeLen));
+    const lNomeLen = dv.getUint16(lho+26,true);
+    const lExtraLen= dv.getUint16(lho+28,true);
+    const ini      = lho+30+lNomeLen+lExtraLen;
+    arquivos[nome] = {metodo, dados:u8.subarray(ini,ini+compSize)};
+    off += 46+nomeLen+extraLen+cmtLen;
+  }
+  const saida={};
+  for(const [nome,a] of Object.entries(arquivos)){
+    if(!/^xl\/(worksheets\/|sharedStrings|workbook)/i.test(nome)) continue;
+    if(a.metodo===0){ saida[nome]=dec.decode(a.dados); continue; }
+    if(a.metodo!==8) continue;
+    if(typeof DecompressionStream!=='function')
+      throw new Error('Este navegador não consegue ler .xlsx. Salve a planilha como .csv e tente de novo.');
+    const fluxo = new Blob([a.dados]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    saida[nome] = await new Response(fluxo).text();
+  }
+  return saida;
+}
+const xmlDec = s => String(s)
+  .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+  .replace(/&apos;/g,"'").replace(/&#(\d+);/g,(m,n)=>String.fromCharCode(+n)).replace(/&amp;/g,'&');
+function colIdx(ref){ let n=0; for(const ch of ref){ if(ch<'A'||ch>'Z') break; n=n*26+(ch.charCodeAt(0)-64); } return n-1; }
+
+async function lerXlsx(buffer){
+  const arq = await descompactar(buffer);
+  let compart=[];
+  const ss = Object.keys(arq).find(f=>/sharedStrings\.xml$/i.test(f));
+  if(ss) compart=[...arq[ss].matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)]
+    .map(m=>[...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x=>xmlDec(x[1])).join(''));
+
+  const planilhas = Object.keys(arq).filter(f=>/^xl\/worksheets\/.*\.xml$/i.test(f))
+    .sort((a,b)=>(+((a.match(/(\d+)\.xml$/)||[])[1]||0))-(+((b.match(/(\d+)\.xml$/)||[])[1]||0)));
+  if(!planilhas.length) throw new Error('Nenhuma planilha encontrada no arquivo');
+
+  const xml=arq[planilhas[0]], linhas=[];
+  for(const lm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)){
+    const linha=[];
+    for(const cm of lm[1].matchAll(/<c\b([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+      const attrs=cm[1]||'', inner=cm[2]||'';
+      const ref=(attrs.match(/r="([A-Z]+)\d+"/)||[])[1];
+      const i = ref ? colIdx(ref) : linha.length;
+      const t = (attrs.match(/t="([^"]+)"/)||[])[1];
+      const v = inner.match(/<v>([\s\S]*?)<\/v>/);
+      const s = inner.match(/<t[^>]*>([\s\S]*?)<\/t>/);
+      let val='';
+      if(t==='s'&&v)                              val = compart[+v[1]] || '';
+      else if((t==='inlineStr'||t==='str')&&s)    val = xmlDec(s[1]);
+      else if(v)                                  val = xmlDec(v[1]);
+      else if(s)                                  val = xmlDec(s[1]);
+      linha[i]=val;
+    }
+    linhas.push(linha);
+  }
+  return linhas;
+}
+
+/* Normaliza qualquer origem para {cabecalho:[], linhas:[[]]} */
+function paraTabela(dados){
+  if(Array.isArray(dados) && dados.length && !Array.isArray(dados[0]) && typeof dados[0]==='object'){
+    const cab=[...new Set(dados.flatMap(o=>Object.keys(o)))];
+    return {cabecalho:cab, linhas:dados.map(o=>cab.map(c=>o[c]))};
+  }
+  const linhas = dados.filter(l => l && l.some(c => String(c==null?'':c).trim()!==''));
+  if(linhas.length<2) throw new Error('A base precisa ter um cabeçalho e ao menos uma linha de dados');
+  return {cabecalho:linhas[0].map(c=>String(c==null?'':c).trim()), linhas:linhas.slice(1)};
+}
+
+/* ───────────────────────── Mapeamento de colunas ───────────────────────── */
+function detectar(cabecalho){
+  const cab = cabecalho.map(norm), mapa={}, usados=new Set();
+  for(const campo of CAMPOS){
+    let achou=-1;
+    for(const s of campo.syn){ const i=cab.indexOf(s); if(i>=0 && !usados.has(i)){ achou=i; break; } }
+    if(achou<0) for(const s of campo.syn){
+      const i=cab.findIndex((h,j)=>!usados.has(j) && h && s.length>=3 && (h.startsWith(s)||h.includes(s)));
+      if(i>=0){ achou=i; break; }
+    }
+    if(achou>=0){ mapa[campo.k]=achou; usados.add(achou); }
+  }
+  if(CONFIG.colunas){                                 // sobrescreve com o CONFIG
+    for(const [k,nome] of Object.entries(CONFIG.colunas)){
+      if(!nome) continue;
+      const i=cab.indexOf(norm(nome));
+      if(i>=0) mapa[k]=i; else console.warn('Coluna do CONFIG não encontrada:',nome);
+    }
+  }
+  return mapa;
+}
+
+/* ───────────────────────── Cálculo dos indicadores ───────────────────────── */
+function calcular(tabela, mapa){
+  const R=CONFIG.regras, hoje=new Date();
+  const val=(l,k)=> mapa[k]!=null ? l[mapa[k]] : null;
+
+  const itens = tabela.linhas.map(l=>{
+    const saldo   = num(val(l,'saldo')) || 0;
+    const minimo  = num(val(l,'minimo'));
+    const maximo  = num(val(l,'maximo'));
+    const custo   = num(val(l,'custo'));
+    const consumo = num(val(l,'consumo'));
+    const ultima  = paraData(val(l,'ultima'));
+
+    const it = {
+      codigo:    String(val(l,'codigo')    ?? '').trim(),
+      descricao: String(val(l,'descricao') ?? '').trim(),
+      categoria: String(val(l,'categoria') ?? '').trim() || 'SEM CATEGORIA',
+      unidade:   String(val(l,'unidade')   ?? '').trim(),
+      local:     String(val(l,'local')     ?? '').trim(),
+      saldo, minimo, maximo, custo, consumo, ultima
+    };
+    it.valor     = custo!=null ? saldo*custo : null;
+    it.cobertura = (consumo!=null && consumo>0) ? (saldo/consumo)*30 : null;
+    it.parado    = ultima ? Math.floor((hoje-ultima)/86400000) : null;
+    it.repor     = Math.max(0, (maximo!=null&&maximo>0 ? maximo : (minimo!=null?minimo*2:0)) - saldo);
+
+    // status: ruptura > critico > excesso > atencao > ok
+    if(saldo<=0)                                                        it.status='ruptura';
+    else if(minimo!=null && minimo>0 && saldo<minimo)                   it.status='critico';
+    else if(it.cobertura!=null && it.cobertura<R.coberturaCriticaDias)  it.status='critico';
+    else if(maximo!=null && maximo>0 && saldo>maximo)                   it.status='excesso';
+    else if(minimo!=null && minimo>0 && saldo<=minimo*1.2)              it.status='atencao';
+    else if(it.cobertura!=null && it.cobertura<R.coberturaAtencaoDias)  it.status='atencao';
+    else                                                                it.status='ok';
+
+    // urgência para ordenar a fila de reposição (menor = mais urgente)
+    it.urgencia = it.status==='ruptura' ? -1
+                : it.cobertura!=null    ? it.cobertura
+                : (minimo!=null&&minimo>0) ? (saldo/minimo)*R.coberturaAtencaoDias
+                : 9999;
+    return it;
+  }).filter(i => i.codigo || i.descricao);
+
+  const cont = s => itens.filter(i=>i.status===s).length;
+  const somaValor = itens.reduce((a,i)=>a+(i.valor||0),0);
+  const temValor  = itens.some(i=>i.valor!=null);
+
+  // agregado por categoria
+  const cats={};
+  for(const i of itens){
+    const c = cats[i.categoria] || (cats[i.categoria]={nome:i.categoria,qtd:0,valor:0,criticos:0});
+    c.qtd++; c.valor += i.valor||0;
+    if(i.status==='ruptura'||i.status==='critico') c.criticos++;
+  }
+  const categorias = Object.values(cats);
+
+  const reporFila = itens
+    .filter(i=>i.status==='ruptura'||i.status==='critico'||i.status==='atencao')
+    .sort((a,b)=>a.urgencia-b.urgencia)
+    .slice(0,CONFIG.regras.topReposicao);
+
+  const capitalParado = itens
+    .filter(i => i.status==='excesso' || (i.parado!=null && i.parado>=R.diasSemGiro && i.saldo>0))
+    .sort((a,b)=>(b.valor||0)-(a.valor||0))
+    .slice(0,CONFIG.regras.topExcesso);
+
+  return {
+    itens, categorias, reporFila, capitalParado, temValor,
+    kpi:{
+      skus:      itens.length,
+      valor:     somaValor,
+      ruptura:   cont('ruptura'),
+      critico:   cont('critico'),
+      atencao:   cont('atencao'),
+      excesso:   cont('excesso'),
+      ok:        cont('ok'),
+      abaixoMin: itens.filter(i=>i.minimo!=null&&i.minimo>0&&i.saldo<i.minimo).length,
+      semGiro:   itens.filter(i=>i.parado!=null&&i.parado>=R.diasSemGiro&&i.saldo>0).length,
+      compra:    itens.reduce((a,i)=>a+((i.repor>0&&i.custo!=null)?i.repor*i.custo:0),0)
+    }
+  };
+}
+
+/* ═══════════════ Renderização em HTML seguro para e-mail ═══════════════
+   Só tabelas + estilo inline. Sem CSS grid, sem gradiente, sem variável CSS
+   e sem JavaScript — é o que o Outlook e o Gmail realmente renderizam.     */
+const C = {
+  bg:'#f5f7fb', card:'#ffffff', ink:'#1e293b', muted:'#64748b', line:'#e8ecf3',
+  indigo:'#4f46e5', roxo:'#6366f1', verde:'#059669', ambar:'#d97706', vermelho:'#dc2626', ciano:'#0891b2'
+};
+const FONTE = "font-family:'Segoe UI',Arial,Helvetica,sans-serif;";
+const LARGURA = 760;
+
+const ROTULO_STATUS = {
+  ruptura:{t:'🔴 Ruptura',      bg:'#fee2e2', cor:C.vermelho},
+  critico:{t:'🔴 Repor agora',  bg:'#fee2e2', cor:C.vermelho},
+  atencao:{t:'🟡 Atenção',      bg:'#fef3c7', cor:'#b45309'},
+  excesso:{t:'🔵 Excesso',      bg:'#e0f2fe', cor:C.ciano},
+  ok:     {t:'🟢 Normal',       bg:'#dcfce7', cor:C.verde}
+};
+
+function bloco(titulo, corDot, conteudo, largura){
+  return `<table role="presentation" width="${largura||'100%'}" cellpadding="0" cellspacing="0" border="0" style="width:${largura?largura+'px':'100%'};background:${C.card};border:1px solid ${C.line};border-radius:14px;">
+    <tr><td style="padding:20px 22px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td width="12" style="width:12px;vertical-align:middle;"><div style="width:8px;height:8px;background:${corDot||C.roxo};border-radius:50%;font-size:0;line-height:0;">&nbsp;</div></td>
+        <td style="${FONTE}font-size:14px;font-weight:bold;color:${C.ink};padding-bottom:2px;">${titulo}</td>
+      </tr></table>
+      <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+      ${conteudo}
+    </td></tr></table>`;
+}
+
+function cartaoKpi(icone, valor, rotulo, cor){
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.card};border:1px solid ${C.line};border-radius:14px;">
+    <tr>
+      <td width="5" bgcolor="${cor}" style="width:5px;background:${cor};border-radius:14px 0 0 14px;font-size:0;line-height:0;">&nbsp;</td>
+      <td style="padding:16px 18px;${FONTE}">
+        <div style="font-size:18px;line-height:22px;">${icone}</div>
+        <div style="font-size:30px;line-height:34px;font-weight:bold;color:${cor};padding-top:4px;">${valor}</div>
+        <div style="font-size:11px;color:${C.muted};font-weight:bold;text-transform:uppercase;letter-spacing:.4px;padding-top:5px;">${rotulo}</div>
+      </td>
+    </tr></table>`;
+}
+
+/* barra horizontal desenhada com tabela de largura fixa (Outlook-safe) */
+function barra(rotulo, valor, texto, maximo, cor, pistaPx, rotuloPx){
+  pistaPx  = pistaPx  || 300;
+  rotuloPx = rotuloPx || 140;
+  const px = maximo>0 ? Math.max(3, Math.round((valor/maximo)*pistaPx)) : 3;
+  return `<tr>
+    <td width="${rotuloPx}" style="width:${rotuloPx}px;${FONTE}font-size:11px;color:${C.muted};font-weight:bold;text-align:right;padding:0 9px 9px 0;">${esc(rotulo)}</td>
+    <td style="padding:0 9px 9px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="${pistaPx}" style="width:${pistaPx}px;background:#eef1f7;border-radius:7px;">
+        <tr><td width="${px}" bgcolor="${cor}" style="width:${px}px;height:20px;background:${cor};border-radius:7px;font-size:0;line-height:0;">&nbsp;</td>
+            <td style="font-size:0;line-height:0;">&nbsp;</td></tr>
+      </table>
+    </td>
+    <td style="${FONTE}font-size:11.5px;font-weight:bold;color:${C.ink};text-align:right;padding:0 0 9px 0;white-space:nowrap;">${texto}</td>
+  </tr>`;
+}
+
+function tabelaDados(colunas, linhas){
+  const th = colunas.map(c=>
+    `<th align="${c.al||'left'}" style="${FONTE}font-size:10px;color:${C.muted};text-transform:uppercase;letter-spacing:.4px;padding:7px 8px;border-bottom:2px solid ${C.line};font-weight:bold;">${c.t}</th>`).join('');
+  const tr = linhas.map(l=>
+    `<tr>${l.map((c,i)=>
+      `<td align="${colunas[i].al||'left'}" style="${FONTE}font-size:11.5px;color:${C.ink};padding:8px;border-bottom:1px solid ${C.line};">${c}</td>`).join('')}</tr>`).join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+}
+
+const selo = (texto,bg,cor) =>
+  `<span style="background:${bg};color:${cor};padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:bold;white-space:nowrap;">${texto}</span>`;
+const etiqueta = t =>
+  `<span style="background:#eef2ff;color:${C.indigo};padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:bold;white-space:nowrap;">${esc(t)}</span>`;
+
+function montarEmail(d){
+  const k=d.kpi, R=CONFIG.regras;
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const M = LARGURA, meia = Math.floor((M-16)/2);
+
+  /* KPIs — 2x2 */
+  const kpis = [
+    cartaoKpi('📦', fmtInt(k.skus),                       'Itens em base',     C.indigo),
+    cartaoKpi('💰', d.temValor ? fmtMoeda(k.valor) : '—', 'Valor imobilizado', C.verde),
+    cartaoKpi('⏳', fmtInt(k.critico),                    'Repor agora',       C.ambar),
+    cartaoKpi('⚠️', fmtInt(k.ruptura),                    'Em ruptura',        C.vermelho)
+  ];
+  const blocoKpi = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td width="${meia}" style="width:${meia}px;padding-bottom:16px;">${kpis[0]}</td><td width="16" style="width:16px;font-size:0;">&nbsp;</td><td width="${meia}" style="width:${meia}px;padding-bottom:16px;">${kpis[1]}</td></tr>
+    <tr><td style="padding-bottom:16px;">${kpis[2]}</td><td style="font-size:0;">&nbsp;</td><td style="padding-bottom:16px;">${kpis[3]}</td></tr>
+  </table>`;
+
+  /* Situação do estoque — 5 quadros que somam o total de itens */
+  const quadro = (n,r,bg,cor)=>
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${bg};border:1px solid ${C.line};border-radius:12px;">
+      <tr><td align="center" style="padding:14px 6px;${FONTE}">
+        <div style="font-size:26px;line-height:30px;font-weight:bold;color:${cor};">${n}</div>
+        <div style="font-size:10px;color:${C.muted};font-weight:bold;text-transform:uppercase;padding-top:4px;">${r}</div>
+      </td></tr></table>`;
+  const q5 = Math.floor((M-2*22-4*10)/5);
+  const situacao = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="${q5}" style="width:${q5}px;">${quadro(fmtInt(k.ruptura),'Ruptura','#fef2f2',C.vermelho)}</td>
+      <td width="10" style="width:10px;font-size:0;">&nbsp;</td>
+      <td width="${q5}" style="width:${q5}px;">${quadro(fmtInt(k.critico),'Repor agora','#fff7ed','#c2410c')}</td>
+      <td width="10" style="width:10px;font-size:0;">&nbsp;</td>
+      <td width="${q5}" style="width:${q5}px;">${quadro(fmtInt(k.atencao),'Atenção','#fffbeb','#b45309')}</td>
+      <td width="10" style="width:10px;font-size:0;">&nbsp;</td>
+      <td width="${q5}" style="width:${q5}px;">${quadro(fmtInt(k.ok),'Normal','#ecfdf5',C.verde)}</td>
+      <td width="10" style="width:10px;font-size:0;">&nbsp;</td>
+      <td width="${q5}" style="width:${q5}px;">${quadro(fmtInt(k.excesso),'Excesso','#eff6ff',C.ciano)}</td>
+    </tr></table>
+    <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+    <p style="${FONTE}font-size:11.5px;color:${C.muted};margin:0;line-height:1.5;">
+      Classificação sobre os <b>${fmtInt(k.skus)}</b> itens da base.
+      ${k.semGiro?` <b>${fmtInt(k.semGiro)}</b> sem movimentação há mais de ${R.diasSemGiro} dias.`:''}
+      ${(d.temValor&&k.compra>0)?` Reposição sugerida até o nível máximo: <b>${fmtMoeda(k.compra)}</b>.`:''}
+    </p>`;
+
+  /* Criticidade por categoria (meia largura) */
+  const porCrit = [...d.categorias].sort((a,b)=>b.criticos-a.criticos||b.qtd-a.qtd).slice(0,8);
+  const maxCrit = Math.max(1,...porCrit.map(c=>c.criticos));
+  const barrasCrit = porCrit.length && porCrit.some(c=>c.criticos>0)
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${porCrit.map(c=>barra(c.nome, c.criticos, fmtInt(c.criticos), maxCrit, c.criticos>0?C.vermelho:'#cbd5e1', 150, 100)).join('')}
+       </table>`
+    : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Nenhum item crítico — estoque dentro dos parâmetros.</p>`;
+
+  /* Valor imobilizado por categoria (meia largura) */
+  const porValor = [...d.categorias].sort((a,b)=>b.valor-a.valor).slice(0,8);
+  const maxValor = Math.max(1,...porValor.map(c=>c.valor));
+  const temValores = d.temValor && porValor.some(c=>c.valor>0);
+  const maxQtd = Math.max(1,...d.categorias.map(x=>x.qtd));
+  const conteudoValor = temValores
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${porValor.map(c=>{
+          const p=c.valor/maxValor;
+          const cor = p>=.66 ? C.indigo : p>=.33 ? C.roxo : '#a5b4fc';
+          return barra(c.nome, c.valor, fmtMoeda(c.valor), maxValor, cor, 130, 100);
+        }).join('')}
+       </table>`
+    : `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${[...d.categorias].sort((a,b)=>b.qtd-a.qtd).slice(0,8)
+          .map(c=>barra(c.nome, c.qtd, fmtInt(c.qtd), maxQtd, C.roxo, 150, 100)).join('')}
+       </table>`;
+
+  /* Fila de reposição */
+  const colsRep = [{t:'Categoria'},{t:'Item'},{t:'Saldo',al:'center'},{t:'Mín.',al:'center'},{t:'Cobertura',al:'center'},{t:'Repor',al:'center'},{t:'Status',al:'center'}];
+  const linhasRep = d.reporFila.map(i=>{
+    const s=ROTULO_STATUS[i.status];
+    const cob = i.cobertura!=null ? `<span style="color:${i.cobertura<R.coberturaCriticaDias?C.vermelho:'#b45309'};font-weight:bold;">${fmtNum(i.cobertura)} d</span>` : '—';
+    return [
+      etiqueta(i.categoria),
+      `<b>${esc(i.descricao||i.codigo)}</b>${i.codigo&&i.descricao?`<br><span style="color:${C.muted};font-size:10.5px;">${esc(i.codigo)}</span>`:''}`,
+      `<b style="color:${i.saldo<=0?C.vermelho:C.ink};">${fmtNum(i.saldo)}</b>${i.unidade?` <span style="color:${C.muted};font-size:10px;">${esc(i.unidade)}</span>`:''}`,
+      i.minimo!=null?fmtNum(i.minimo):'—',
+      cob,
+      i.repor>0?`<b>${fmtNum(i.repor)}</b>`:'—',
+      selo(s.t,s.bg,s.cor)
+    ];
+  });
+  const blocoRep = bloco('Fila de reposição — mais urgente primeiro', C.vermelho,
+    linhasRep.length ? tabelaDados(colsRep,linhasRep)
+                     : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Nenhum item precisa de reposição imediata.</p>`);
+
+  /* Capital parado */
+  const colsPar = [{t:'Categoria'},{t:'Item'},{t:'Saldo',al:'center'},{t:'Parado',al:'center'},{t:'Valor',al:'right'}];
+  const linhasPar = d.capitalParado.map(i=>[
+    etiqueta(i.categoria),
+    `<b>${esc(i.descricao||i.codigo)}</b>${i.codigo&&i.descricao?`<br><span style="color:${C.muted};font-size:10.5px;">${esc(i.codigo)}</span>`:''}`,
+    fmtNum(i.saldo),
+    i.parado!=null?`<span style="color:${i.parado>=R.diasSemGiro?'#b45309':C.ink};font-weight:bold;">${fmtInt(i.parado)} d</span>`:'—',
+    i.valor!=null?`<b>${fmtMoeda(i.valor)}</b>`:'—'
+  ]);
+  const blocoPar = bloco('Capital parado — excesso e itens sem giro', C.ambar,
+    linhasPar.length ? tabelaDados(colsPar,linhasPar)
+                     : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Nenhum excesso ou item sem giro identificado.</p>`);
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${esc(CONFIG.titulo)} • ${esc(CONFIG.unidade)}</title></head>
+<body style="margin:0;padding:0;background:${C.bg};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.bg};">
+<tr><td align="center" style="padding:24px 10px;">
+<table role="presentation" width="${M}" cellpadding="0" cellspacing="0" border="0" style="width:${M}px;max-width:100%;">
+
+  <tr><td bgcolor="${C.indigo}" style="background:${C.indigo};border-radius:16px;padding:24px 28px;">
+    <div style="${FONTE}font-size:21px;font-weight:bold;color:#ffffff;line-height:1.3;">📦 ${esc(CONFIG.titulo)} &nbsp;•&nbsp; ${esc(CONFIG.unidade)}</div>
+    <div style="${FONTE}font-size:12.5px;color:#e0e7ff;padding-top:7px;">
+      ${fmtInt(k.skus)} itens analisados &nbsp;|&nbsp; Base atualizada em ${hoje} &nbsp;|&nbsp; Cobertura crítica: ${R.coberturaCriticaDias} dias
+    </div>
+  </td></tr>
+  <tr><td style="height:20px;font-size:0;line-height:20px;">&nbsp;</td></tr>
+
+  <tr><td>${blocoKpi}</td></tr>
+
+  <tr><td>${bloco('Situação do estoque', C.roxo, situacao)}</td></tr>
+  <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>
+
+  <tr><td>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="${meia}" valign="top" style="width:${meia}px;">${bloco('Itens críticos por categoria', C.vermelho, barrasCrit)}</td>
+      <td width="16" style="width:16px;font-size:0;">&nbsp;</td>
+      <td width="${meia}" valign="top" style="width:${meia}px;">${bloco(temValores?'Valor imobilizado por categoria':'Itens por categoria', C.verde, conteudoValor)}</td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>
+
+  <tr><td>${blocoRep}</td></tr>
+  <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>
+
+  <tr><td>${blocoPar}</td></tr>
+
+  <tr><td align="center" style="${FONTE}font-size:11px;color:${C.muted};padding:20px 10px 0;">
+    ${esc(CONFIG.rodape)}
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+/* ───────────────────────── Fluxo da tela ───────────────────────── */
+let TABELA=null, HTML='';
+
+async function carregarArquivo(file){
+  msg('#msg','Lendo arquivo…','info');
+  try{
+    let dados;
+    if(/\.csv$/i.test(file.name))       dados = lerCsv(await file.text());
+    else if(/\.json$/i.test(file.name)) dados = JSON.parse(await file.text());
+    else                                dados = await lerXlsx(await file.arrayBuffer());
+    receber(dados, file.name);
+  }catch(e){ console.error(e); msg('#msg','❌ '+e.message,'err'); }
+}
+
+async function carregarUrl(){
+  if(!CONFIG.fonte){ msg('#msg','Nenhuma URL definida. Preencha <code>CONFIG.fonte</code> no topo do arquivo ou selecione a planilha acima.','err'); return; }
+  msg('#msg','Buscando <code>'+esc(CONFIG.fonte)+'</code>…','info');
+  try{
+    const r = await fetch(CONFIG.fonte,{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status+' ao buscar a base');
+    let dados;
+    if(/\.json($|\?)/i.test(CONFIG.fonte))     dados = await r.json();
+    else if(/\.csv($|\?)/i.test(CONFIG.fonte)) dados = lerCsv(await r.text());
+    else                                       dados = await lerXlsx(await r.arrayBuffer());
+    receber(dados, CONFIG.fonte);
+  }catch(e){
+    console.error(e);
+    msg('#msg','❌ '+e.message+'<br><br>Se você abriu este arquivo direto do disco (<code>file://</code>), o navegador bloqueia a leitura da base. Sirva a pasta por http ou use o seletor de arquivo acima.','err');
+  }
+}
+
+function receber(dados, origem){
+  TABELA = paraTabela(dados);
+  msg('#msg',`✅ <b>${TABELA.linhas.length}</b> linha(s) lida(s) de <b>${esc(origem)}</b> — ${TABELA.cabecalho.length} colunas.`,'ok');
+  montarMapa(detectar(TABELA.cabecalho));
+  $('#cardMap').classList.remove('hidden');
+  $('#cardMap').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function montarMapa(mapa){
+  $('#mapBody').innerHTML = CAMPOS.map(c=>{
+    const opts = ['<option value="">— não usar —</option>'].concat(
+      TABELA.cabecalho.map((h,i)=>`<option value="${i}"${mapa[c.k]===i?' selected':''}>${esc(h||('coluna '+(i+1)))}</option>`)
+    ).join('');
+    return `<tr><td><b>${c.rot}</b>${c.req?' <span class="req">*</span>':''}</td>
+            <td><select data-campo="${c.k}">${opts}</select></td></tr>`;
+  }).join('');
+}
+
+function gerar(){
+  const mapa={};
+  document.querySelectorAll('#mapBody select').forEach(s=>{ if(s.value!=='') mapa[s.dataset.campo]=+s.value; });
+  const faltando = CAMPOS.filter(c=>c.req && mapa[c.k]==null).map(c=>c.rot);
+  if(faltando.length){ msg('#msg','❌ Selecione a coluna de: <b>'+faltando.join(', ')+'</b>','err'); return; }
+  try{
+    const d = calcular(TABELA, mapa);
+    if(!d.itens.length){ msg('#msg','❌ Nenhum item válido encontrado na base.','err'); return; }
+    HTML = montarEmail(d);
+    $('#prev').srcdoc = HTML;
+    $('#cardOut').classList.remove('hidden');
+    $('#cardPrev').classList.remove('hidden');
+    msg('#msg',`✅ Painel gerado com <b>${d.itens.length}</b> itens em <b>${d.categorias.length}</b> categoria(s).`,'ok');
+    $('#cardOut').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){ console.error(e); msg('#msg','❌ Erro ao gerar: '+e.message,'err'); }
+}
+
+async function copiar(){
+  try{
+    const blob = new Blob([HTML],{type:'text/html'});
+    await navigator.clipboard.write([new ClipboardItem({'text/html':blob,'text/plain':new Blob([HTML],{type:'text/plain'})})]);
+    msg('#msg2','✅ Copiado! Abra uma nova mensagem no Outlook e cole com <code>Ctrl+V</code> no corpo do e-mail.','ok');
+  }catch(e){
+    msg('#msg2','⚠️ O navegador bloqueou a cópia automática. Use <b>Abrir em nova aba</b>, selecione tudo com <code>Ctrl+A</code>, copie e cole no e-mail.','err');
+  }
+}
+function baixar(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([HTML],{type:'text/html;charset=utf-8'}));
+  a.download='painel_estoque_'+new Date().toISOString().slice(0,10)+'.html';
+  a.click(); URL.revokeObjectURL(a.href);
+  msg('#msg2','✅ Arquivo baixado.','ok');
+}
+function abrir(){
+  const w=window.open('','_blank');
+  w.document.write(HTML); w.document.close();
+}
+
+const CAB_MODELO = ['Codigo','Descricao','Categoria','Saldo','Minimo','Maximo','Unidade','Custo Unitario','Consumo Medio Mensal','Localizacao','Ultima Movimentacao'];
+const LINHAS_DEMO = [
+  ['RLM-0142','Rolamento 6205 ZZ','MECANICA',        8,  20,  60,'UN',  38.90, 22,'A-01-03','12/07/2026'],
+  ['OLE-0088','Óleo hidráulico ISO 68 20L','FLUIDOS',0,   6,  24,'BD', 412.00,  9,'B-02-01','28/07/2026'],
+  ['LUV-0301','Luva anticorte nível 5','EPI',       45, 120, 400,'PAR', 27.50,140,'C-01-08','01/08/2026'],
+  ['COR-0210','Correia A-52','MECANICA',            14,  10,  40,'UN',  64.00,  6,'A-02-05','19/06/2026'],
+  ['FIL-0455','Filtro de ar compressor','MANUTENCAO',2,   8,  30,'UN', 156.00, 11,'B-03-02','05/07/2026'],
+  ['PAR-0777','Parafuso M8x40 inox','FIXACAO',    3800, 500,2500,'UN',   1.85,220,'D-04-01','14/03/2026'],
+  ['SEN-0019','Sensor indutivo M12 PNP','ELETRICA',  3,   6,  20,'UN', 289.00,  4,'E-01-02','22/07/2026'],
+  ['GRA-0033','Graxa EP2 1kg','FLUIDOS',           26,  12,  48,'PT',  48.70, 10,'B-02-04','30/07/2026'],
+  ['CAB-0500','Cabo PP 3x2,5mm','ELETRICA',       120,  80, 300,'M',    9.40, 65,'E-02-06','25/07/2026'],
+  ['DIS-0611','Disco de corte 7"','CONSUMIVEL',    18,  40, 150,'UN',  14.20, 55,'C-02-03','29/07/2026'],
+  ['MAN-0904','Mangueira hidráulica 1/2"','FLUIDOS',95,  20,  60,'M',   72.00,  3,'B-04-07','10/02/2026'],
+  ['ROL-0155','Rolamento 6308 C3','MECANICA',       1,   4,  16,'UN', 187.30,  5,'A-01-09','16/07/2026']
+];
+
+/* ───────────────────────── Eventos ───────────────────────── */
+$('#drop').onclick = () => $('#file').click();
+$('#file').onchange = e => { if(e.target.files[0]) carregarArquivo(e.target.files[0]); };
+['dragenter','dragover'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.add('over');}));
+['dragleave','drop'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.remove('over');}));
+$('#drop').addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) carregarArquivo(f); });
+
+$('#btnUrl').onclick    = carregarUrl;
+$('#btnGerar').onclick  = gerar;
+$('#btnCopiar').onclick = copiar;
+$('#btnBaixar').onclick = baixar;
+$('#btnAbrir').onclick  = abrir;
+
+$('#btnModelo').onclick = () => {
+  const csv = [CAB_MODELO].concat(LINHAS_DEMO)
+    .map(l=>l.map(c=>/[";\n]/.test(String(c))?'"'+String(c).replace(/"/g,'""')+'"':c).join(';')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='modelo_base_estoque.csv'; a.click(); URL.revokeObjectURL(a.href);
+  msg('#msg','✅ Modelo baixado. Preencha com a sua base e envie de volta aqui.','ok');
+};
+
+$('#btnDemo').onclick = () => {
+  receber([CAB_MODELO].concat(LINHAS_DEMO), 'dados de exemplo');
+  setTimeout(gerar, 60);
+};
+
+/* Carrega sozinho se o CONFIG.fonte estiver preenchido */
+if(CONFIG.fonte) carregarUrl();
+</script>
+</body>
+</html>
