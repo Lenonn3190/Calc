@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador do Painel de Férias • HTML para e-mail</title>
+<style>
+  :root{ --bg:#f5f7fb; --card:#fff; --ink:#1e293b; --muted:#64748b; --line:#e8ecf3;
+    --shadow:0 1px 3px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06); }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);padding:24px;line-height:1.45}
+  .wrap{max-width:1180px;margin:0 auto}
+  .hero{background:linear-gradient(120deg,#4f46e5,#6366f1 55%,#8b5cf6);color:#fff;border-radius:20px;padding:24px 30px;box-shadow:var(--shadow);margin-bottom:20px}
+  .hero h1{font-size:22px;font-weight:700}
+  .hero p{opacity:.9;font-size:13.5px;margin-top:6px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:20px 24px;margin-bottom:18px}
+  h2{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  h2 .dot{width:8px;height:8px;border-radius:50%;background:#6366f1}
+  .btn{border:0;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:#eef2ff;color:#4f46e5}
+  .btn:hover{filter:brightness(.95)}
+  .btn.primary{background:#4f46e5;color:#fff}
+  .btn.ok{background:#059669;color:#fff}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .drop{border:2px dashed #c7d2fe;border-radius:14px;padding:26px;text-align:center;background:#fafbff;cursor:pointer;transition:.15s}
+  .drop:hover,.drop.over{background:#eef2ff;border-color:#6366f1}
+  .drop b{display:block;font-size:14px;margin-bottom:4px}
+  .drop small{color:var(--muted);font-size:12px}
+  .hidden{display:none}
+  .msg{padding:10px 14px;border-radius:10px;font-size:12.5px;font-weight:600;margin-top:12px}
+  .msg.err{background:#fee2e2;color:#b91c1c}
+  .msg.ok{background:#ecfdf5;color:#047857}
+  .msg.info{background:#eff6ff;color:#1d4ed8}
+  table.map{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  table.map th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:7px 8px;border-bottom:2px solid var(--line)}
+  table.map td{padding:6px 8px;border-bottom:1px solid var(--line)}
+  table.map select{width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:12.5px;background:#fff;color:var(--ink)}
+  .req{color:#dc2626;font-weight:700}
+  iframe{width:100%;height:1900px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  code{background:#eef2ff;color:#4338ca;padding:1px 6px;border-radius:5px;font-size:12px}
+  .steps{font-size:13px;color:var(--muted)}
+  .steps li{margin:5px 0 5px 18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>🏖️ Gerador do Painel Gerencial de Férias</h1>
+    <p>Mapa de calor por quinzena, picos de ausência e pendências — pronto para colar no corpo do e-mail.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span>1 · Base de dados</h2>
+    <div id="drop" class="drop">
+      <b>📂 Arraste a planilha de férias aqui</b>
+      <small>ou clique para selecionar — <code>.xlsx</code>, <code>.csv</code> ou <code>.json</code></small>
+      <input type="file" id="file" accept=".xlsx,.csv,.json" class="hidden">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="btnUrl">🔗 Carregar da URL do CONFIG</button>
+      <button class="btn" id="btnModelo">📄 Baixar modelo (.csv)</button>
+      <button class="btn" id="btnDemo">🧪 Ver com dados de exemplo</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="card hidden" id="cardMap">
+    <h2><span class="dot"></span>2 · Conferência das colunas</h2>
+    <p class="steps">Ajuste se a detecção automática errou. As marcadas com <span class="req">*</span> são obrigatórias.
+      Informe <b>Data fim</b> <i>ou</i> <b>Dias</b> — o painel calcula o que faltar.</p>
+    <table class="map"><thead><tr><th style="width:34%">Campo do painel</th><th>Coluna da sua planilha</th></tr></thead><tbody id="mapBody"></tbody></table>
+    <div class="row" style="margin-top:14px"><button class="btn primary" id="btnGerar">📊 Gerar painel</button></div>
+  </div>
+
+  <div class="card hidden" id="cardOut">
+    <h2><span class="dot"></span>3 · Painel gerado — exportar para e-mail</h2>
+    <div class="row">
+      <button class="btn ok" id="btnCopiar">📋 Copiar para colar no e-mail</button>
+      <button class="btn primary" id="btnBaixar">⬇️ Baixar .html</button>
+      <button class="btn" id="btnAbrir">🖥️ Abrir em nova aba</button>
+    </div>
+    <div id="msg2"></div>
+    <ol class="steps" style="margin-top:14px">
+      <li><b>Outlook:</b> clique em <b>Copiar</b>, abra uma nova mensagem e cole com <code>Ctrl+V</code> no corpo.</li>
+      <li><b>Gmail:</b> use <b>Abrir em nova aba</b>, <code>Ctrl+A</code>, <code>Ctrl+C</code> e cole na mensagem.</li>
+    </ol>
+  </div>
+
+  <div class="card hidden" id="cardPrev">
+    <h2><span class="dot"></span>Pré-visualização — é exatamente o que chega no e-mail</h2>
+    <iframe id="prev"></iframe>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   ▼▼▼  CONFIGURE AQUI  ▼▼▼
+   ══════════════════════════════════════════════════════════════════════════ */
+const CONFIG = {
+
+  /* Caminho/URL da base. Deixe '' para escolher o arquivo pelo botão na tela.
+     Só funciona servido por http — em file:// o navegador bloqueia a leitura. */
+  fonte: '',
+
+  titulo:  'Painel Gerencial de Férias',
+  unidade: 'ETG 103ki',
+  ciclo:   '',            // ex.: 'Ciclo 2026-2027'. Vazio = deduz da base.
+  rodape:  'Painel Gerencial de Férias • ETG 103ki — contagem por pessoa presente em cada quinzena',
+
+  regras: {
+    /* Ausências simultâneas toleradas na mesma quinzena.
+       Acima do limite a célula fica vermelha no mapa de calor.              */
+    limiteTotal:   6,     // no time inteiro
+    limitePorArea: 2,     // dentro de uma mesma área
+
+    /* Alerta de apontamento no sistema: lançar até N dias antes do retorno. */
+    diasApontamento: 40,
+
+    /* Quantas linhas nas tabelas de apoio */
+    topPicos: 8,
+
+    /* Recorta o mapa de calor. Vazio = usa todo o intervalo da base.
+       Formato 'aaaa-mm'.                                                    */
+    mesInicio: '',
+    mesFim:    ''
+  },
+
+  /* null = detecção automática pelo cabeçalho. Para fixar:
+       colunas: { colaborador:'NOME', inicio:'INÍCIO FÉRIAS', dias:'DIAS' }  */
+  colunas: null
+};
+/* ══════════════════════════════════════════════════════════════════════════
+   ▲▲▲  FIM DA CONFIGURAÇÃO  ▲▲▲
+   ══════════════════════════════════════════════════════════════════════════ */
+
+
+const CAMPOS = [
+  {k:'colaborador', rot:'Colaborador',        req:true,  syn:['colaborador','nome','funcionario','empregado','pessoa','matricula','nomecolaborador']},
+  {k:'area',        rot:'Área / Setor',       req:false, syn:['area','setor','departamento','equipe','time','grupo','celula','gerencia','local']},
+  {k:'inicio',      rot:'Data de início',     req:true,  syn:['inicio','datainicio','iniciogozo','iniciogoso','dtinicio','saida','datasaida','inicioferias','de','from','comeco']},
+  {k:'fim',         rot:'Data de fim',        req:false, syn:['fim','datafim','dtfim','termino','datatermino','fimferias','ate','retorno','dataretorno','volta']},
+  {k:'dias',        rot:'Dias do período',    req:false, syn:['dias','qtddias','quantidadedias','diasgozo','diasferias','duracao','periodo','numerodias']},
+  {k:'status',      rot:'Status do período',  req:false, syn:['status','situacao','condicao','estagio','aprovacao']},
+  {k:'apontado',    rot:'Apontado no sistema',req:false, syn:['apontado','lancado','sistema','apontamento','lancamento','registrado','sap']},
+  {k:'vencimento',  rot:'Limite / vencimento',req:false, syn:['vencimento','datalimite','limite','limiteconcessivo','periodoconcessivo','vencimentoferias','prazo']}
+];
+
+/* ───────────────────────── Utilitários ───────────────────────── */
+const $ = s => document.querySelector(s);
+const norm = s => String(s==null?'':s).trim().toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function num(v){
+  if(v==null||v==='') return null;
+  if(typeof v==='number') return isFinite(v)?v:null;
+  let s=String(v).trim().replace(/[^\d.,\-]/g,'');
+  if(!s||s==='-') return null;
+  const lv=s.lastIndexOf(','), lp=s.lastIndexOf('.');
+  if(lv>lp)      s=s.replace(/\./g,'').replace(',','.');
+  else if(lp>lv) s=s.replace(/,/g,'');
+  else           s=s.replace(',','.');
+  const n=parseFloat(s);
+  return isFinite(n)?n:null;
+}
+const fmtInt = n => (n==null?'—':Math.round(n).toLocaleString('pt-BR'));
+const fmtData = d => (d instanceof Date && !isNaN(d)) ? d.toLocaleDateString('pt-BR') : '—';
+const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const rotuloMes = (a,m) => MESES[m]+'/'+String(a).slice(-2);
+
+function paraData(v){
+  if(v==null||v==='') return null;
+  if(v instanceof Date) return isNaN(v)?null:v;
+  if(typeof v==='number' && v>20000 && v<70000) return new Date(Math.round((v-25569)*86400000));
+  const s=String(v).trim();
+  let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if(m){ let a=+m[3]; if(a<100) a+=2000; const d=new Date(a,+m[2]-1,+m[1]); return isNaN(d)?null:d; }
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m){ const d=new Date(+m[1],+m[2]-1,+m[3]); return isNaN(d)?null:d; }
+  const n=num(s); if(n!=null&&n>20000&&n<70000) return new Date(Math.round((n-25569)*86400000));
+  return null;
+}
+const diaMes = (a,m) => new Date(a,m+1,0).getDate();
+const dInt   = d => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())/86400000;
+function msg(el,txt,tipo){ $(el).innerHTML = txt ? `<div class="msg ${tipo||'info'}">${txt}</div>` : ''; }
+
+/* ───────────────────────── Leitura da base ───────────────────────── */
+function lerCsv(texto){
+  texto = texto.replace(/^﻿/,'');
+  const prim = texto.split('\n')[0];
+  const delim = (prim.match(/;/g)||[]).length >= (prim.match(/,/g)||[]).length ? ';' : ',';
+  const linhas=[]; let linha=[], cur='', aspas=false;
+  for(let i=0;i<texto.length;i++){
+    const c=texto[i];
+    if(aspas){ if(c==='"'){ if(texto[i+1]==='"'){cur+='"';i++;} else aspas=false; } else cur+=c; }
+    else {
+      if(c==='"') aspas=true;
+      else if(c===delim){ linha.push(cur); cur=''; }
+      else if(c==='\n'){ linha.push(cur); linhas.push(linha); linha=[]; cur=''; }
+      else if(c!=='\r') cur+=c;
+    }
+  }
+  if(cur!==''||linha.length){ linha.push(cur); linhas.push(linha); }
+  return linhas;
+}
+
+async function descompactar(buffer){
+  const dv=new DataView(buffer), u8=new Uint8Array(buffer);
+  let eocd=-1;
+  for(let i=u8.length-22;i>=0 && i>u8.length-66000;i--){ if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; } }
+  if(eocd<0) throw new Error('Arquivo .xlsx inválido');
+  const total=dv.getUint16(eocd+10,true);
+  let off=dv.getUint32(eocd+16,true);
+  const dec=new TextDecoder(), arquivos={};
+  for(let k=0;k<total;k++){
+    if(off+46>u8.length || dv.getUint32(off,true)!==0x02014b50) break;
+    const metodo=dv.getUint16(off+10,true), compSize=dv.getUint32(off+20,true);
+    const nomeLen=dv.getUint16(off+28,true), extraLen=dv.getUint16(off+30,true), cmtLen=dv.getUint16(off+32,true);
+    const lho=dv.getUint32(off+42,true);
+    const nome=dec.decode(u8.subarray(off+46,off+46+nomeLen));
+    const ini=lho+30+dv.getUint16(lho+26,true)+dv.getUint16(lho+28,true);
+    arquivos[nome]={metodo, dados:u8.subarray(ini,ini+compSize)};
+    off += 46+nomeLen+extraLen+cmtLen;
+  }
+  const saida={};
+  for(const [nome,a] of Object.entries(arquivos)){
+    if(!/^xl\/(worksheets\/|sharedStrings|workbook)/i.test(nome)) continue;
+    if(a.metodo===0){ saida[nome]=dec.decode(a.dados); continue; }
+    if(a.metodo!==8) continue;
+    if(typeof DecompressionStream!=='function')
+      throw new Error('Este navegador não consegue ler .xlsx. Salve a planilha como .csv e tente de novo.');
+    saida[nome] = await new Response(
+      new Blob([a.dados]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  }
+  return saida;
+}
+const xmlDec = s => String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+  .replace(/&apos;/g,"'").replace(/&#(\d+);/g,(m,n)=>String.fromCharCode(+n)).replace(/&amp;/g,'&');
+function colIdx(ref){ let n=0; for(const ch of ref){ if(ch<'A'||ch>'Z') break; n=n*26+(ch.charCodeAt(0)-64); } return n-1; }
+
+async function lerXlsx(buffer){
+  const arq=await descompactar(buffer);
+  let compart=[];
+  const ss=Object.keys(arq).find(f=>/sharedStrings\.xml$/i.test(f));
+  if(ss) compart=[...arq[ss].matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)]
+    .map(m=>[...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x=>xmlDec(x[1])).join(''));
+  const planilhas=Object.keys(arq).filter(f=>/^xl\/worksheets\/.*\.xml$/i.test(f))
+    .sort((a,b)=>(+((a.match(/(\d+)\.xml$/)||[])[1]||0))-(+((b.match(/(\d+)\.xml$/)||[])[1]||0)));
+  if(!planilhas.length) throw new Error('Nenhuma planilha encontrada no arquivo');
+  const xml=arq[planilhas[0]], linhas=[];
+  for(const lm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)){
+    const linha=[];
+    for(const cm of lm[1].matchAll(/<c\b([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+      const attrs=cm[1]||'', inner=cm[2]||'';
+      const ref=(attrs.match(/r="([A-Z]+)\d+"/)||[])[1];
+      const i=ref?colIdx(ref):linha.length;
+      const t=(attrs.match(/t="([^"]+)"/)||[])[1];
+      const v=inner.match(/<v>([\s\S]*?)<\/v>/), s=inner.match(/<t[^>]*>([\s\S]*?)<\/t>/);
+      let val='';
+      if(t==='s'&&v)                           val=compart[+v[1]]||'';
+      else if((t==='inlineStr'||t==='str')&&s) val=xmlDec(s[1]);
+      else if(v)                               val=xmlDec(v[1]);
+      else if(s)                               val=xmlDec(s[1]);
+      linha[i]=val;
+    }
+    linhas.push(linha);
+  }
+  return linhas;
+}
+
+function paraTabela(dados){
+  if(Array.isArray(dados) && dados.length && !Array.isArray(dados[0]) && typeof dados[0]==='object'){
+    const cab=[...new Set(dados.flatMap(o=>Object.keys(o)))];
+    return {cabecalho:cab, linhas:dados.map(o=>cab.map(c=>o[c]))};
+  }
+  const linhas=dados.filter(l=>l&&l.some(c=>String(c==null?'':c).trim()!==''));
+  if(linhas.length<2) throw new Error('A base precisa ter um cabeçalho e ao menos uma linha de dados');
+  return {cabecalho:linhas[0].map(c=>String(c==null?'':c).trim()), linhas:linhas.slice(1)};
+}
+
+function detectar(cabecalho){
+  const cab=cabecalho.map(norm), mapa={}, usados=new Set();
+  for(const campo of CAMPOS){
+    let achou=-1;
+    for(const s of campo.syn){ const i=cab.indexOf(s); if(i>=0&&!usados.has(i)){ achou=i; break; } }
+    if(achou<0) for(const s of campo.syn){
+      const i=cab.findIndex((h,j)=>!usados.has(j)&&h&&s.length>=4&&(h.startsWith(s)||h.includes(s)));
+      if(i>=0){ achou=i; break; }
+    }
+    if(achou>=0){ mapa[campo.k]=achou; usados.add(achou); }
+  }
+  if(CONFIG.colunas) for(const [k,nome] of Object.entries(CONFIG.colunas)){
+    if(!nome) continue;
+    const i=cab.indexOf(norm(nome));
+    if(i>=0) mapa[k]=i; else console.warn('Coluna do CONFIG não encontrada:',nome);
+  }
+  return mapa;
+}
+
+/* ═════════════ Cálculo: períodos → quinzenas ═════════════ */
+function calcular(tabela, mapa){
+  const R=CONFIG.regras, hoje=new Date();
+  const val=(l,k)=> mapa[k]!=null ? l[mapa[k]] : null;
+
+  /* 1. períodos válidos */
+  const periodos=[];
+  const semData=[];
+  for(const l of tabela.linhas){
+    const nome=String(val(l,'colaborador')??'').trim();
+    if(!nome) continue;
+    const area   = String(val(l,'area')??'').trim().toUpperCase() || 'SEM ÁREA';
+    const status = String(val(l,'status')??'').trim();
+    const inicio = paraData(val(l,'inicio'));
+    let   fim    = paraData(val(l,'fim'));
+    const dias   = num(val(l,'dias'));
+
+    if(!inicio){ semData.push({nome,area,status,vencimento:paraData(val(l,'vencimento'))}); continue; }
+    if(!fim && dias!=null && dias>0) fim = new Date(inicio.getFullYear(),inicio.getMonth(),inicio.getDate()+dias-1);
+    if(!fim) fim = inicio;
+    if(fim<inicio){ const t=fim; fim=inicio; inicio=t; }
+
+    const apontadoRaw = norm(val(l,'apontado')??'');
+    const apontado = ['sim','s','x','ok','true','1','apontado','lancado','concluido'].includes(apontadoRaw);
+    const limiteApont = new Date(fim.getFullYear(),fim.getMonth(),fim.getDate()-R.diasApontamento);
+
+    periodos.push({
+      nome, area, status, inicio, fim,
+      dias: dias!=null ? dias : (dInt(fim)-dInt(inicio)+1),
+      apontado, temColunaApont: mapa.apontado!=null, limiteApont,
+      vencimento: paraData(val(l,'vencimento'))
+    });
+  }
+  if(!periodos.length) throw new Error('Nenhum período com data de início válida foi encontrado');
+
+  /* 2. eixo de quinzenas */
+  let ini = periodos.reduce((a,p)=>p.inicio<a?p.inicio:a, periodos[0].inicio);
+  let fimG= periodos.reduce((a,p)=>p.fim   >a?p.fim   :a, periodos[0].fim);
+  if(R.mesInicio){ const m=R.mesInicio.split('-'); ini =new Date(+m[0],+m[1]-1,1); }
+  if(R.mesFim)   { const m=R.mesFim.split('-');    fimG=new Date(+m[0],+m[1],0); }
+
+  const quinzenas=[];
+  let a=ini.getFullYear(), m=ini.getMonth();
+  while(a<fimG.getFullYear() || (a===fimG.getFullYear() && m<=fimG.getMonth())){
+    const ultimo=diaMes(a,m);
+    quinzenas.push({ano:a,mes:m,metade:1,rotulo:rotuloMes(a,m),faixa:'1–15',
+      ini:new Date(a,m,1),  fim:new Date(a,m,15)});
+    quinzenas.push({ano:a,mes:m,metade:2,rotulo:rotuloMes(a,m),faixa:'16–'+ultimo,
+      ini:new Date(a,m,16), fim:new Date(a,m,ultimo)});
+    if(++m>11){ m=0; a++; }
+  }
+
+  /* 3. áreas (ordenadas por volume) */
+  const contArea={};
+  periodos.forEach(p=>contArea[p.area]=(contArea[p.area]||0)+1);
+  let areas=Object.keys(contArea).sort((x,y)=>contArea[y]-contArea[x]);
+  let outras=[];
+  if(areas.length>7){ outras=areas.slice(7); areas=areas.slice(0,7); }
+  const areaCol = ar => outras.includes(ar) ? 'OUTRAS' : ar;
+  const colunas = outras.length ? areas.concat('OUTRAS') : areas;
+
+  /* 4. ocupação de cada quinzena */
+  for(const q of quinzenas){
+    const qi=dInt(q.ini), qf=dInt(q.fim);
+    const pessoas=new Map();                       // nome → área (distinto por pessoa)
+    const porArea={}; colunas.forEach(c=>porArea[c]=new Set());
+    for(const p of periodos){
+      if(dInt(p.inicio)<=qf && dInt(p.fim)>=qi){
+        pessoas.set(p.nome,p.area);
+        porArea[areaCol(p.area)].add(p.nome);
+      }
+    }
+    q.total   = pessoas.size;
+    q.porArea = {}; colunas.forEach(c=>q.porArea[c]=porArea[c].size);
+    q.nomes   = [...pessoas.keys()].sort();
+    q.excede  = q.total > R.limiteTotal || colunas.some(c=>q.porArea[c] > R.limitePorArea);
+  }
+
+  /* 5. indicadores */
+  const nomes = [...new Set(periodos.map(p=>p.nome))];
+  const semAgenda = [...new Map(semData.map(s=>[s.nome,s])).values()]
+    .filter(s=>!nomes.includes(s.nome));
+  const pico = quinzenas.reduce((a,q)=>q.total>a.total?q:a, quinzenas[0]);
+  const picos = quinzenas.filter(q=>q.excede)
+    .sort((x,y)=>y.total-x.total).slice(0,R.topPicos);
+
+  const apontar = periodos
+    .filter(p => p.temColunaApont && !p.apontado && p.fim>=hoje)
+    .sort((x,y)=>x.limiteApont-y.limiteApont)
+    .slice(0,R.topPicos);
+
+  const vencidos = periodos.filter(p=>p.vencimento && p.vencimento<p.inicio).length;
+
+  /* quinzenas futuras com mais folga — onde encaixar quem ainda não agendou */
+  const folgas = quinzenas
+    .filter(q => q.fim >= hoje && q.total < R.limiteTotal)
+    .sort((x,y)=> x.total-y.total || dInt(x.ini)-dInt(y.ini))
+    .slice(0,6)
+    .sort((x,y)=> dInt(x.ini)-dInt(y.ini));
+
+  return {
+    periodos, quinzenas, colunas, picos, apontar, semAgenda, pico, vencidos, folgas,
+    temApont: mapa.apontado!=null,
+    kpi:{
+      pessoas:   nomes.length + semAgenda.length,
+      agendadas: nomes.length,
+      periodos:  periodos.length,
+      pendentes: semAgenda.length,
+      pico:      pico.total,
+      picoRot:   pico.rotulo+' · '+pico.faixa,
+      excedidas: quinzenas.filter(q=>q.excede).length,
+      vazias:    quinzenas.filter(q=>q.total===0).length
+    }
+  };
+}
+
+/* ═════════════ Renderização segura para e-mail ═════════════ */
+const C = {
+  bg:'#f5f7fb', card:'#ffffff', ink:'#1e293b', muted:'#64748b', line:'#e8ecf3',
+  indigo:'#4f46e5', roxo:'#6366f1', verde:'#059669', ambar:'#d97706', vermelho:'#dc2626', ciano:'#0891b2'
+};
+const FONTE = "font-family:'Segoe UI',Arial,Helvetica,sans-serif;";
+const M = 760;
+
+/* Escala do mapa de calor, escalonada no limite e não proporcional.
+   Com limites pequenos (2 por área) uma escala proporcional pintaria
+   1 pessoa de amarelo, alarmando quase tudo. Aqui só chega em âmbar
+   quem realmente encostou no limite.                                   */
+const CALOR = {
+  vazio:    {bg:'#f8fafc', cor:'#cbd5e1'},
+  folgado:  {bg:'#dcfce7', cor:'#15803d'},
+  ocupado:  {bg:'#fef9c3', cor:'#a16207'},
+  noLimite: {bg:'#fed7aa', cor:'#c2410c'},
+  acima:    {bg:'#fecaca', cor:'#b91c1c'},
+  critico:  {bg:'#dc2626', cor:'#ffffff'}
+};
+function corCalor(n, limite){
+  if(!n) return CALOR.vazio;
+  const L = Math.max(1, limite);
+  if(n <  L)        return n <= L/2 ? CALOR.folgado : CALOR.ocupado;
+  if(n === L)       return CALOR.noLimite;
+  if(n <= L*1.5)    return CALOR.acima;
+  return                   CALOR.critico;
+}
+
+function bloco(titulo, corDot, conteudo){
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.card};border:1px solid ${C.line};border-radius:14px;">
+    <tr><td style="padding:20px 22px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td width="12" style="width:12px;vertical-align:middle;"><div style="width:8px;height:8px;background:${corDot||C.roxo};border-radius:50%;font-size:0;line-height:0;">&nbsp;</div></td>
+        <td style="${FONTE}font-size:14px;font-weight:bold;color:${C.ink};">${titulo}</td>
+      </tr></table>
+      <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+      ${conteudo}
+    </td></tr></table>`;
+}
+function cartaoKpi(icone, valor, rotulo, cor){
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.card};border:1px solid ${C.line};border-radius:14px;">
+    <tr>
+      <td width="5" bgcolor="${cor}" style="width:5px;background:${cor};border-radius:14px 0 0 14px;font-size:0;line-height:0;">&nbsp;</td>
+      <td style="padding:16px 18px;${FONTE}">
+        <div style="font-size:18px;line-height:22px;">${icone}</div>
+        <div style="font-size:28px;line-height:32px;font-weight:bold;color:${cor};padding-top:4px;">${valor}</div>
+        <div style="font-size:11px;color:${C.muted};font-weight:bold;text-transform:uppercase;letter-spacing:.4px;padding-top:5px;">${rotulo}</div>
+      </td>
+    </tr></table>`;
+}
+function tabelaDados(colunas, linhas){
+  const th=colunas.map(c=>`<th align="${c.al||'left'}" style="${FONTE}font-size:10px;color:${C.muted};text-transform:uppercase;letter-spacing:.4px;padding:7px 8px;border-bottom:2px solid ${C.line};font-weight:bold;">${c.t}</th>`).join('');
+  const tr=linhas.map(l=>`<tr>${l.map((c,i)=>`<td align="${colunas[i].al||'left'}" style="${FONTE}font-size:11.5px;color:${C.ink};padding:8px;border-bottom:1px solid ${C.line};">${c}</td>`).join('')}</tr>`).join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+}
+const selo = (t,bg,cor) => `<span style="background:${bg};color:${cor};padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:bold;white-space:nowrap;">${t}</span>`;
+const etiqueta = t => `<span style="background:#eef2ff;color:${C.indigo};padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:bold;white-space:nowrap;">${esc(t)}</span>`;
+
+/* ── O mapa de calor: um mês por bloco de duas linhas (1ª e 2ª quinzena) ── */
+function mapaCalor(d){
+  const R=CONFIG.regras, cols=d.colunas;
+  const larguraArea = 34, larguraTotal = 42, larguraMes = 52, larguraFaixa = 46;
+  const larguraNomes = M - 2*22 - larguraMes - larguraFaixa - cols.length*larguraArea - larguraTotal;
+
+  const cab = `<tr>
+    <th width="${larguraMes}" align="left"  style="width:${larguraMes}px;${FONTE}font-size:10px;color:${C.muted};text-transform:uppercase;letter-spacing:.3px;padding:6px 4px;border-bottom:2px solid ${C.line};font-weight:bold;">Mês</th>
+    <th width="${larguraFaixa}" align="center" style="width:${larguraFaixa}px;${FONTE}font-size:10px;color:${C.muted};text-transform:uppercase;padding:6px 2px;border-bottom:2px solid ${C.line};font-weight:bold;">Dias</th>
+    ${cols.map(c=>`<th width="${larguraArea}" align="center" style="width:${larguraArea}px;${FONTE}font-size:9px;color:${C.muted};padding:6px 2px;border-bottom:2px solid ${C.line};font-weight:bold;">${esc(c.length>7?c.slice(0,7):c)}</th>`).join('')}
+    <th width="${larguraTotal}" align="center" style="width:${larguraTotal}px;${FONTE}font-size:10px;color:${C.ink};text-transform:uppercase;padding:6px 2px;border-bottom:2px solid ${C.line};font-weight:bold;">Total</th>
+    <th align="left" style="${FONTE}font-size:10px;color:${C.muted};text-transform:uppercase;padding:6px 8px;border-bottom:2px solid ${C.line};font-weight:bold;">Quem está de férias</th>
+  </tr>`;
+
+  const linhas = d.quinzenas.map((q,i)=>{
+    const primeira = q.metade===1;
+    const topo = primeira ? `border-top:2px solid ${C.line};` : '';
+    const ct = corCalor(q.total, R.limiteTotal);
+
+    const celulasArea = d.colunas.map(c=>{
+      const n=q.porArea[c], ca=corCalor(n, R.limitePorArea);
+      return `<td align="center" bgcolor="${ca.bg}" style="background:${ca.bg};${FONTE}font-size:11px;font-weight:bold;color:${ca.cor};padding:6px 2px;${topo}">${n||'·'}</td>`;
+    }).join('');
+
+    let nomes = q.nomes;
+    let txtNomes = '';
+    if(nomes.length){
+      const mostra = nomes.slice(0,4).map(n=>esc(n.split(' ')[0]));
+      txtNomes = mostra.join(', ') + (nomes.length>4 ? ` <span style="color:${C.muted};">+${nomes.length-4}</span>` : '');
+    } else {
+      txtNomes = `<span style="color:#cbd5e1;">—</span>`;
+    }
+
+    return `<tr>
+      <td style="${FONTE}font-size:11px;font-weight:bold;color:${primeira?C.ink:'#94a3b8'};padding:6px 4px;${topo}">${primeira?esc(q.rotulo):''}</td>
+      <td align="center" style="${FONTE}font-size:10px;color:${C.muted};padding:6px 2px;${topo}">${q.faixa}</td>
+      ${celulasArea}
+      <td align="center" bgcolor="${ct.bg}" style="background:${ct.bg};${FONTE}font-size:12px;font-weight:bold;color:${ct.cor};padding:6px 2px;${topo}">${q.total||'·'}</td>
+      <td style="${FONTE}font-size:10px;color:${C.ink};padding:6px 8px;${topo}">${txtNomes}</td>
+    </tr>`;
+  }).join('');
+
+  const legenda = `<div style="height:12px;font-size:0;line-height:12px;">&nbsp;</div>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+      ${[[CALOR.folgado.bg,'Folgado'],[CALOR.ocupado.bg,'Ocupado'],[CALOR.noLimite.bg,'No limite'],
+         [CALOR.acima.bg,'Acima do limite'],[CALOR.critico.bg,'Crítico']]
+        .map(([bg,t])=>`<td style="padding-right:14px;${FONTE}font-size:10px;color:${C.muted};white-space:nowrap;">
+            <span style="display:inline-block;width:11px;height:11px;background:${bg};border:1px solid ${C.line};border-radius:3px;">&nbsp;</span>&nbsp;${t}</td>`).join('')}
+    </tr></table>
+    <p style="${FONTE}font-size:10.5px;color:${C.muted};margin:8px 0 0;line-height:1.5;">
+      Cor por ocupação: colunas de área contra o limite de <b>${R.limitePorArea}</b> por área,
+      coluna Total contra o limite de <b>${R.limiteTotal}</b> no time.
+      Cada pessoa conta uma vez por quinzena em que está ausente ao menos um dia.
+    </p>`;
+
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+    <thead>${cab}</thead><tbody>${linhas}</tbody></table>${legenda}`;
+}
+
+function montarEmail(d){
+  const k=d.kpi, R=CONFIG.regras, hoje=new Date().toLocaleDateString('pt-BR');
+  const meia=Math.floor((M-16)/2);
+
+  const ciclo = CONFIG.ciclo || (d.quinzenas.length
+    ? d.quinzenas[0].rotulo+' a '+d.quinzenas[d.quinzenas.length-1].rotulo : '');
+
+  const kpis=[
+    cartaoKpi('👥', fmtInt(k.pessoas),   'Colaboradores',        C.indigo),
+    cartaoKpi('✅', fmtInt(k.periodos),  'Períodos agendados',   C.verde),
+    cartaoKpi('📈', fmtInt(k.pico),      'Pico simultâneo — '+k.picoRot, C.ambar),
+    cartaoKpi('🚨', fmtInt(k.excedidas), 'Quinzenas acima do limite', C.vermelho)
+  ];
+  const blocoKpi = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td width="${meia}" style="width:${meia}px;padding-bottom:16px;">${kpis[0]}</td><td width="16" style="width:16px;font-size:0;">&nbsp;</td><td width="${meia}" style="width:${meia}px;padding-bottom:16px;">${kpis[1]}</td></tr>
+    <tr><td style="padding-bottom:16px;">${kpis[2]}</td><td style="font-size:0;">&nbsp;</td><td style="padding-bottom:16px;">${kpis[3]}</td></tr></table>`;
+
+  /* Picos de risco */
+  const colsPico=[{t:'Quinzena'},{t:'Total',al:'center'},{t:'Onde estoura'},{t:'Quem está fora'}];
+  const linhasPico=d.picos.map(q=>{
+    const estoura=[];
+    if(q.total>R.limiteTotal) estoura.push(selo('Time '+q.total+'/'+R.limiteTotal,'#fee2e2',C.vermelho));
+    d.colunas.forEach(c=>{ if(q.porArea[c]>R.limitePorArea)
+      estoura.push(selo(esc(c)+' '+q.porArea[c]+'/'+R.limitePorArea,'#ffedd5','#c2410c')); });
+    return [
+      `<b>${esc(q.rotulo)}</b> <span style="color:${C.muted};">${q.faixa}</span>`,
+      `<b style="color:${C.vermelho};">${q.total}</b>`,
+      estoura.join(' '),
+      `<span style="font-size:10.5px;">${esc(q.nomes.slice(0,5).map(n=>n.split(' ')[0]).join(', '))}${q.nomes.length>5?' +'+(q.nomes.length-5):''}</span>`
+    ];
+  });
+  const blocoPicos = bloco('Picos de ausência — quinzenas acima do limite', C.vermelho,
+    linhasPico.length ? tabelaDados(colsPico,linhasPico)
+      : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Nenhuma quinzena ultrapassa os limites de ${R.limitePorArea} por área e ${R.limiteTotal} no time. Escala equilibrada.</p>`);
+
+  /* Fila de apontamento */
+  const colsAp=[{t:'Área'},{t:'Colaborador'},{t:'Dias',al:'center'},{t:'Retorno',al:'center'},{t:'Limite N-'+R.diasApontamento,al:'center'},{t:'Status',al:'center'}];
+  const linhasAp=d.apontar.map(p=>{
+    const atrasado = p.limiteApont < new Date();
+    return [
+      etiqueta(p.area),
+      `<b>${esc(p.nome)}</b>`,
+      fmtInt(p.dias),
+      fmtData(new Date(p.fim.getFullYear(),p.fim.getMonth(),p.fim.getDate()+1)),
+      `<span style="color:${atrasado?C.vermelho:'#b45309'};font-weight:bold;">${fmtData(p.limiteApont)}</span>`,
+      atrasado ? selo('🔴 Apontar agora','#fee2e2',C.vermelho) : selo('🟡 Programar','#fef3c7','#b45309')
+    ];
+  });
+  const blocoApont = d.temApont
+    ? bloco(`Fila de apontamento no sistema — regra N-${R.diasApontamento}`, C.ambar,
+        linhasAp.length ? tabelaDados(colsAp,linhasAp)
+          : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Todos os períodos futuros já estão apontados no sistema.</p>`)
+    : '';
+
+  /* Pendentes de agendamento */
+  const colsPend=[{t:'Área'},{t:'Colaborador'},{t:'Vencimento',al:'center'}];
+  const linhasPend=d.semAgenda.slice(0,12).map(s=>{
+    const venc=s.vencimento, atrasado = venc && venc<new Date();
+    return [
+      etiqueta(s.area||'SEM ÁREA'),
+      `<b>${esc(s.nome)}</b>`,
+      venc ? `<span style="color:${atrasado?C.vermelho:C.ink};font-weight:bold;">${fmtData(venc)}${atrasado?' ⚠️':''}</span>` : '—'
+    ];
+  });
+  /* Onde há folga para encaixar quem ainda não agendou */
+  const sugestao = d.folgas.length
+    ? `<div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+       <p style="${FONTE}font-size:11px;color:${C.muted};margin:0 0 8px;font-weight:bold;text-transform:uppercase;letter-spacing:.3px;">Quinzenas com folga para encaixar</p>
+       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+         ${d.folgas.map(q=>{
+           const vagas = R.limiteTotal - q.total;
+           return `<td style="padding:0 8px 0 0;">
+             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background:${CALOR.folgado.bg};border-radius:10px;">
+               <tr><td align="center" style="padding:8px 10px;${FONTE}">
+                 <div style="font-size:11px;font-weight:bold;color:${C.ink};white-space:nowrap;">${esc(q.rotulo)}</div>
+                 <div style="font-size:9.5px;color:${C.muted};padding-top:1px;white-space:nowrap;">${q.faixa}</div>
+                 <div style="font-size:10px;font-weight:bold;color:${CALOR.folgado.cor};padding-top:3px;white-space:nowrap;">${vagas} vaga${vagas>1?'s':''}</div>
+               </td></tr></table></td>`;
+         }).join('')}
+       </tr></table>`
+    : '';
+
+  const blocoPend = bloco('Pendentes de agendamento', C.indigo,
+    (linhasPend.length ? tabelaDados(colsPend,linhasPend)
+      : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Todo o time já tem férias agendadas.</p>`) + sugestao);
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${esc(CONFIG.titulo)} • ${esc(CONFIG.unidade)}</title></head>
+<body style="margin:0;padding:0;background:${C.bg};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.bg};">
+<tr><td align="center" style="padding:24px 10px;">
+<table role="presentation" width="${M}" cellpadding="0" cellspacing="0" border="0" style="width:${M}px;max-width:100%;">
+
+  <tr><td bgcolor="${C.indigo}" style="background:${C.indigo};border-radius:16px;padding:24px 28px;">
+    <div style="${FONTE}font-size:21px;font-weight:bold;color:#ffffff;line-height:1.3;">🏖️ ${esc(CONFIG.titulo)} &nbsp;•&nbsp; ${esc(CONFIG.unidade)}</div>
+    <div style="${FONTE}font-size:12.5px;color:#e0e7ff;padding-top:7px;">
+      ${esc(ciclo)} &nbsp;|&nbsp; ${fmtInt(k.periodos)} períodos de ${fmtInt(k.agendadas)} pessoas &nbsp;|&nbsp; Base de ${hoje}
+    </div>
+  </td></tr>
+  <tr><td style="height:20px;font-size:0;line-height:20px;">&nbsp;</td></tr>
+
+  <tr><td>${blocoKpi}</td></tr>
+
+  <tr><td>${bloco('Mapa de ausências por quinzena', C.roxo, mapaCalor(d))}</td></tr>
+  <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>
+
+  <tr><td>${blocoPicos}</td></tr>
+  <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>
+
+  ${blocoApont?`<tr><td>${blocoApont}</td></tr>
+  <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>`:''}
+
+  <tr><td>${blocoPend}</td></tr>
+
+  <tr><td align="center" style="${FONTE}font-size:11px;color:${C.muted};padding:20px 10px 0;">${esc(CONFIG.rodape)}</td></tr>
+
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+/* ───────────────────────── Fluxo da tela ───────────────────────── */
+let TABELA=null, HTML='';
+
+async function carregarArquivo(file){
+  msg('#msg','Lendo arquivo…','info');
+  try{
+    let dados;
+    if(/\.csv$/i.test(file.name))       dados=lerCsv(await file.text());
+    else if(/\.json$/i.test(file.name)) dados=JSON.parse(await file.text());
+    else                                dados=await lerXlsx(await file.arrayBuffer());
+    receber(dados, file.name);
+  }catch(e){ console.error(e); msg('#msg','❌ '+e.message,'err'); }
+}
+async function carregarUrl(){
+  if(!CONFIG.fonte){ msg('#msg','Nenhuma URL definida. Preencha <code>CONFIG.fonte</code> no topo do arquivo ou selecione a planilha acima.','err'); return; }
+  msg('#msg','Buscando <code>'+esc(CONFIG.fonte)+'</code>…','info');
+  try{
+    const r=await fetch(CONFIG.fonte,{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status+' ao buscar a base');
+    let dados;
+    if(/\.json($|\?)/i.test(CONFIG.fonte))     dados=await r.json();
+    else if(/\.csv($|\?)/i.test(CONFIG.fonte)) dados=lerCsv(await r.text());
+    else                                       dados=await lerXlsx(await r.arrayBuffer());
+    receber(dados, CONFIG.fonte);
+  }catch(e){
+    console.error(e);
+    msg('#msg','❌ '+e.message+'<br><br>Se você abriu este arquivo direto do disco (<code>file://</code>), o navegador bloqueia a leitura da base. Sirva a pasta por http ou use o seletor de arquivo acima.','err');
+  }
+}
+function receber(dados, origem){
+  TABELA=paraTabela(dados);
+  msg('#msg',`✅ <b>${TABELA.linhas.length}</b> linha(s) lida(s) de <b>${esc(origem)}</b> — ${TABELA.cabecalho.length} colunas.`,'ok');
+  montarMapa(detectar(TABELA.cabecalho));
+  $('#cardMap').classList.remove('hidden');
+  $('#cardMap').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function montarMapa(mapa){
+  $('#mapBody').innerHTML = CAMPOS.map(c=>{
+    const opts=['<option value="">— não usar —</option>'].concat(
+      TABELA.cabecalho.map((h,i)=>`<option value="${i}"${mapa[c.k]===i?' selected':''}>${esc(h||('coluna '+(i+1)))}</option>`)).join('');
+    return `<tr><td><b>${c.rot}</b>${c.req?' <span class="req">*</span>':''}</td><td><select data-campo="${c.k}">${opts}</select></td></tr>`;
+  }).join('');
+}
+function gerar(){
+  const mapa={};
+  document.querySelectorAll('#mapBody select').forEach(s=>{ if(s.value!=='') mapa[s.dataset.campo]=+s.value; });
+  const faltando=CAMPOS.filter(c=>c.req&&mapa[c.k]==null).map(c=>c.rot);
+  if(faltando.length){ msg('#msg','❌ Selecione a coluna de: <b>'+faltando.join(', ')+'</b>','err'); return; }
+  if(mapa.fim==null && mapa.dias==null){
+    msg('#msg','❌ Informe a coluna de <b>Data de fim</b> ou a de <b>Dias do período</b> — sem uma das duas não dá para saber até quando a pessoa fica fora.','err'); return;
+  }
+  try{
+    const d=calcular(TABELA,mapa);
+    HTML=montarEmail(d);
+    $('#prev').srcdoc=HTML;
+    $('#cardOut').classList.remove('hidden');
+    $('#cardPrev').classList.remove('hidden');
+    msg('#msg',`✅ Painel gerado: <b>${d.periodos.length}</b> período(s), <b>${d.quinzenas.length}</b> quinzenas, pico de <b>${d.kpi.pico}</b> pessoa(s) em ${d.kpi.picoRot}.`,'ok');
+    $('#cardOut').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){ console.error(e); msg('#msg','❌ Erro ao gerar: '+e.message,'err'); }
+}
+async function copiar(){
+  try{
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([HTML],{type:'text/html'}),
+      'text/plain':new Blob([HTML],{type:'text/plain'})})]);
+    msg('#msg2','✅ Copiado! Abra uma nova mensagem no Outlook e cole com <code>Ctrl+V</code> no corpo do e-mail.','ok');
+  }catch(e){
+    msg('#msg2','⚠️ O navegador bloqueou a cópia automática. Use <b>Abrir em nova aba</b>, <code>Ctrl+A</code>, <code>Ctrl+C</code> e cole no e-mail.','err');
+  }
+}
+function baixar(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([HTML],{type:'text/html;charset=utf-8'}));
+  a.download='painel_ferias_'+new Date().toISOString().slice(0,10)+'.html';
+  a.click(); URL.revokeObjectURL(a.href);
+  msg('#msg2','✅ Arquivo baixado.','ok');
+}
+function abrir(){ const w=window.open('','_blank'); w.document.write(HTML); w.document.close(); }
+
+const CAB_MODELO=['Colaborador','Area','Inicio','Fim','Dias','Status','Apontado','Vencimento'];
+const LINHAS_DEMO=[
+  ['Erick','NMG','17/08/2026','15/09/2026',30,'Agendado','Nao','31/12/2026'],
+  ['Nishida','I/H','03/08/2026','17/08/2026',15,'Agendado','Sim','31/12/2026'],
+  ['Jefferson Vilela','NMG','17/08/2026','26/08/2026',10,'Agendado','Nao','31/12/2026'],
+  ['Vanessa Pires','CTRL','10/08/2026','19/08/2026',10,'Agendado','Nao','31/12/2026'],
+  ['Carol','CTRL','10/08/2026','13/09/2026',35,'Agendado','Sim','31/12/2026'],
+  ['Davi Prado','FND/USI/MMO','01/08/2026','10/08/2026',10,'Agendado','Nao','31/12/2026'],
+  ['Marcelo Ito','FND/USI/MMO','20/08/2026','29/08/2026',10,'Agendado','Nao','31/12/2026'],
+  ['Jessica Souza','CTRL','24/08/2026','07/09/2026',15,'Agendado','Nao','31/12/2026'],
+  ['Renato Lima','NMG','28/08/2026','11/09/2026',15,'Agendado','Nao','31/12/2026'],
+  ['Guilherme','I/H','05/07/2026','03/08/2026',30,'Agendado','Nao','30/09/2026'],
+  ['Tanaka','I/H','12/07/2026','26/07/2026',15,'Agendado','Sim','30/09/2026'],
+  ['Agenor','I/H','20/09/2026','04/10/2026',15,'Agendado','Nao','31/12/2026'],
+  ['Nelton','I/H','01/10/2026','30/10/2026',30,'Agendado','Nao','31/12/2026'],
+  ['William Nakahara','I/H','15/11/2026','29/11/2026',15,'Agendado','Nao','31/01/2027'],
+  ['Sergio Kawase','GESTAO','05/12/2026','03/01/2027',30,'Agendado','Nao','31/01/2027'],
+  ['Kogure','GESTAO','','','','Pendente','','30/11/2026'],
+  ['Lenonn','I/H','','','','Pendente','','31/10/2026'],
+  ['Paulo Menezes','O/S','','','','Pendente','','31/12/2026']
+];
+
+$('#drop').onclick=()=>$('#file').click();
+$('#file').onchange=e=>{ if(e.target.files[0]) carregarArquivo(e.target.files[0]); };
+['dragenter','dragover'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.add('over');}));
+['dragleave','drop'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.remove('over');}));
+$('#drop').addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) carregarArquivo(f); });
+
+$('#btnUrl').onclick=carregarUrl;
+$('#btnGerar').onclick=gerar;
+$('#btnCopiar').onclick=copiar;
+$('#btnBaixar').onclick=baixar;
+$('#btnAbrir').onclick=abrir;
+
+$('#btnModelo').onclick=()=>{
+  const csv=[CAB_MODELO].concat(LINHAS_DEMO)
+    .map(l=>l.map(c=>/[";\n]/.test(String(c))?'"'+String(c).replace(/"/g,'""')+'"':c).join(';')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='modelo_base_ferias.csv'; a.click(); URL.revokeObjectURL(a.href);
+  msg('#msg','✅ Modelo baixado. Preencha com a sua base e envie de volta aqui.','ok');
+};
+$('#btnDemo').onclick=()=>{ receber([CAB_MODELO].concat(LINHAS_DEMO),'dados de exemplo'); setTimeout(gerar,60); };
+
+if(CONFIG.fonte) carregarUrl();
+</script>
+</body>
+</html>
