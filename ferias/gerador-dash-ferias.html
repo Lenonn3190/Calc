@@ -53,8 +53,8 @@
     <h2><span class="dot"></span>1 · Base de dados</h2>
     <div id="drop" class="drop">
       <b>📂 Arraste a planilha de férias aqui</b>
-      <small>ou clique para selecionar — <code>.xlsx</code>, <code>.csv</code> ou <code>.json</code></small>
-      <input type="file" id="file" accept=".xlsx,.csv,.json" class="hidden">
+      <small>ou clique para selecionar — <code>.xlsx</code>, <code>.xlsm</code>, <code>.csv</code> ou <code>.json</code></small>
+      <input type="file" id="file" accept=".xlsx,.xlsm,.csv,.json" class="hidden">
     </div>
     <div class="row" style="margin-top:12px">
       <button class="btn" id="btnUrl">🔗 Carregar da URL do CONFIG</button>
@@ -243,15 +243,16 @@ async function lerXlsx(buffer){
   const arq=await descompactar(buffer);
   let compart=[];
   const ss=Object.keys(arq).find(f=>/sharedStrings\.xml$/i.test(f));
-  if(ss) compart=[...arq[ss].matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)]
-    .map(m=>[...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x=>xmlDec(x[1])).join(''));
+  if(ss) compart=[...arq[ss].matchAll(/<si\b[^>]*?(?:\/>|>([\s\S]*?)<\/si>)/g)]
+    .map(m=>m[1]==null?'':[...m[1].matchAll(/<t[^>]*?(?:\/>|>([\s\S]*?)<\/t>)/g)].map(x=>xmlDec(x[1]||'')).join(''));
   const planilhas=Object.keys(arq).filter(f=>/^xl\/worksheets\/.*\.xml$/i.test(f))
     .sort((a,b)=>(+((a.match(/(\d+)\.xml$/)||[])[1]||0))-(+((b.match(/(\d+)\.xml$/)||[])[1]||0)));
   if(!planilhas.length) throw new Error('Nenhuma planilha encontrada no arquivo');
   const xml=arq[planilhas[0]], linhas=[];
-  for(const lm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)){
+  for(const lm of xml.matchAll(/<row\b[^>]*?(?:\/>|>([\s\S]*?)<\/row>)/g)){
     const linha=[];
-    for(const cm of lm[1].matchAll(/<c\b([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+    if(lm[1]==null){ linhas.push(linha); continue; }   // <row .../> vazia
+    for(const cm of lm[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
       const attrs=cm[1]||'', inner=cm[2]||'';
       const ref=(attrs.match(/r="([A-Z]+)\d+"/)||[])[1];
       const i=ref?colIdx(ref):linha.length;
@@ -267,6 +268,175 @@ async function lerXlsx(buffer){
     linhas.push(linha);
   }
   return linhas;
+}
+
+/* ═══════════ Leitor da matriz "Planejamento de HC" ═══════════
+   O plano de férias do ETG não é uma tabela: é uma matriz. Cada pessoa ocupa
+   duas linhas (PLANO e REAL) e o calendário tem 4 colunas por mês (semanas).
+   Dentro da grade os números são DIAS DO MÊS, lidos em pares início/fim.
+   O par pode vir em duas células vizinhas (21 … 8), numa só ("13~17") ou com
+   o "~" ocupando uma célula própria no meio (21 | ~ | 8).
+   Devolve a base já normalizada em uma linha por período.               */
+function nomeCol(i){ let s=''; i++; while(i){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26); } return s; }
+
+const CAB_NORM = ['Colaborador','Area','Inicio','Fim','Dias','Status',
+                  'Vencimento','Dias Vencido','Dias Proporcionais','IT','Matricula'];
+
+function lerMatrizFerias(g){
+  const inteiro = v => { const n=num(v); return (n!=null && Number.isInteger(n)) ? n : null; };
+
+  /* 1. linha dos meses: valores 1..12 espaçados de 4 em 4.
+        (a linha das semanas também tem 1..12, mas espaçada de 1)          */
+  let linhaMes=-1;
+  for(let r=0;r<Math.min(14,g.length);r++){
+    const pos=[]; (g[r]||[]).forEach((v,c)=>{ const n=inteiro(v); if(n!=null&&n>=1&&n<=12) pos.push(c); });
+    if(pos.length<6) continue;
+    const vaos=pos.slice(1).map((c,i)=>c-pos[i]).sort((a,b)=>a-b);
+    if(vaos[Math.floor(vaos.length/2)]>=3){ linhaMes=r; break; }
+  }
+  if(linhaMes<0) return null;
+
+  /* 2. linha dos anos, acima da dos meses */
+  let linhaAno=-1;
+  for(let r=linhaMes-1;r>=0;r--){
+    if((g[r]||[]).some(v=>{ const n=inteiro(v); return n!=null&&n>=2000&&n<=2100; })){ linhaAno=r; break; }
+  }
+  if(linhaAno<0) return null;
+
+  const anos=[]; (g[linhaAno]||[]).forEach((v,c)=>{ const n=inteiro(v); if(n!=null&&n>=2000&&n<=2100) anos.push([c,n]); });
+  const meses=[]; (g[linhaMes]||[]).forEach((v,c)=>{ const n=inteiro(v); if(n!=null&&n>=1&&n<=12) meses.push([c,n]); });
+  anos.sort((a,b)=>a[0]-b[0]); meses.sort((a,b)=>a[0]-b[0]);
+  if(!anos.length || !meses.length) return null;
+
+  const anoDe = col => { let a=anos[0][1]; for(const [c,v] of anos) if(c<=col) a=v; return a; };
+  const grade={};
+  meses.forEach(([c,m],i)=>{
+    const prox = i+1<meses.length ? meses[i+1][0] : c+4;
+    for(let cc=c; cc<prox; cc++) grade[cc]={ano:anoDe(c), mes:m-1};
+  });
+  const dataDe=(col,dia)=>{
+    const gm=grade[col]; if(!gm) return null;
+    const d=new Date(gm.ano, gm.mes, dia);
+    return (d.getMonth()===gm.mes && d.getDate()===dia) ? d : null;
+  };
+
+  /* 3. cabeçalho do bloco de identificação */
+  let linhaCab=-1, cNome=-1, cArea=-1, cVenc=-1, cDVenc=-1, cProp=-1, cIt=-1, cMat=-1;
+  for(let r=0;r<Math.min(14,g.length);r++){
+    /* densifica: a leitura do xlsx devolve arrays esparsos e .map()
+       preserva os buracos, deixando undefined no lugar do texto        */
+    const bruta=g[r]||[], row=[];
+    for(let i=0;i<bruta.length;i++) row[i]=norm(bruta[i]);
+    const i=row.indexOf('nome');
+    if(i<0) continue;
+    linhaCab=r; cNome=i;
+    cArea =row.indexOf('area');
+    cVenc =row.indexOf('vencimento');
+    cDVenc=row.findIndex(h=>h.startsWith('diasvencid'));
+    cProp =row.findIndex(h=>h.startsWith('diasproporc'));
+    cIt   =row.indexOf('it');
+    cMat  =row.findIndex(h=>h==='mat'||h==='matricula');
+    break;
+  }
+  if(cNome<0) return null;
+
+  /* 4. coluna que marca PLANO / REAL */
+  let cTipo=-1;
+  for(let r=linhaCab+1;r<g.length && cTipo<0;r++)
+    (g[r]||[]).forEach((v,c)=>{ if(cTipo<0 && norm(v)==='plano') cTipo=c; });
+  if(cTipo<0) return null;
+
+  /* 5. varredura das pessoas */
+  const linhas=[], problemas=[], pessoas=[];
+  const anota=(nome,cel,txt)=>problemas.push({nome,cel,txt});
+  let areaAtual='', atual=null;
+
+  for(let r=linhaCab+1;r<g.length;r++){
+    const row=g[r]||[];
+    const a=String(row[cArea]??'').trim();
+    if(a) areaAtual=a;
+    const nome=String(row[cNome]??'').trim();
+    const tipo=norm(row[cTipo]);
+    if(tipo!=='plano' && tipo!=='real') continue;
+
+    if(nome && tipo==='plano'){
+      const venc=paraData(row[cVenc]);
+      atual={
+        nome, area:areaAtual||'SEM ÁREA',
+        vencBruto: row[cVenc], venc,
+        diasVenc: num(row[cDVenc]), prop: num(row[cProp]),
+        it: row[cIt]??'', mat: row[cMat]??'',
+        blocos:0, dias:0
+      };
+      pessoas.push(atual);
+      if(row[cVenc]!=null && String(row[cVenc]).trim()!=='' && !venc)
+        anota(nome, nomeCol(cVenc)+(r+1), `VENCIMENTO não é uma data válida: "${row[cVenc]}"`);
+    }
+    if(!atual) continue;
+
+    /* tokens da grade */
+    const toks=[];
+    for(let c=meses[0][0]; c<row.length; c++){
+      if(!grade[c]) continue;
+      const v=row[c]; if(v==null) continue;
+      const s=String(v).trim();
+      if(s==='' || /^[~\-–]$/.test(s)) continue;          // conector visual
+      const par=s.match(/^(\d{1,2})\s*[~\-–]\s*(\d{1,2})$/);
+      if(par){ toks.push({c, d1:+par[1], d2:+par[2]}); continue; }
+      const n=num(s);
+      if(n!=null && Number.isInteger(n) && n>=1 && n<=31){ toks.push({c, d1:n, d2:null}); continue; }
+      anota(atual.nome, nomeCol(c)+(r+1), `valor não reconhecido no calendário: "${s}"`);
+    }
+
+    /* pares início/fim */
+    const marca = tipo==='real' ? 'Realizado' : 'Planejado';
+    for(let i=0;i<toks.length;){
+      const t=toks[i]; let c1=t.c,d1=t.d1,c2,d2;
+      if(t.d2!=null){ c2=t.c; d2=t.d2; i++; }
+      else if(i+1<toks.length && toks[i+1].d2==null){ c2=toks[i+1].c; d2=toks[i+1].d1; i+=2; }
+      else { c2=t.c; d2=t.d1; i++;
+        anota(atual.nome, nomeCol(c1)+(r+1), `dia ${d1} sem par de término — tratado como período de 1 dia`); }
+
+      const ini=dataDe(c1,d1), fim=dataDe(c2,d2);
+      if(!ini||!fim){
+        anota(atual.nome, nomeCol(c1)+(r+1), `data inválida no calendário (dia ${!ini?d1:d2} não existe nesse mês)`);
+        continue;
+      }
+      if(fim<ini){
+        anota(atual.nome, nomeCol(c1)+(r+1), `término ${fmtData(fim)} anterior ao início ${fmtData(ini)}`);
+        continue;
+      }
+      const dias=Math.round((dInt(fim)-dInt(ini)))+1;
+      atual.blocos++; atual.dias+=dias;
+      linhas.push([atual.nome, atual.area, ini, fim, dias, marca,
+                   atual.venc||'', atual.diasVenc??'', atual.prop??'', atual.it, atual.mat]);
+    }
+  }
+
+  /* 6. pessoas sem nenhum período entram como pendentes */
+  for(const p of pessoas) if(!p.blocos)
+    linhas.push([p.nome, p.area, '', '', '', 'Pendente',
+                 p.venc||'', p.diasVenc??'', p.prop??'', p.it, p.mat]);
+
+  if(!pessoas.length) return null;
+
+  /* 7. conferências de consistência */
+  for(const p of pessoas){
+    if(p.vencBruto==null || String(p.vencBruto).trim()==='')
+      anota(p.nome,'—','sem data de VENCIMENTO preenchida');
+    if(p.diasVenc==null)
+      anota(p.nome,'—','sem DIAS VENCIDO preenchido');
+    /* direito = dias vencidos + dias proporcionais; comparar só com os
+       vencidos acusaria como erro quem tem saldo proporcional a gozar   */
+    const direito = (p.diasVenc??0) + (p.prop??0);
+    if(p.blocos && direito>0 && p.dias>direito)
+      anota(p.nome,'—',`${p.dias} dias agendados contra ${direito} de direito `
+                      +`(${p.diasVenc??0} vencidos + ${p.prop??0} proporcionais)`);
+  }
+
+  return {cabecalho:CAB_NORM, linhas, problemas, pessoas,
+          resumo:{pessoas:pessoas.length, comPlano:pessoas.filter(p=>p.blocos).length,
+                  periodos:linhas.filter(l=>l[2]!=='').length, meses:Object.keys(grade).length/4|0}};
 }
 
 function paraTabela(dados){
@@ -618,6 +788,22 @@ function montarEmail(d){
     (linhasPend.length ? tabelaDados(colsPend,linhasPend)
       : `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Todo o time já tem férias agendadas.</p>`) + sugestao);
 
+  /* Inconsistências encontradas na base */
+  const probs = d.problemas || [];
+  const colsProb=[{t:'Colaborador'},{t:'Célula',al:'center'},{t:'O que está errado'}];
+  const linhasProb=probs.slice(0,14).map(p=>[
+    `<b>${esc(p.nome)}</b>`,
+    p.cel && p.cel!=='—' ? `<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:10.5px;">${esc(p.cel)}</code>` : `<span style="color:${C.muted};">—</span>`,
+    esc(p.txt)
+  ]);
+  const blocoProb = probs.length
+    ? bloco(`Inconsistências na base — ${fmtInt(probs.length)} encontrada(s)`, C.ambar,
+        tabelaDados(colsProb,linhasProb) +
+        (probs.length>14?`<p style="${FONTE}font-size:11px;color:${C.muted};margin:10px 0 0;">e mais ${probs.length-14} — corrija as de cima primeiro.</p>`:'') +
+        `<p style="${FONTE}font-size:11px;color:${C.muted};margin:10px 0 0;line-height:1.5;">A referência de célula aponta direto na planilha de origem. Períodos com data inválida ficaram <b>fora</b> do mapa de calor.</p>`)
+    : bloco('Consistência da base', C.verde,
+        `<p style="${FONTE}font-size:12px;color:${C.muted};margin:0;">Nenhuma inconsistência encontrada na leitura do calendário.</p>`);
+
   return `<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -647,6 +833,9 @@ function montarEmail(d){
   <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>`:''}
 
   <tr><td>${blocoPend}</td></tr>
+  <tr><td style="height:16px;font-size:0;line-height:16px;">&nbsp;</td></tr>
+
+  <tr><td>${blocoProb}</td></tr>
 
   <tr><td align="center" style="${FONTE}font-size:11px;color:${C.muted};padding:20px 10px 0;">${esc(CONFIG.rodape)}</td></tr>
 
@@ -656,7 +845,7 @@ function montarEmail(d){
 }
 
 /* ───────────────────────── Fluxo da tela ───────────────────────── */
-let TABELA=null, HTML='';
+let TABELA=null, HTML='', PROBLEMAS=[];
 
 async function carregarArquivo(file){
   msg('#msg','Lendo arquivo…','info');
@@ -685,11 +874,36 @@ async function carregarUrl(){
   }
 }
 function receber(dados, origem){
-  TABELA=paraTabela(dados);
-  msg('#msg',`✅ <b>${TABELA.linhas.length}</b> linha(s) lida(s) de <b>${esc(origem)}</b> — ${TABELA.cabecalho.length} colunas.`,'ok');
+  PROBLEMAS=[];
+  const matriz = (Array.isArray(dados) && Array.isArray(dados[0])) ? lerMatrizFerias(dados) : null;
+  if(matriz){
+    TABELA={cabecalho:matriz.cabecalho, linhas:matriz.linhas};
+    PROBLEMAS=matriz.problemas;
+    const r=matriz.resumo;
+    msg('#msg',`✅ Reconhecido o <b>plano de férias em matriz</b> de <b>${esc(origem)}</b>:
+      <b>${r.pessoas}</b> colaboradores, <b>${r.comPlano}</b> com férias agendadas,
+      <b>${r.periodos}</b> período(s) no calendário.
+      ${PROBLEMAS.length?`<br>⚠️ <b>${PROBLEMAS.length}</b> inconsistência(s) — vão listadas no painel.`:''}
+      <br><button class="btn" id="btnNorm" style="margin-top:8px">⬇️ Baixar base normalizada (.csv)</button>`,'ok');
+    $('#btnNorm').onclick=baixarNormalizada;
+  } else {
+    TABELA=paraTabela(dados);
+    msg('#msg',`✅ <b>${TABELA.linhas.length}</b> linha(s) lida(s) de <b>${esc(origem)}</b> — ${TABELA.cabecalho.length} colunas.`,'ok');
+  }
   montarMapa(detectar(TABELA.cabecalho));
   $('#cardMap').classList.remove('hidden');
   $('#cardMap').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* Exporta a matriz já achatada em uma linha por período — base auditável */
+function baixarNormalizada(){
+  const cel=v => v instanceof Date ? fmtData(v) : String(v==null?'':v);
+  const csv=[TABELA.cabecalho].concat(TABELA.linhas.map(l=>l.map(cel)))
+    .map(l=>l.map(c=>/[";\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c).join(';')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='base_ferias_normalizada_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(a.href);
 }
 function montarMapa(mapa){
   $('#mapBody').innerHTML = CAMPOS.map(c=>{
@@ -708,6 +922,7 @@ function gerar(){
   }
   try{
     const d=calcular(TABELA,mapa);
+    d.problemas=PROBLEMAS;
     HTML=montarEmail(d);
     $('#prev').srcdoc=HTML;
     $('#cardOut').classList.remove('hidden');

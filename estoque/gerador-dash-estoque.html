@@ -56,8 +56,8 @@
     <h2><span class="dot"></span>1 · Base de dados</h2>
     <div id="drop" class="drop">
       <b>📂 Arraste a planilha aqui</b>
-      <small>ou clique para selecionar — <code>.xlsx</code>, <code>.csv</code> ou <code>.json</code></small>
-      <input type="file" id="file" accept=".xlsx,.csv,.json" class="hidden">
+      <small>ou clique para selecionar — <code>.xlsx</code>, <code>.xlsm</code>, <code>.csv</code> ou <code>.json</code></small>
+      <input type="file" id="file" accept=".xlsx,.xlsm,.csv,.json" class="hidden">
     </div>
     <div class="row" style="margin-top:12px">
       <button class="btn" id="btnUrl">🔗 Carregar da URL do CONFIG</button>
@@ -267,17 +267,18 @@ async function lerXlsx(buffer){
   const arq = await descompactar(buffer);
   let compart=[];
   const ss = Object.keys(arq).find(f=>/sharedStrings\.xml$/i.test(f));
-  if(ss) compart=[...arq[ss].matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)]
-    .map(m=>[...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x=>xmlDec(x[1])).join(''));
+  if(ss) compart=[...arq[ss].matchAll(/<si\b[^>]*?(?:\/>|>([\s\S]*?)<\/si>)/g)]
+    .map(m=>m[1]==null?'':[...m[1].matchAll(/<t[^>]*?(?:\/>|>([\s\S]*?)<\/t>)/g)].map(x=>xmlDec(x[1]||'')).join(''));
 
   const planilhas = Object.keys(arq).filter(f=>/^xl\/worksheets\/.*\.xml$/i.test(f))
     .sort((a,b)=>(+((a.match(/(\d+)\.xml$/)||[])[1]||0))-(+((b.match(/(\d+)\.xml$/)||[])[1]||0)));
   if(!planilhas.length) throw new Error('Nenhuma planilha encontrada no arquivo');
 
   const xml=arq[planilhas[0]], linhas=[];
-  for(const lm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)){
+  for(const lm of xml.matchAll(/<row\b[^>]*?(?:\/>|>([\s\S]*?)<\/row>)/g)){
     const linha=[];
-    for(const cm of lm[1].matchAll(/<c\b([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+    if(lm[1]==null){ linhas.push(linha); continue; }   // <row .../> vazia
+    for(const cm of lm[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
       const attrs=cm[1]||'', inner=cm[2]||'';
       const ref=(attrs.match(/r="([A-Z]+)\d+"/)||[])[1];
       const i = ref ? colIdx(ref) : linha.length;

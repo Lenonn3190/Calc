@@ -83,6 +83,35 @@ que é pico e o que é folga. Ajuste ao tamanho real da equipe antes de enviar.
 > direto do disco (`file://`) o navegador bloqueia a leitura — use o seletor de
 > arquivo, que funciona sempre.
 
+## Formato 1 — o plano de férias em matriz (Planejamento de HC)
+
+O gerador **reconhece sozinho** a planilha `Planejamento_de_HCNC.xlsm` e não
+exige nenhuma preparação: arraste e pronto. Ele entende o layout:
+
+- bloco de identificação à esquerda (`AREA`, `NOME`, `IT`, `MAT.`,
+  `VENCIMENTO`, `DIAS VENCIDO`, `PERÍODO AQUISITIVO`, `DIAS PROPORCIONAIS`);
+- calendário à direita com uma linha de anos, uma de meses e quatro colunas
+  (semanas) por mês;
+- duas linhas por pessoa, marcadas `PLANO` e `REAL`.
+
+Dentro do calendário os números são **dias do mês**, lidos em pares
+início/fim. As três grafias usadas na planilha funcionam:
+
+| Na planilha | Vira |
+|---|---|
+| `13~17` numa célula só | 13/07 a 17/07 |
+| `21` … `8` em células separadas | 21/12 a 08/01 |
+| `21` \| `~` \| `8` com o til numa célula própria | 21/12 a 08/01 |
+
+As linhas `REAL` viram períodos com status *Realizado*; as `PLANO`,
+*Planejado*. Quem não tem nenhum dia lançado entra como **pendente de
+agendamento**, levando junto o vencimento.
+
+O botão **Baixar base normalizada (.csv)** achata a matriz em uma linha por
+período — serve para conferir a leitura e para alimentar outras ferramentas.
+
+## Formato 2 — tabela simples
+
 ## Colunas da base
 
 | Campo | Obrigatório | O que habilita |
@@ -105,6 +134,21 @@ Sinônimos são reconhecidos ignorando acento e caixa: `INÍCIO FÉRIAS`, `Saíd
 
 Se só houver **Dias**, o fim é calculado como `início + dias − 1` (dias
 corridos, como manda a CLT). Se houver as duas colunas, **Data de fim** manda.
+
+## Conferência da base
+
+A cada geração o painel revisa a base e lista o que encontrou de errado, com a
+**referência da célula** para você corrigir direto na planilha:
+
+- `VENCIMENTO` que não é data;
+- pessoa sem `VENCIMENTO` ou sem `DIAS VENCIDO`;
+- dia que não existe no mês (ex.: 31 em abril);
+- término anterior ao início;
+- dia sem par de término no calendário;
+- valor não reconhecido dentro do calendário;
+- mais dias agendados do que o direito (`DIAS VENCIDO` + `DIAS PROPORCIONAIS`).
+
+Períodos com data inválida ficam **fora** do mapa de calor — não são chutados.
 
 ## Os outros blocos
 
