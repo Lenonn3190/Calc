@@ -1,0 +1,1066 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Powertrain · Monitor de Ausências — ETG</title>
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233b82f6'/%3E%3Ctext x='50' y='68' font-family='Arial,sans-serif' font-size='40' font-weight='bold' fill='white' text-anchor='middle'%3EETG%3C/text%3E%3C/svg%3E" />
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   POWERTRAIN · MONITOR DE AUSÊNCIAS — ETG
+   Otimizado para monitor 27" na VERTICAL (1440 x 2560).
+   Layout responsivo: funciona também em notebook para conferência.
+   ══════════════════════════════════════════════════════════════════════ */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#080e1b; --bg-2:#0b1220;
+  --panel:#0f1830; --panel-2:#152341; --panel-3:#1b2b4d;
+  --line:#22304f; --line-2:#2c3d63;
+  --txt:#eaf0fb; --muted:#9fb0cc; --faint:#6f83a5;
+  --brand:#3b82f6; --brand-2:#60a5fa;
+  --accent:#14b8a6;
+  --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --info:#38bdf8; --viol:#a78bfa;
+  --radius:18px; --radius-sm:12px;
+  --font:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  --shadow:0 18px 40px -22px rgba(0,0,0,.85);
+}
+
+/* Escala tipográfica: cresce conforme a tela. Num 27" vertical (1440px de
+   largura) a base fica em 21px — legível a 2–3 m de distância. */
+html{font-size:15px}
+@media (min-width:900px){ html{font-size:16.5px} }
+@media (min-width:1200px){ html{font-size:18px} }
+@media (min-width:1360px) and (orientation:portrait){ html{font-size:21px} }
+@media (min-width:1700px){ html{font-size:22px} }
+
+html,body{height:100%}
+body{
+  font-family:var(--font); color:var(--txt); font-size:1rem; line-height:1.45;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  background:
+    radial-gradient(1400px 900px at 88% -8%, rgba(59,130,246,.16), transparent 60%),
+    radial-gradient(1100px 800px at -12% 108%, rgba(20,184,166,.12), transparent 55%),
+    var(--bg);
+  background-attachment:fixed;
+}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font:inherit}
+svg{flex:none}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:20px}
+::-webkit-scrollbar-track{background:transparent}
+
+.screen{max-width:1600px;margin:0 auto;padding:1.4rem 1.4rem 2rem;display:flex;flex-direction:column;gap:1.15rem}
+
+/* ═══════════════ CABEÇALHO ═══════════════ */
+header.top{
+  display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;
+  padding:1.05rem 1.4rem;border-radius:var(--radius);
+  background:linear-gradient(120deg,rgba(21,35,65,.95),rgba(15,24,48,.88));
+  border:1px solid var(--line);box-shadow:var(--shadow);position:relative;overflow:hidden;
+}
+header.top::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,var(--brand),var(--accent));opacity:.9;height:3px}
+.brand{display:flex;align-items:center;gap:.85rem;min-width:0}
+.brand .logo{
+  width:3.1rem;height:3.1rem;border-radius:.9rem;display:grid;place-items:center;flex:none;
+  background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;
+  font-weight:800;font-size:.95rem;letter-spacing:.5px;box-shadow:0 8px 22px -8px var(--brand);
+}
+.brand h1{font-size:1.55rem;font-weight:800;letter-spacing:.2px;line-height:1.15;white-space:nowrap}
+.brand p{font-size:.78rem;color:var(--muted);font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+.top .spacer{flex:1 1 auto}
+.clock{text-align:right;line-height:1}
+.clock .hh{font-size:2.9rem;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.clock .dd{font-size:.85rem;color:var(--muted);font-weight:600;margin-top:.35rem}
+.live{display:flex;align-items:center;gap:.45rem;font-size:.72rem;color:var(--faint);font-weight:700;
+  justify-content:flex-end;margin-top:.4rem;letter-spacing:.6px}
+.live .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(34,197,94,.6);
+  animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 .55rem rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+.gear{width:2.5rem;height:2.5rem;border-radius:.7rem;display:grid;place-items:center;
+  background:var(--panel-2);border:1px solid var(--line);color:var(--muted);transition:.15s}
+.gear:hover{color:var(--txt);border-color:var(--line-2);background:var(--panel-3)}
+
+/* ═══════════════ KPIs ═══════════════ */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.85rem}
+/* no monitor vertical: 3 colunas exatas — 6 blocos preenchem 2 linhas sem sobra */
+@media (orientation:portrait) and (min-width:1000px){ .kpis{grid-template-columns:repeat(3,1fr)} }
+.kpi{
+  padding:1.05rem 1.15rem;border-radius:var(--radius);position:relative;overflow:hidden;
+  background:linear-gradient(160deg,var(--panel-2),var(--panel));
+  border:1px solid var(--line);box-shadow:var(--shadow);
+}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,var(--brand))}
+.kpi .v{font-size:3.1rem;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--c,var(--txt));
+  font-variant-numeric:tabular-nums}
+.kpi .l{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:.5rem}
+.kpi .s{font-size:.74rem;color:var(--faint);margin-top:.2rem;font-weight:600}
+.kpi .ico{position:absolute;right:.8rem;top:.8rem;opacity:.13;color:var(--c,var(--brand))}
+.kpi .ico svg{width:3.2rem;height:3.2rem}
+
+/* ═══════════════ PAINÉIS ═══════════════ */
+.panel{
+  border-radius:var(--radius);background:rgba(15,24,48,.82);border:1px solid var(--line);
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.panel > h2{
+  display:flex;align-items:center;gap:.6rem;padding:.9rem 1.2rem;font-size:1rem;font-weight:800;
+  text-transform:uppercase;letter-spacing:1.4px;border-bottom:1px solid var(--line);
+  background:linear-gradient(90deg,rgba(59,130,246,.14),transparent 65%);
+}
+.panel > h2 svg{width:1.15rem;height:1.15rem;color:var(--brand-2)}
+.panel > h2 .n{
+  margin-left:auto;font-size:.85rem;background:var(--panel-3);color:var(--brand-2);
+  padding:.12rem .7rem;border-radius:2rem;border:1px solid var(--line-2);letter-spacing:0;
+  font-variant-numeric:tabular-nums;
+}
+.panel .body{padding:1.05rem 1.2rem}
+.empty{padding:2.6rem 1rem;text-align:center;color:var(--faint);font-weight:600;font-size:.95rem}
+.empty svg{width:2.6rem;height:2.6rem;opacity:.35;display:block;margin:0 auto .7rem}
+
+/* ═══════════════ CARDS DE AUSENTES ═══════════════ */
+/* Painéis crescem livremente: nada fica escondido atrás de barra de rolagem
+   interna. Quem cuida do excedente é a rolagem de quiosque (ver JS). */
+.scroller{overflow:visible}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(20rem,1fr));gap:.8rem;padding:1.05rem 1.2rem}
+.card{
+  display:grid;grid-template-columns:auto 1fr;gap:.75rem .85rem;align-items:start;
+  padding:.9rem 1rem;border-radius:var(--radius-sm);background:var(--panel-2);
+  border:1px solid var(--line);border-left:5px solid var(--c,var(--brand));position:relative;
+}
+.card.hoje{background:linear-gradient(120deg,rgba(59,130,246,.13),var(--panel-2))}
+.av{
+  width:3rem;height:3rem;border-radius:.85rem;display:grid;place-items:center;flex:none;
+  font-weight:800;font-size:1.02rem;letter-spacing:.5px;color:#08101f;
+  background:linear-gradient(135deg,var(--c,var(--brand)),color-mix(in srgb,var(--c,var(--brand)) 55%,#fff));
+}
+.card .who{min-width:0}
+.card .nome{font-size:1.18rem;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .desc{font-size:.82rem;color:var(--muted);margin-top:.15rem;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.card .per{grid-column:1/-1;display:flex;align-items:center;gap:.5rem;font-size:.86rem;
+  font-weight:700;color:var(--txt);font-variant-numeric:tabular-nums}
+.card .per svg{width:.95rem;height:.95rem;color:var(--faint)}
+.card .per .arrow{color:var(--faint);font-weight:400}
+.bar{grid-column:1/-1;height:.42rem;border-radius:1rem;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:1rem;background:linear-gradient(90deg,var(--c,var(--brand)),color-mix(in srgb,var(--c,var(--brand)) 45%,#fff))}
+.card .volta{grid-column:1/-1;font-size:.8rem;font-weight:700;color:var(--muted);display:flex;
+  justify-content:space-between;gap:.5rem}
+.card .volta b{color:var(--c,var(--brand-2))}
+
+/* chips */
+.chip{
+  display:inline-flex;align-items:center;gap:.3rem;padding:.16rem .6rem;border-radius:2rem;
+  font-size:.74rem;font-weight:800;letter-spacing:.3px;white-space:nowrap;
+  background:var(--cb,var(--panel-3));color:var(--cf,var(--txt));border:1px solid transparent;
+}
+.chip svg{width:.82rem;height:.82rem}
+.chip.ghost{background:transparent;border-color:var(--line-2);color:var(--muted)}
+
+/* ═══════════════ AGENDA / PRÓXIMAS ═══════════════ */
+.rows{display:flex;flex-direction:column}
+.row{
+  display:grid;grid-template-columns:4.4rem 1fr auto;gap:.85rem;align-items:center;
+  padding:.72rem 1.2rem;border-bottom:1px solid rgba(34,48,79,.55);
+}
+.row:last-child{border-bottom:none}
+.row .day{
+  text-align:center;border-radius:.65rem;background:var(--panel-2);border:1px solid var(--line);
+  padding:.3rem .1rem;line-height:1.1;
+}
+.row .day .d{font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--c,var(--brand-2))}
+.row .day .m{font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--faint)}
+.row.today .day{background:var(--brand);border-color:var(--brand)}
+.row.today .day .d,.row.today .day .m{color:#fff}
+.row .info{min-width:0}
+.row .info .n{font-size:1rem;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .info .s{font-size:.79rem;color:var(--muted);margin-top:.1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+.row .tags{display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+
+/* ═══════════════ TIMELINE 14 DIAS ═══════════════ */
+.tl{padding:1rem 1.2rem 1.2rem;overflow-x:auto}
+.tl-grid{display:grid;grid-template-columns:9.5rem 1fr;gap:.35rem .7rem;min-width:34rem}
+.tl-head{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;grid-column:2}
+.tl-head div{text-align:center;font-size:.66rem;font-weight:800;color:var(--faint);
+  text-transform:uppercase;letter-spacing:.4px;padding-bottom:.35rem;line-height:1.25}
+.tl-head div b{display:block;font-size:.92rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tl-head div.wk{color:var(--line-2)}
+.tl-head div.now b{color:var(--brand-2)}
+.tl-name{
+  font-size:.88rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  display:flex;align-items:center;height:1.9rem;color:var(--txt);
+}
+.tl-lane{position:relative;height:1.9rem;grid-column:2;
+  background:repeating-linear-gradient(90deg,
+    rgba(34,48,79,.32) 0 calc(100%/var(--dias,14) - 2px),
+    transparent calc(100%/var(--dias,14) - 2px) calc(100%/var(--dias,14)));
+  border-radius:.4rem;overflow:hidden}
+.tl-lane .wkend{position:absolute;top:0;bottom:0;background:rgba(255,255,255,.028)}
+.tl-lane .nowline{position:absolute;top:-.15rem;bottom:-.15rem;width:2px;background:var(--brand);
+  box-shadow:0 0 10px var(--brand);z-index:3;border-radius:2px}
+.tl-bar{
+  position:absolute;top:.28rem;bottom:.28rem;border-radius:.4rem;z-index:2;
+  display:flex;align-items:center;padding:0 .5rem;font-size:.72rem;font-weight:800;
+  color:#08101f;overflow:hidden;white-space:nowrap;min-width:.5rem;
+  background:linear-gradient(90deg,var(--c,var(--brand)),color-mix(in srgb,var(--c,var(--brand)) 60%,#fff));
+}
+
+/* ═══════════════ ESTATÍSTICAS (barras) ═══════════════ */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.15rem}
+.stat{display:grid;grid-template-columns:7.2rem 1fr 2.6rem;gap:.7rem;align-items:center;margin-bottom:.6rem}
+.stat:last-child{margin-bottom:0}
+.stat .k{font-size:.82rem;font-weight:700;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat .t{height:1.15rem;border-radius:.4rem;background:var(--panel-2);overflow:hidden;border:1px solid var(--line)}
+.stat .t i{display:block;height:100%;border-radius:.4rem;background:var(--c,var(--brand));
+  transition:width .6s cubic-bezier(.2,.7,.3,1)}
+.stat .v{text-align:right;font-size:1rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--txt)}
+
+/* ═══════════════ RODAPÉ ═══════════════ */
+footer{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;justify-content:space-between;
+  padding:.4rem .6rem;font-size:.74rem;color:var(--faint);font-weight:600}
+footer .legend{display:flex;flex-wrap:wrap;gap:.4rem}
+
+/* ═══════════════ PAINEL DE CONFIGURAÇÃO ═══════════════ */
+.cfg{
+  position:fixed;inset:0;z-index:50;display:none;place-items:center;padding:1.5rem;
+  background:rgba(4,8,17,.78);backdrop-filter:blur(6px);
+}
+.cfg.on{display:grid}
+.cfg .box{
+  width:min(46rem,100%);max-height:88vh;overflow:auto;border-radius:var(--radius);
+  background:var(--panel);border:1px solid var(--line-2);box-shadow:0 30px 70px -20px #000;
+}
+.cfg h3{padding:1.1rem 1.3rem;border-bottom:1px solid var(--line);font-size:1.05rem;font-weight:800;
+  display:flex;align-items:center;gap:.6rem}
+.cfg h3 button{margin-left:auto;color:var(--muted);font-size:1.5rem;line-height:1}
+.cfg .inner{padding:1.2rem 1.3rem;display:flex;flex-direction:column;gap:1.1rem}
+.fld{display:flex;flex-direction:column;gap:.35rem}
+.fld label{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.9px;color:var(--muted)}
+.fld small{font-size:.75rem;color:var(--faint);font-weight:600;line-height:1.4}
+.fld input,.fld select,.fld textarea{
+  background:var(--bg-2);border:1px solid var(--line-2);color:var(--txt);
+  padding:.6rem .75rem;border-radius:.6rem;width:100%;font-size:.9rem;font-family:inherit;
+}
+.fld textarea{min-height:9rem;resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:.8rem;line-height:1.5}
+.btns{display:flex;gap:.6rem;flex-wrap:wrap}
+.btn{padding:.6rem 1.1rem;border-radius:.6rem;font-weight:800;font-size:.85rem;
+  background:var(--panel-2);border:1px solid var(--line-2);color:var(--txt);transition:.15s}
+.btn:hover{background:var(--panel-3)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brand-2)}
+.btn.danger{color:#fca5a5;border-color:rgba(239,68,68,.4)}
+.drop{border:2px dashed var(--line-2);border-radius:var(--radius-sm);padding:1.4rem;text-align:center;
+  color:var(--muted);font-weight:700;font-size:.85rem;transition:.15s}
+.drop.over{border-color:var(--brand);background:rgba(59,130,246,.1);color:var(--brand-2)}
+.msg{font-size:.82rem;font-weight:700;padding:.6rem .8rem;border-radius:.55rem;display:none}
+.msg.ok{display:block;background:rgba(34,197,94,.14);color:#86efac}
+.msg.err{display:block;background:rgba(239,68,68,.14);color:#fca5a5}
+
+@media print{body{background:#fff;color:#000}.gear,.cfg{display:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     ÁREA DE DADOS — edite aqui (ou importe o CSV da lista pelo ⚙)
+     Datas no formato  "dd/mm/aaaa hh:mm"  ou  "aaaa-mm-dd hh:mm".
+     ══════════════════════════════════════════════════════════════════════ -->
+<script>
+const CONFIG = {
+  titulo:        'Powertrain · Monitor de Ausências',
+  subtitulo:     'Engine Technical Group — Gerenciamento de saídas',
+  efetivoTotal:  24,   // ← AJUSTE para o efetivo real do Powertrain (usado no % de presença)
+  diasTimeline:  14,   // janela do gráfico de barras
+  diasAgenda:    45,   // horizonte da lista "próximas saídas"
+  atualizarSeg:  60,   // recálculo automático (segundos)
+  rolagemAuto:   true, // rola sozinho os blocos que não couberem na tela
+};
+
+/* Dados extraídos da lista "Gerenciamento de saídas".
+   Campos: descricao | motivo | nome | depto | destino | inicio | fim | transporte */
+const DADOS = [
+  { descricao:'Treinamento KUKA',                          motivo:'Treinamento',     nome:'Tanaka; Nakahara',  depto:'I/H',       destino:'KUKA Systems',   inicio:'19/01/2026 06:00', fim:'23/01/2026 17:00', transporte:'Carro' },
+  { descricao:'JPN – Trip for foundry tryout verification',motivo:'3YZ',             nome:'Paiva',             depto:'NMG',       destino:'Suzuka',         inicio:'07/01/2026 08:15', fim:'05/02/2026 18:00', transporte:'Avião' },
+  { descricao:'Férias',                                    motivo:'Férias',          nome:'Dutra',             depto:'OUTSOURCE', destino:'',               inicio:'05/01/2026 00:00', fim:'19/01/2026 17:00', transporte:'' },
+  { descricao:'Férias',                                    motivo:'Férias',          nome:'Tulio',             depto:'I/H',       destino:'',               inicio:'19/01/2026 00:00', fim:'02/02/2026 17:00', transporte:'' },
+  { descricao:'Consulta médica (Ortopedista)',             motivo:'Consulta médica', nome:'Marco Antonio',     depto:'OUTSOURCE', destino:'',               inicio:'16/01/2026 10:00', fim:'16/01/2026 17:26', transporte:'' },
+  { descricao:'Férias',                                    motivo:'Férias',          nome:'Thiego',            depto:'NMG',       destino:'',               inicio:'19/01/2026 00:00', fim:'02/02/2026 00:00', transporte:'' },
+  { descricao:'Visita Atlas',                              motivo:'Projetos',        nome:'Thiego',            depto:'NMG',       destino:'',               inicio:'23/12/2025 08:00', fim:'23/12/2025 15:00', transporte:'Carro' },
+  { descricao:'Instalação Apertadeira Eletrônica (Evento)',motivo:'Projetos',        nome:'Thiego',            depto:'I/H',       destino:'',               inicio:'05/02/2026 08:00', fim:'13/02/2026 17:00', transporte:'Avião' },
+  { descricao:'Férias',                                    motivo:'Férias',          nome:'Gatto',             depto:'I/H',       destino:'',               inicio:'23/02/2026 08:15', fim:'27/02/2026 17:26', transporte:'' },
+  { descricao:'Visita Atlas',                              motivo:'Projetos',        nome:'Thiego Ferreira',   depto:'NMG',       destino:'',               inicio:'16/01/2026 07:00', fim:'16/01/2026 15:00', transporte:'Carro' },
+  { descricao:'Visita no fornecedor Maquistorno',          motivo:'Expansão MSC',    nome:'Erick',             depto:'I/H',       destino:'',               inicio:'14/01/2026 14:30', fim:'14/01/2026 15:50', transporte:'Carro' },
+  { descricao:'VT-MAHLE',                                  motivo:'Visita técnica',  nome:'Jefferson Vilela',  depto:'OUTSOURCE', destino:'Mogi Guaçu-SP',  inicio:'19/01/2026 08:15', fim:'19/01/2026 17:30', transporte:'Carro' },
+  { descricao:'Saída no 1ºT',                              motivo:'Férias',          nome:'Marco Túlio',       depto:'I/H',       destino:'',               inicio:'16/01/2026 15:11', fim:'16/01/2026 17:15', transporte:'' },
+  { descricao:'Assunto particular',                        motivo:'Saída antecipada',nome:'Carlos Eduardo',    depto:'NMG',       destino:'',               inicio:'21/01/2026 13:00', fim:'21/01/2026 17:26', transporte:'' },
+  { descricao:'Cartório / Poupa Tempo',                    motivo:'Atraso',          nome:'Douglas Marciano',  depto:'OUTSOURCE', destino:'',               inicio:'27/01/2026 08:15', fim:'27/01/2026 11:00', transporte:'' },
+  { descricao:'Férias',                                    motivo:'Férias',          nome:'Agenor Rodrigo',    depto:'I/H',       destino:'',               inicio:'09/03/2026 00:00', fim:'28/03/2026 23:59', transporte:'' },
+  { descricao:'Renovação CNH',                             motivo:'Saída antecipada',nome:'Lenonn',            depto:'I/H',       destino:'',               inicio:'27/01/2026 14:00', fim:'27/01/2026 17:00', transporte:'' },
+  { descricao:'Viagem internacional',                      motivo:'Projetos',        nome:'Nelton M Borges',   depto:'I/H',       destino:'',               inicio:'30/01/2026 00:00', fim:'05/02/2026 00:00', transporte:'Avião' },
+  { descricao:'Visita na G/O JPN',                         motivo:'Projetos',        nome:'Nelton',            depto:'I/H',       destino:'',               inicio:'05/02/2026 00:00', fim:'18/02/2026 00:00', transporte:'Avião' },
+  { descricao:'Particular',                                motivo:'Saída antecipada',nome:'William Nakahara',  depto:'I/H',       destino:'',               inicio:'29/01/2026 13:00', fim:'29/01/2026 17:26', transporte:'' },
+  { descricao:'Visita ferramentarias Joinville',           motivo:'Visita técnica',  nome:'Jefferson',         depto:'OUTSOURCE', destino:'Joinville-SC',   inicio:'02/02/2026 08:00', fim:'06/02/2026 17:00', transporte:'Avião' },
+];
+</script>
+
+<div class="screen">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">ETG</div>
+      <div>
+        <h1 id="hTitulo">Powertrain · Monitor de Ausências</h1>
+        <p id="hSub">Engine Technical Group — Gerenciamento de saídas</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div>
+      <div class="clock">
+        <div class="hh" id="relogio">--:--</div>
+        <div class="dd" id="dataHoje">—</div>
+        <div class="live"><span class="dot"></span><span id="statusTxt">AO VIVO</span></div>
+      </div>
+    </div>
+    <button class="gear" id="btnCfg" title="Configurações e importação de dados" aria-label="Configurações">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="panel">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-12 0"/><circle cx="12" cy="11" r="4"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      Ausentes agora <span class="n" id="nAusentes">0</span>
+    </h2>
+    <div class="scroller" id="scrAusentes"><div class="cards" id="listaAusentes"></div></div>
+  </section>
+
+  <section class="panel">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+      Ocupação — próximos <span id="tlDias">14</span> dias
+    </h2>
+    <div class="tl"><div class="tl-grid" id="timeline"></div></div>
+  </section>
+
+  <section class="panel">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Próximas saídas <span class="n" id="nProximas">0</span>
+    </h2>
+    <div class="scroller" id="scrProximas"><div class="rows" id="listaProximas"></div></div>
+  </section>
+
+  <section class="panel">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l2 2 4-4"/><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>
+      Retornos previstos <span class="n" id="nRetornos">0</span>
+    </h2>
+    <div class="rows" id="listaRetornos"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="13" y="5" width="3" height="13"/></svg>
+        Por departamento
+      </h2>
+      <div class="body" id="statDepto"></div>
+    </section>
+    <section class="panel">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10l7 4"/><circle cx="12" cy="12" r="10"/></svg>
+        Por motivo
+      </h2>
+      <div class="body" id="statMotivo"></div>
+    </section>
+  </div>
+
+  <footer>
+    <div class="legend" id="legenda"></div>
+    <div id="rodape">—</div>
+  </footer>
+</div>
+
+<!-- ═══════════════ CONFIGURAÇÃO / IMPORTAÇÃO ═══════════════ -->
+<div class="cfg" id="cfgModal">
+  <div class="box">
+    <h3>
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.9 2.9M16.9 16.9l2.9 2.9M1 12h4M19 12h4M4.2 19.8l2.9-2.9M16.9 7.1l2.9-2.9"/></svg>
+      Configurações do painel
+      <button id="btnFechar" aria-label="Fechar">&times;</button>
+    </h3>
+    <div class="inner">
+      <div class="msg" id="msgCfg"></div>
+
+      <div class="fld">
+        <label>Data de referência</label>
+        <input type="date" id="inpData" />
+        <small>Deixe em branco para usar sempre a data/hora reais (modo monitor). Preencher serve para
+        conferir o painel numa data específica — ex.: planejar a semana que vem.</small>
+      </div>
+
+      <div class="fld">
+        <label>Efetivo total do Powertrain</label>
+        <input type="number" id="inpEfetivo" min="1" max="999" />
+        <small>Base para o indicador de presença (%). </small>
+      </div>
+
+      <div class="fld">
+        <label>Importar dados da lista</label>
+        <div class="drop" id="drop">
+          Arraste aqui o <b>CSV exportado do SharePoint</b> (Exportar &rarr; CSV)<br />
+          ou <b>clique para escolher o arquivo</b>
+          <input type="file" id="inpFile" accept=".csv,.txt,.json" hidden />
+        </div>
+        <small>Colunas reconhecidas: Descrição da Saída · Motivo · Nome Colaborador · Departamento ·
+        Destino · Data de início · Data de término · Transporte. A ordem não importa —
+        o painel procura pelo nome do cabeçalho.</small>
+      </div>
+
+      <div class="fld">
+        <label>Ou cole os dados (CSV / JSON)</label>
+        <textarea id="inpTexto" placeholder="Cole aqui o conteúdo do CSV..." spellcheck="false"></textarea>
+      </div>
+
+      <div class="btns">
+        <button class="btn primary" id="btnAplicar">Aplicar</button>
+        <button class="btn" id="btnExportar">Exportar dados atuais (JSON)</button>
+        <button class="btn danger" id="btnLimpar">Restaurar dados de exemplo</button>
+      </div>
+      <small style="color:var(--faint);font-weight:600;line-height:1.5">
+        Os dados importados ficam salvos neste navegador (localStorage) — ao ligar o monitor o painel
+        reabre com a última carga. Para atualização diária, reexporte o CSV e arraste novamente.
+      </small>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   1. TABELAS DE APOIO — cores e rótulos
+   ══════════════════════════════════════════════════════════════════════ */
+const CORES_MOTIVO = {
+  'ferias':           { cor:'#60a5fa', rot:'Férias'            },
+  'projetos':         { cor:'#818cf8', rot:'Projetos'          },
+  'treinamento':      { cor:'#fbbf24', rot:'Treinamento'       },
+  'visita tecnica':   { cor:'#2dd4bf', rot:'Visita técnica'    },
+  'consulta medica':  { cor:'#f472b6', rot:'Consulta médica'   },
+  'saida antecipada': { cor:'#38bdf8', rot:'Saída antecipada'  },
+  'atraso':           { cor:'#ef4444', rot:'Atraso'            },
+  'expansao msc':     { cor:'#a78bfa', rot:'Expansão MSC'      },
+  '3yz':              { cor:'#fb923c', rot:'3YZ'               },
+  'falta':            { cor:'#f87171', rot:'Falta'             },
+  'home office':      { cor:'#34d399', rot:'Home office'       },
+  'afastamento':      { cor:'#fca5a5', rot:'Afastamento'       },
+};
+const CORES_DEPTO = { 'I/H':'#38bdf8', 'NMG':'#f472b6', 'OUTSOURCE':'#34d399' };
+const PADRAO = { cor:'#94a3b8', rot:'Outros' };
+
+const MS_DIA = 86400000;
+const DIAS_SEM = ['dom','seg','ter','qua','qui','sex','sáb'];
+const MESES    = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+/* ══════════════════════════════════════════════════════════════════════
+   2. UTILITÁRIOS
+   ══════════════════════════════════════════════════════════════════════ */
+const norm = s => (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                    .toLowerCase().replace(/\s+/g,' ').trim();
+
+function infoMotivo(m){
+  const k = norm(m);
+  if (CORES_MOTIVO[k]) return CORES_MOTIVO[k];
+  for (const [key,v] of Object.entries(CORES_MOTIVO)) if (k.startsWith(key.slice(0,7))) return v;
+  return { cor:PADRAO.cor, rot:(m||'Outros') };
+}
+const corDepto = d => CORES_DEPTO[(d||'').toUpperCase().trim()] || '#94a3b8';
+
+/** Aceita "dd/mm/aaaa hh:mm", "aaaa-mm-dd hh:mm" e ISO. */
+function parseData(v){
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  const s = (v||'').toString().trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ ,]+(\d{1,2}):(\d{2}))?/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0));
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+const p2 = n => String(n).padStart(2,'0');
+const hhmm  = d => p2(d.getHours())+':'+p2(d.getMinutes());
+const ddmm  = d => p2(d.getDate())+'/'+p2(d.getMonth()+1);
+const meiaNoite = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const mesmoDia  = (a,b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+const diasEntre = (a,b) => Math.round((meiaNoite(b)-meiaNoite(a))/MS_DIA);
+const iniciais = nome => (nome||'?').split(/[\s;]+/).filter(Boolean).slice(0,2)
+                          .map(p=>p[0]).join('').toUpperCase() || '?';
+const esc = s => (s||'').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/** "4 dias" / "2h30" — duração humana entre duas datas. */
+function duracaoTxt(ini, fim){
+  const h = (fim - ini) / 3600000;
+  if (h < 24) return h >= 1 ? `${Math.floor(h)}h${h%1 ? p2(Math.round((h%1)*60)) : ''}` : `${Math.round(h*60)} min`;
+  const d = Math.max(1, Math.round(diasEntre(ini, fim)));
+  return d === 1 ? '1 dia' : `${d} dias`;
+}
+
+const ICO = {
+  aviao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 0 0-3-3L13 8 4.8 6.2a1 1 0 0 0-.9 1.7L9 11l-2 2-2.5-.5a.8.8 0 0 0-.7 1.3L6 16l1.2 2.2a.8.8 0 0 0 1.3-.7L8 15l2-2 3.1 5.1a1 1 0 0 0 1.7-.9z"/></svg>',
+  carro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 17v2M18 17v2"/><path d="M3 13l1.7-4.6A2 2 0 0 1 6.6 7h10.8a2 2 0 0 1 1.9 1.4L21 13v4H3z"/><circle cx="7.5" cy="14.5" r="1"/><circle cx="16.5" cy="14.5" r="1"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  relogio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>',
+  sol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  mala:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  volta:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
+  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  vazio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M9 15l2 2 4-4"/></svg>',
+};
+const icoTransporte = t => norm(t).startsWith('avi') ? ICO.aviao : (norm(t).startsWith('car') ? ICO.carro : '');
+
+/* ══════════════════════════════════════════════════════════════════════
+   3. ESTADO
+   ══════════════════════════════════════════════════════════════════════ */
+const CHAVE = 'etg_powertrain_ausencias_v1';
+let estado = { registros: [], dataRef: null, efetivo: CONFIG.efetivoTotal };
+
+/** Normaliza um registro bruto e calcula datas. Descarta linhas sem data válida. */
+function prepara(r){
+  const ini = parseData(r.inicio), fim = parseData(r.fim);
+  if (!ini) return null;
+  const f = fim && fim >= ini ? fim : new Date(ini.getTime() + 3600000);
+  const mi = infoMotivo(r.motivo);
+  return {
+    descricao:(r.descricao||'').trim() || mi.rot,
+    motivo:(r.motivo||'').trim() || 'Outros',
+    motivoRot:mi.rot, cor:mi.cor,
+    nome:(r.nome||'—').trim(),
+    depto:(r.depto||'').trim().toUpperCase(),
+    destino:(r.destino||'').trim(),
+    transporte:(r.transporte||'').trim(),
+    ini, fim:f,
+    diaTodo: (fim ? diasEntre(ini,f) >= 1 : false),
+  };
+}
+function carregaDados(lista){
+  estado.registros = (lista||[]).map(prepara).filter(Boolean)
+                     .sort((a,b)=> a.ini - b.ini);
+}
+function agora(){
+  if (!estado.dataRef) return new Date();
+  const r = new Date(estado.dataRef), n = new Date();
+  r.setHours(n.getHours(), n.getMinutes(), 0, 0);
+  return r;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   4. CLASSIFICAÇÃO
+   ══════════════════════════════════════════════════════════════════════ */
+const estaFora   = (r,n) => r.ini <= n && n <= r.fim;
+const ehHoje     = (r,n) => mesmoDia(r.ini,n) || mesmoDia(r.fim,n) || (r.ini < n && r.fim > n);
+const ehFerias   = r => norm(r.motivo).startsWith('feri');
+const ehViagem   = r => !!r.transporte || !!r.destino;
+
+/* ══════════════════════════════════════════════════════════════════════
+   5. RENDERIZAÇÃO
+   ══════════════════════════════════════════════════════════════════════ */
+function render(){
+  const n = agora();
+  const regs = estado.registros;
+
+  const fora     = regs.filter(r => estaFora(r,n));
+  const hojeTodo = regs.filter(r => ehHoje(r,n));
+  const futuras  = regs.filter(r => r.ini > n && diasEntre(n, r.ini) <= CONFIG.diasAgenda);
+  const pessoasFora = new Set(fora.map(r => norm(r.nome)));
+
+  desenhaKPIs(fora, hojeTodo, futuras, pessoasFora, n);
+  desenhaAusentes(fora, n);
+  desenhaTimeline(n);
+  desenhaProximas(futuras, n);
+  desenhaRetornos(fora, n);
+  desenhaEstatisticas(fora.length ? fora : hojeTodo);
+  desenhaLegenda();
+
+  document.getElementById('rodape').textContent =
+    `${regs.length} registros carregados · atualizado às ${hhmm(new Date())}` +
+    (estado.dataRef ? ' · MODO CONSULTA (data simulada)' : '');
+  document.getElementById('statusTxt').textContent = estado.dataRef ? 'DATA SIMULADA' : 'AO VIVO';
+}
+
+/* ---- KPIs ---- */
+function desenhaKPIs(fora, hoje, futuras, pessoasFora, n){
+  const efetivo   = Math.max(estado.efetivo || 0, pessoasFora.size);
+  const presentes = Math.max(0, efetivo - pessoasFora.size);
+  const pct       = efetivo ? Math.round(presentes / efetivo * 100) : 100;
+  const viagem    = fora.filter(ehViagem).length;
+  const ferias    = fora.filter(ehFerias).length;
+  const retorna7  = fora.filter(r => diasEntre(n, r.fim) >= 0 && diasEntre(n, r.fim) <= 7).length;
+  const prox7     = futuras.filter(r => diasEntre(n, r.ini) <= 7).length;
+
+  const tiles = [
+    { v:pessoasFora.size, l:'Ausentes agora',  s:`de ${efetivo} colaboradores`, c:pessoasFora.size ? '#f59e0b' : '#22c55e', i:ICO.users },
+    { v:pct+'%',          l:'Presença',        s:`${presentes} em operação`,    c: pct>=85 ? '#22c55e' : pct>=70 ? '#f59e0b' : '#ef4444', i:ICO.ok },
+    { v:hoje.length,      l:'Saídas de hoje',  s:'eventos no dia',              c:'#2dd4bf', i:ICO.relogio },
+    { v:ferias,           l:'Em férias',       s:'ausência programada',         c:'#60a5fa', i:ICO.sol },
+    { v:viagem,           l:'Em viagem',       s:'visita / projeto / trip',     c:'#818cf8', i:ICO.mala },
+    { v:retorna7,         l:'Retornos · 7 dias',
+      s: prox7 === 1 ? '1 nova saída no período' : `${prox7} novas saídas no período`,
+      c:'#22c55e', i:ICO.volta },
+  ];
+  document.getElementById('kpis').innerHTML = tiles.map(t => `
+    <div class="kpi" style="--c:${t.c}">
+      <div class="ico">${t.i}</div>
+      <div class="v">${t.v}</div>
+      <div class="l">${t.l}</div>
+      <div class="s">${t.s}</div>
+    </div>`).join('');
+}
+
+/* ---- Cards de quem está fora ---- */
+function desenhaAusentes(fora, n){
+  document.getElementById('nAusentes').textContent = fora.length;
+  const alvo = document.getElementById('listaAusentes');
+  if (!fora.length){
+    // Base só com datas passadas = provavelmente esqueceram de atualizar o CSV.
+    // Melhor avisar do que exibir "equipe completa" e induzir a leitura errada.
+    const vencidos = estado.registros.length && estado.registros.every(r => r.fim < n);
+    const nota = vencidos
+      ? `<div style="margin-top:.7rem;font-size:.82rem;color:var(--warn);font-weight:700">
+           Atenção: os ${estado.registros.length} registros carregados são todos anteriores a hoje.
+           Reimporte o CSV atualizado da lista (botão ⚙).</div>`
+      : '';
+    alvo.innerHTML = `<div class="empty" style="grid-column:1/-1">${ICO.vazio}
+      Equipe completa — nenhuma ausência em andamento.${nota}</div>`;
+    return;
+  }
+  // quem volta antes aparece primeiro
+  const ord = [...fora].sort((a,b)=> a.fim - b.fim);
+  alvo.innerHTML = ord.map(r => {
+    const total = Math.max(1, r.fim - r.ini);
+    const pct   = Math.min(100, Math.max(2, (n - r.ini) / total * 100));
+    const dRest = diasEntre(n, r.fim);
+    const volta = mesmoDia(r.fim, n) ? `Retorna hoje às <b>${hhmm(r.fim)}</b>`
+                : dRest === 1       ? 'Retorna <b>amanhã</b>'
+                : `Retorna em <b>${dRest} dias</b>`;
+    const per = r.diaTodo
+      ? `${ddmm(r.ini)} <span class="arrow">→</span> ${ddmm(r.fim)}`
+      : `${hhmm(r.ini)} <span class="arrow">→</span> ${hhmm(r.fim)}`;
+    const tr = icoTransporte(r.transporte);
+    return `
+    <div class="card ${mesmoDia(r.ini,n)?'hoje':''}" style="--c:${r.cor}">
+      <div class="av">${esc(iniciais(r.nome))}</div>
+      <div class="who">
+        <div class="nome">${esc(r.nome)}</div>
+        <div class="desc">${esc(r.descricao)}</div>
+      </div>
+      <div class="meta">
+        <span class="chip" style="--cb:${r.cor}22;--cf:${r.cor}">${esc(r.motivoRot)}</span>
+        ${r.depto ? `<span class="chip" style="--cb:${corDepto(r.depto)}22;--cf:${corDepto(r.depto)}">${esc(r.depto)}</span>` : ''}
+        ${r.destino ? `<span class="chip ghost">${ICO.pin}${esc(r.destino)}</span>` : ''}
+        ${tr ? `<span class="chip ghost">${tr}${esc(r.transporte)}</span>` : ''}
+      </div>
+      <div class="per">${ICO.relogio}${per}<span class="arrow">·</span>${duracaoTxt(r.ini,r.fim)}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="volta"><span>${volta}</span><span>${Math.round(pct)}% decorrido</span></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- Timeline de barras ---- */
+function desenhaTimeline(n){
+  const dias  = CONFIG.diasTimeline;
+  document.getElementById('tlDias').textContent = dias;
+  const ini0  = meiaNoite(n);
+  const fim0  = new Date(ini0.getTime() + dias * MS_DIA);
+  const alvo  = document.getElementById('timeline');
+  alvo.style.setProperty('--dias', dias);
+
+  const janela = estado.registros.filter(r => r.fim >= ini0 && r.ini < fim0);
+  if (!janela.length){
+    alvo.innerHTML = `<div class="empty" style="grid-column:1/-1">${ICO.vazio}
+      Sem ausências previstas para os próximos ${dias} dias.</div>`;
+    return;
+  }
+
+  // cabeçalho de dias
+  let head = '<div></div><div class="tl-head">';
+  for (let i=0;i<dias;i++){
+    const d = new Date(ini0.getTime() + i*MS_DIA);
+    const fds = d.getDay()===0 || d.getDay()===6;
+    head += `<div class="${fds?'wk':''} ${i===0?'now':''}">${DIAS_SEM[d.getDay()]}<b>${p2(d.getDate())}</b></div>`;
+  }
+  head += '</div>';
+
+  // uma faixa por pessoa
+  const porPessoa = new Map();
+  janela.forEach(r => {
+    const k = norm(r.nome);
+    if (!porPessoa.has(k)) porPessoa.set(k, { nome:r.nome, itens:[] });
+    porPessoa.get(k).itens.push(r);
+  });
+  const pessoas = [...porPessoa.values()]
+    .sort((a,b)=> Math.min(...a.itens.map(i=>+i.ini)) - Math.min(...b.itens.map(i=>+i.ini)));
+
+  const pos = d => Math.min(100, Math.max(0, (d - ini0) / (dias*MS_DIA) * 100));
+  const fdsMarks = Array.from({length:dias}, (_,i) => {
+    const d = new Date(ini0.getTime() + i*MS_DIA);
+    return (d.getDay()===0||d.getDay()===6)
+      ? `<div class="wkend" style="left:${i/dias*100}%;width:${100/dias}%"></div>` : '';
+  }).join('');
+  const nowPct = pos(n);
+
+  const linhas = pessoas.map(p => {
+    const barras = p.itens.map(r => {
+      const l = pos(r.ini), w = Math.max(1.2, pos(r.fim) - l);
+      const rot = w > 12 ? esc(r.motivoRot) : '';
+      return `<div class="tl-bar" style="--c:${r.cor};left:${l}%;width:${w}%"
+                   title="${esc(r.nome)} · ${esc(r.descricao)} · ${ddmm(r.ini)} → ${ddmm(r.fim)}">${rot}</div>`;
+    }).join('');
+    return `<div class="tl-name">${esc(p.nome)}</div>
+            <div class="tl-lane">${fdsMarks}<div class="nowline" style="left:${nowPct}%"></div>${barras}</div>`;
+  }).join('');
+
+  alvo.innerHTML = head + linhas;
+}
+
+/* ---- Próximas saídas ---- */
+function desenhaProximas(futuras, n){
+  document.getElementById('nProximas').textContent = futuras.length;
+  const alvo = document.getElementById('listaProximas');
+  if (!futuras.length){
+    alvo.innerHTML = `<div class="empty">${ICO.vazio}Nenhuma saída programada para os próximos ${CONFIG.diasAgenda} dias.</div>`;
+    return;
+  }
+  alvo.innerHTML = futuras.map(r => {
+    const dd = diasEntre(n, r.ini);
+    const quando = dd === 0 ? 'hoje' : dd === 1 ? 'amanhã' : `em ${dd} dias`;
+    const tr = icoTransporte(r.transporte);
+    return `
+    <div class="row ${dd===0?'today':''}" style="--c:${r.cor}">
+      <div class="day"><div class="d">${p2(r.ini.getDate())}</div><div class="m">${DIAS_SEM[r.ini.getDay()]} ${MESES[r.ini.getMonth()]}</div></div>
+      <div class="info">
+        <div class="n">${esc(r.nome)}</div>
+        <div class="s">${esc(r.descricao)} · <b>${quando}</b> · ${duracaoTxt(r.ini,r.fim)}
+          ${r.destino ? '· '+esc(r.destino) : ''}</div>
+      </div>
+      <div class="tags">
+        <span class="chip" style="--cb:${r.cor}22;--cf:${r.cor}">${esc(r.motivoRot)}</span>
+        ${r.depto ? `<span class="chip" style="--cb:${corDepto(r.depto)}22;--cf:${corDepto(r.depto)}">${esc(r.depto)}</span>` : ''}
+        ${tr ? `<span class="chip ghost">${tr}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- Retornos previstos ---- */
+function desenhaRetornos(fora, n){
+  const lista = [...fora].filter(r => r.diaTodo).sort((a,b)=> a.fim - b.fim).slice(0,8);
+  document.getElementById('nRetornos').textContent = lista.length;
+  const alvo = document.getElementById('listaRetornos');
+  if (!lista.length){
+    alvo.innerHTML = `<div class="empty">${ICO.ok}Nenhum retorno de ausência longa pendente.</div>`;
+    return;
+  }
+  alvo.innerHTML = lista.map(r => {
+    const dd = diasEntre(n, r.fim);
+    const quando = dd <= 0 ? 'hoje' : dd === 1 ? 'amanhã' : `em ${dd} dias`;
+    return `
+    <div class="row ${dd<=0?'today':''}" style="--c:${r.cor}">
+      <div class="day"><div class="d">${p2(r.fim.getDate())}</div><div class="m">${DIAS_SEM[r.fim.getDay()]} ${MESES[r.fim.getMonth()]}</div></div>
+      <div class="info">
+        <div class="n">${esc(r.nome)}</div>
+        <div class="s">Retorna <b>${quando}</b> · ${esc(r.motivoRot)}${r.destino ? ' · '+esc(r.destino) : ''}</div>
+      </div>
+      <div class="tags">
+        ${r.depto ? `<span class="chip" style="--cb:${corDepto(r.depto)}22;--cf:${corDepto(r.depto)}">${esc(r.depto)}</span>` : ''}
+        <span class="chip ghost">${ICO.volta}${p2(r.fim.getDate())}/${p2(r.fim.getMonth()+1)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- Barras por departamento / motivo ---- */
+function desenhaEstatisticas(base){
+  const conta = (arr, campo) => {
+    const m = new Map();
+    arr.forEach(r => { const k = r[campo] || '—'; m.set(k, (m.get(k)||0)+1); });
+    return [...m.entries()].sort((a,b)=> b[1]-a[1]);
+  };
+  const barra = (rot, val, max, cor) => `
+    <div class="stat" style="--c:${cor}">
+      <div class="k">${esc(rot)}</div>
+      <div class="t"><i style="width:${max ? Math.max(4, val/max*100) : 0}%"></i></div>
+      <div class="v">${val}</div>
+    </div>`;
+
+  const dp = conta(base,'depto'), mt = conta(base,'motivoRot');
+  const maxD = Math.max(1, ...dp.map(x=>x[1])), maxM = Math.max(1, ...mt.map(x=>x[1]));
+
+  document.getElementById('statDepto').innerHTML = dp.length
+    ? dp.map(([k,v]) => barra(k, v, maxD, corDepto(k))).join('')
+    : `<div class="empty" style="padding:1.2rem">Sem ausências para exibir.</div>`;
+  document.getElementById('statMotivo').innerHTML = mt.length
+    ? mt.map(([k,v]) => barra(k, v, maxM, infoMotivo(k).cor)).join('')
+    : `<div class="empty" style="padding:1.2rem">Sem ausências para exibir.</div>`;
+}
+
+function desenhaLegenda(){
+  const usados = new Map();
+  estado.registros.forEach(r => usados.set(r.motivoRot, r.cor));
+  document.getElementById('legenda').innerHTML = [...usados.entries()]
+    .map(([k,c]) => `<span class="chip" style="--cb:${c}1f;--cf:${c}">${esc(k)}</span>`).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   6. RELÓGIO
+   ══════════════════════════════════════════════════════════════════════ */
+function tique(){
+  const n = agora();
+  document.getElementById('relogio').textContent = hhmm(n);
+  const dt = n.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  document.getElementById('dataHoje').textContent = dt.charAt(0).toUpperCase() + dt.slice(1);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   7. MODO QUIOSQUE — rola a tela devagar (vai e volta) quando o conteúdo
+      passa da altura do monitor, para nada ficar escondido.
+      Pausa sozinho se alguém mexer no mouse/roda.
+   ══════════════════════════════════════════════════════════════════════ */
+function quiosque(){
+  let dir = 1, pausa = 100, toque = 0;   // pausa em "ticks" de 30 ms
+
+  ['wheel','mousemove','touchstart','keydown'].forEach(ev =>
+    window.addEventListener(ev, () => { toque = Date.now(); }, { passive:true }));
+
+  setInterval(() => {
+    if (!CONFIG.rolagemAuto) return;
+    if (document.getElementById('cfgModal').classList.contains('on')) return;
+    if (Date.now() - toque < 45000) return;        // 45 s de trégua após interação
+
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    if (max <= 4) return;                          // coube na tela: não rola
+    if (pausa > 0){ pausa--; return; }
+
+    window.scrollBy(0, dir);
+    const y = Math.round(window.scrollY);
+    if (dir === 1  && y >= max - 1){ dir = -1; pausa = 160; }   // ~5 s parado no fim
+    if (dir === -1 && y <= 0)      { dir =  1; pausa = 160; }   // ~5 s parado no topo
+  }, 30);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   8. IMPORTAÇÃO (CSV / JSON)
+   ══════════════════════════════════════════════════════════════════════ */
+/** Divide uma linha de CSV respeitando aspas. */
+function partirLinha(linha, sep){
+  const out = []; let atual = '', aspas = false;
+  for (let i=0;i<linha.length;i++){
+    const c = linha[i];
+    if (c === '"'){
+      if (aspas && linha[i+1] === '"'){ atual += '"'; i++; } else aspas = !aspas;
+    } else if (c === sep && !aspas){ out.push(atual); atual = ''; }
+    else atual += c;
+  }
+  out.push(atual);
+  return out.map(s => s.trim().replace(/^"|"$/g,''));
+}
+
+/** Descobre o separador mais provável (; , ou tab). */
+function detectaSep(txt){
+  const l = txt.split(/\r?\n/).find(x => x.trim()) || '';
+  const cont = s => (l.match(new RegExp('\\'+s,'g'))||[]).length;
+  return cont(';') >= cont(',') ? (cont(';') >= cont('\t') ? ';' : '\t')
+                                : (cont(',') >= cont('\t') ? ',' : '\t');
+}
+
+/** Mapeia cabeçalhos do SharePoint para os campos internos. */
+const ALIAS = {
+  descricao:['descricao da saida','descricao','titulo','title','assunto','saida'],
+  motivo:   ['motivo','tipo','categoria'],
+  nome:     ['nome colaborador','nome colaborador(es)','colaborador','nome','funcionario','responsavel'],
+  depto:    ['departamento','depto','setor','area'],
+  destino:  ['destino','local','cliente','fornecedor'],
+  inicio:   ['data de inicio','data inicio','inicio','data/hora inicio','start'],
+  fim:      ['data de termino','data termino','termino','fim','data/hora fim','end'],
+  transporte:['transporte','meio de transporte','veiculo'],
+};
+function acharCol(cabs, campo){
+  const alvos = ALIAS[campo];
+  for (const a of alvos){                       // 1) nome exato
+    const i = cabs.findIndex(c => norm(c) === a);
+    if (i >= 0) return i;
+  }
+  for (const a of alvos){                       // 2) aproximado — exige 4+ letras
+    const i = cabs.findIndex(c => {             //    para não casar cabeçalho curto/vazio
+      const k = norm(c);
+      return k.length >= 4 && (k.includes(a) || a.includes(k));
+    });
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function parseCSV(txt){
+  const sep = detectaSep(txt);
+  const linhas = txt.split(/\r?\n/).filter(l => l.trim());
+  if (linhas.length < 2) throw new Error('Arquivo sem linhas de dados.');
+  const cabs = partirLinha(linhas[0], sep);
+  const idx = {}; Object.keys(ALIAS).forEach(k => idx[k] = acharCol(cabs, k));
+  if (idx.inicio < 0) throw new Error('Coluna "Data de início" não encontrada no cabeçalho.');
+  const val = (cel, k) => idx[k] >= 0 ? (cel[idx[k]] || '') : '';
+  return linhas.slice(1).map(l => {
+    const c = partirLinha(l, sep);
+    return {
+      descricao:val(c,'descricao'), motivo:val(c,'motivo'), nome:val(c,'nome'),
+      depto:val(c,'depto'), destino:val(c,'destino'), inicio:val(c,'inicio'),
+      fim:val(c,'fim'), transporte:val(c,'transporte'),
+    };
+  }).filter(r => r.inicio);
+}
+
+function importar(txt){
+  const t = txt.trim();
+  let lista;
+  if (t.startsWith('[') || t.startsWith('{')){
+    const j = JSON.parse(t);
+    lista = Array.isArray(j) ? j : (j.registros || j.value || j.dados || []);
+  } else {
+    lista = parseCSV(t);
+  }
+  if (!lista.length) throw new Error('Nenhum registro válido encontrado.');
+  carregaDados(lista);
+  if (!estado.registros.length) throw new Error('Nenhuma data pôde ser interpretada. Confira o formato (dd/mm/aaaa).');
+  salvar();
+  render();
+  return estado.registros.length;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   9. PERSISTÊNCIA
+   ══════════════════════════════════════════════════════════════════════ */
+function salvar(){
+  try{
+    localStorage.setItem(CHAVE, JSON.stringify({
+      efetivo: estado.efetivo,
+      registros: estado.registros.map(r => ({
+        descricao:r.descricao, motivo:r.motivo, nome:r.nome, depto:r.depto,
+        destino:r.destino, transporte:r.transporte,
+        inicio:r.ini.toISOString(), fim:r.fim.toISOString(),
+      })),
+    }));
+  }catch(e){ /* modo quiosque sem storage: segue só em memória */ }
+}
+function restaurar(){
+  try{
+    const s = JSON.parse(localStorage.getItem(CHAVE) || 'null');
+    if (s && Array.isArray(s.registros) && s.registros.length){
+      estado.efetivo = s.efetivo || CONFIG.efetivoTotal;
+      carregaDados(s.registros);
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   10. PAINEL DE CONFIGURAÇÃO
+   ══════════════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+function aviso(txt, ok=true){
+  const m = $('msgCfg'); m.textContent = txt; m.className = 'msg ' + (ok ? 'ok' : 'err');
+  setTimeout(()=>{ m.className = 'msg'; }, 5000);
+}
+function abreCfg(){
+  $('inpEfetivo').value = estado.efetivo;
+  $('inpData').value = estado.dataRef
+    ? `${estado.dataRef.getFullYear()}-${p2(estado.dataRef.getMonth()+1)}-${p2(estado.dataRef.getDate())}` : '';
+  $('cfgModal').classList.add('on');
+}
+const fechaCfg = () => $('cfgModal').classList.remove('on');
+
+$('btnCfg').onclick = abreCfg;
+$('btnFechar').onclick = fechaCfg;
+$('cfgModal').addEventListener('click', e => { if (e.target === $('cfgModal')) fechaCfg(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fechaCfg(); });
+
+$('btnAplicar').onclick = () => {
+  estado.efetivo = Math.max(1, +$('inpEfetivo').value || CONFIG.efetivoTotal);
+  const d = $('inpData').value;
+  estado.dataRef = d ? parseData(d) : null;
+  const txt = $('inpTexto').value.trim();
+  if (txt){
+    try{ const q = importar(txt); $('inpTexto').value=''; aviso(`${q} registros importados.`); }
+    catch(err){ aviso('Erro: ' + err.message, false); return; }
+  } else { salvar(); render(); aviso('Configurações aplicadas.'); }
+  tique();
+};
+$('btnExportar').onclick = () => {
+  const dados = estado.registros.map(r => ({
+    descricao:r.descricao, motivo:r.motivo, nome:r.nome, depto:r.depto, destino:r.destino,
+    inicio:`${p2(r.ini.getDate())}/${p2(r.ini.getMonth()+1)}/${r.ini.getFullYear()} ${hhmm(r.ini)}`,
+    fim:`${p2(r.fim.getDate())}/${p2(r.fim.getMonth()+1)}/${r.fim.getFullYear()} ${hhmm(r.fim)}`,
+    transporte:r.transporte,
+  }));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(dados,null,2)], {type:'application/json'}));
+  a.download = 'powertrain-ausencias.json'; a.click();
+  URL.revokeObjectURL(a.href);
+};
+$('btnLimpar').onclick = () => {
+  try{ localStorage.removeItem(CHAVE); }catch(e){}
+  estado.efetivo = CONFIG.efetivoTotal;
+  carregaDados(DADOS); render(); aviso('Dados de exemplo restaurados.');
+};
+
+/* arquivo: clique + arrastar */
+const drop = $('drop');
+drop.onclick = () => $('inpFile').click();
+$('inpFile').onchange = e => { if (e.target.files[0]) leArquivo(e.target.files[0]); };
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.add('over');
+}));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.remove('over');
+}));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) leArquivo(f); });
+// arrastar sobre a página inteira também importa
+['dragover','drop'].forEach(ev => document.addEventListener(ev, e => {
+  e.preventDefault();
+  if (ev === 'drop' && e.dataTransfer.files[0]){ abreCfg(); leArquivo(e.dataTransfer.files[0]); }
+}));
+
+function leArquivo(file){
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{ const q = importar(fr.result); aviso(`${file.name}: ${q} registros importados.`); }
+    catch(err){ aviso('Erro ao ler o arquivo: ' + err.message, false); }
+  };
+  fr.onerror = () => aviso('Não foi possível ler o arquivo.', false);
+  fr.readAsText(file, 'utf-8');            // SharePoint exporta em UTF-8
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   11. INICIALIZAÇÃO
+   ══════════════════════════════════════════════════════════════════════ */
+$('hTitulo').textContent = CONFIG.titulo;
+$('hSub').textContent    = CONFIG.subtitulo;
+document.title = CONFIG.titulo + ' — ETG';
+
+if (!restaurar()) carregaDados(DADOS);
+tique();
+render();
+
+setInterval(tique, 1000);
+setInterval(render, Math.max(15, CONFIG.atualizarSeg) * 1000);
+quiosque();
+</script>
+</body>
+</html>
