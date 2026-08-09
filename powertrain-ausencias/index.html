@@ -80,7 +80,10 @@ header.top::after{content:"";position:absolute;inset:0;pointer-events:none;
 .live{display:flex;align-items:center;gap:.45rem;font-size:.72rem;color:var(--faint);font-weight:700;
   justify-content:flex-end;margin-top:.4rem;letter-spacing:.6px}
 .live .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(34,197,94,.6);
-  animation:pulse 2.4s infinite}
+  animation:pulse 2.4s infinite;flex:none}
+.live .reconn{display:none;align-items:center;padding:.1rem .55rem;border-radius:2rem;font-size:.68rem;
+  font-weight:800;letter-spacing:.4px;background:var(--bad);color:#fff}
+.live .reconn:hover{filter:brightness(1.15)}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 .55rem rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
 .gear{width:2.5rem;height:2.5rem;border-radius:.7rem;display:grid;place-items:center;
   background:var(--panel-2);border:1px solid var(--line);color:var(--muted);transition:.15s}
@@ -255,6 +258,10 @@ footer .legend{display:flex;flex-wrap:wrap;gap:.4rem}
 .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
 .btn.primary:hover{background:var(--brand-2)}
 .btn.danger{color:#fca5a5;border-color:rgba(239,68,68,.4)}
+.fonte{border:1px solid var(--line-2);border-radius:.6rem;padding:.7rem .85rem;background:var(--bg-2);
+  font-family:ui-monospace,Consolas,monospace;font-size:.8rem;line-height:1.6;word-break:break-all}
+.fonte b{font-family:var(--font)}
+.fonte .st-ok{color:#86efac} .fonte .st-err{color:#fca5a5} .fonte .st-warn{color:#fcd34d}
 .drop{border:2px dashed var(--line-2);border-radius:var(--radius-sm);padding:1.4rem;text-align:center;
   color:var(--muted);font-weight:700;font-size:.85rem;transition:.15s}
 .drop.over{border-color:var(--brand);background:rgba(59,130,246,.1);color:var(--brand-2)}
@@ -275,11 +282,25 @@ footer .legend{display:flex;flex-wrap:wrap;gap:.4rem}
 const CONFIG = {
   titulo:        'Powertrain · Monitor de Ausências',
   subtitulo:     'Engine Technical Group — Gerenciamento de saídas',
+
+  /* ── FONTE DE DADOS ────────────────────────────────────────────────
+     Caminho do arquivo que o painel LÊ DE NOVO a cada ciclo — quem
+     atualizar o CSV nessa pasta vê o painel mudar sozinho, sem importar
+     nada. Vale caminho relativo à pasta do painel, subpasta ou URL.
+       'dados/saidas.csv'                         (recomendado)
+       'http://servidor/painel/dados/saidas.csv'
+     Só funciona com o painel SERVIDO por http (use Iniciar-Painel.bat).
+     Abrindo o index.html direto (file://) o navegador proíbe a leitura;
+     nesse caso aponte o arquivo uma vez pelo ⚙ e ele passa a ser relido
+     igual — ver LEIA-ME.md.                                          */
+  arquivoDados:  'dados/saidas.csv',
+  recarregarSeg: 60,   // de quanto em quanto tempo reler o arquivo
+
   efetivoTotal:  24,   // ← AJUSTE para o efetivo real do Powertrain (usado no % de presença)
   diasTimeline:  14,   // janela do gráfico de barras
   diasAgenda:    45,   // horizonte da lista "próximas saídas"
-  atualizarSeg:  60,   // recálculo automático (segundos)
-  rolagemAuto:   true, // rola sozinho os blocos que não couberem na tela
+  atualizarSeg:  60,   // recálculo do painel (segundos)
+  rolagemAuto:   true, // rola sozinho quando não cabe na tela
 };
 
 /* Dados extraídos da lista "Gerenciamento de saídas".
@@ -324,7 +345,10 @@ const DADOS = [
       <div class="clock">
         <div class="hh" id="relogio">--:--</div>
         <div class="dd" id="dataHoje">—</div>
-        <div class="live"><span class="dot"></span><span id="statusTxt">AO VIVO</span></div>
+        <div class="live">
+          <span class="dot"></span><span id="statusTxt">iniciando…</span>
+          <button id="btnReconectar" class="reconn">Reconectar arquivo</button>
+        </div>
       </div>
     </div>
     <button class="gear" id="btnCfg" title="Configurações e importação de dados" aria-label="Configurações">
@@ -401,10 +425,20 @@ const DADOS = [
       <div class="msg" id="msgCfg"></div>
 
       <div class="fld">
-        <label>Data de referência</label>
-        <input type="date" id="inpData" />
-        <small>Deixe em branco para usar sempre a data/hora reais (modo monitor). Preencher serve para
-        conferir o painel numa data específica — ex.: planejar a semana que vem.</small>
+        <label>Fonte de dados</label>
+        <div class="fonte" id="boxFonte">—</div>
+        <div class="btns">
+          <button class="btn" id="btnApontar">Apontar arquivo…</button>
+          <button class="btn" id="btnReler">Reler agora</button>
+        </div>
+        <small>
+          O painel <b>relê este arquivo sozinho</b> a cada
+          <b id="txtCiclo">60</b> s — basta salvar o CSV atualizado por cima, não precisa
+          importar de novo.<br />
+          Servido pelo <b>Iniciar-Painel.bat</b>, ele lê direto o caminho
+          <b id="txtCaminho">dados/saidas.csv</b> e nunca pede clique. Aberto direto do arquivo
+          (file://), o navegador exige que você aponte o arquivo uma vez em <b>Apontar arquivo…</b>
+        </small>
       </div>
 
       <div class="fld">
@@ -414,13 +448,15 @@ const DADOS = [
       </div>
 
       <div class="fld">
-        <label>Importar dados da lista</label>
+        <label>Carga avulsa (não vira fonte fixa)</label>
         <div class="drop" id="drop">
           Arraste aqui o <b>CSV exportado do SharePoint</b> (Exportar &rarr; CSV)<br />
           ou <b>clique para escolher o arquivo</b>
           <input type="file" id="inpFile" accept=".csv,.txt,.json" hidden />
         </div>
-        <small>Colunas reconhecidas: Descrição da Saída · Motivo · Nome Colaborador · Departamento ·
+        <small>Serve para dar uma olhada num arquivo pontual. Para o monitor, prefira
+        <b>Apontar arquivo…</b> acima — assim ele se atualiza sozinho.<br />
+        Colunas reconhecidas: Descrição da Saída · Motivo · Nome Colaborador · Departamento ·
         Destino · Data de início · Data de término · Transporte. A ordem não importa —
         o painel procura pelo nome do cabeçalho.</small>
       </div>
@@ -436,8 +472,9 @@ const DADOS = [
         <button class="btn danger" id="btnLimpar">Restaurar dados de exemplo</button>
       </div>
       <small style="color:var(--faint);font-weight:600;line-height:1.5">
-        Os dados importados ficam salvos neste navegador (localStorage) — ao ligar o monitor o painel
-        reabre com a última carga. Para atualização diária, reexporte o CSV e arraste novamente.
+        A última leitura fica guardada neste navegador, então ao ligar o monitor o painel já abre
+        com dados na tela enquanto relê o arquivo. Se a fonte falhar, ele continua mostrando a
+        última leitura boa e avisa em vermelho no cabeçalho.
       </small>
     </div>
   </div>
@@ -530,7 +567,7 @@ const icoTransporte = t => norm(t).startsWith('avi') ? ICO.aviao : (norm(t).star
    3. ESTADO
    ══════════════════════════════════════════════════════════════════════ */
 const CHAVE = 'etg_powertrain_ausencias_v1';
-let estado = { registros: [], dataRef: null, efetivo: CONFIG.efetivoTotal };
+let estado = { registros: [], efetivo: CONFIG.efetivoTotal };
 
 /** Normaliza um registro bruto e calcula datas. Descarta linhas sem data válida. */
 function prepara(r){
@@ -554,12 +591,8 @@ function carregaDados(lista){
   estado.registros = (lista||[]).map(prepara).filter(Boolean)
                      .sort((a,b)=> a.ini - b.ini);
 }
-function agora(){
-  if (!estado.dataRef) return new Date();
-  const r = new Date(estado.dataRef), n = new Date();
-  r.setHours(n.getHours(), n.getMinutes(), 0, 0);
-  return r;
-}
+/** O painel trabalha sempre com a data/hora reais do PC do monitor. */
+const agora = () => new Date();
 
 /* ══════════════════════════════════════════════════════════════════════
    4. CLASSIFICAÇÃO
@@ -590,9 +623,8 @@ function render(){
   desenhaLegenda();
 
   document.getElementById('rodape').textContent =
-    `${regs.length} registros carregados · atualizado às ${hhmm(new Date())}` +
-    (estado.dataRef ? ' · MODO CONSULTA (data simulada)' : '');
-  document.getElementById('statusTxt').textContent = estado.dataRef ? 'DATA SIMULADA' : 'AO VIVO';
+    `${regs.length} registros · painel recalculado às ${hhmm(new Date())}`;
+  desenhaFonte();
 }
 
 /* ---- KPIs ---- */
@@ -944,7 +976,182 @@ function importar(txt){
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   9. PERSISTÊNCIA
+   8b. FONTE DE DADOS — o painel RELÊ o arquivo a cada ciclo
+   ──────────────────────────────────────────────────────────────────────
+   Dois modos, escolhidos sozinho conforme como o painel foi aberto:
+
+   • 'http'    — painel servido por http (Iniciar-Painel.bat). Busca
+                 CONFIG.arquivoDados a cada ciclo. Nenhum clique, nunca.
+   • 'arquivo' — painel aberto direto (file://). O navegador proíbe ler
+                 caminho por conta própria, então o arquivo é apontado uma
+                 vez pelo ⚙; a referência fica guardada no IndexedDB e o
+                 painel relê o MESMO arquivo a cada ciclo, pegando o que
+                 foi salvo por cima.
+   ══════════════════════════════════════════════════════════════════════ */
+const Fonte = {
+  modo:'exemplo',      // exemplo | http | arquivo
+  caminho:'',          // o que mostrar no rodapé
+  handle:null,         // FileSystemFileHandle (modo arquivo)
+  lidoEm:null,         // horário da última leitura boa
+  carimbo:null,        // lastModified/ETag: evita reprocessar sem mudança
+  erro:null,
+  precisaPermissao:false,
+};
+
+/* -- guarda o handle do arquivo entre sessões (localStorage não serve) -- */
+const Cofre = {
+  db:null,
+  abrir(){
+    return new Promise(res => {
+      if (Cofre.db) return res(Cofre.db);
+      let req; try{ req = indexedDB.open('etg_powertrain', 1); }catch(e){ return res(null); }
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => res(Cofre.db = req.result);
+      req.onerror   = () => res(null);
+    });
+  },
+  async set(k,v){
+    const db = await Cofre.abrir(); if (!db) return;
+    try{ db.transaction('kv','readwrite').objectStore('kv').put(v,k); }catch(e){}
+  },
+  async get(k){
+    const db = await Cofre.abrir(); if (!db) return null;
+    return new Promise(res => {
+      try{
+        const q = db.transaction('kv','readonly').objectStore('kv').get(k);
+        q.onsuccess = () => res(q.result || null);
+        q.onerror   = () => res(null);
+      }catch(e){ res(null); }
+    });
+  },
+};
+
+/** Marca do conteúdo lido. Comparar o texto em si é exato — data de
+    modificação erra quando dois "salvar" caem no mesmo segundo. */
+function marca(txt){
+  let h = 5381;
+  for (let i = 0; i < txt.length; i++) h = ((h << 5) + h + txt.charCodeAt(i)) | 0;
+  return txt.length + ':' + h;
+}
+
+/** Aplica o texto vindo da fonte, só se mudou desde a última leitura. */
+function aplicaTexto(txt){
+  const m = marca(txt);
+  if (m === Fonte.carimbo){          // nada mudou: não reprocessa à toa
+    Fonte.lidoEm = new Date();
+    Fonte.erro = null;
+    return 0;
+  }
+  const qtd = importar(txt);         // valida, carrega e redesenha
+  Fonte.lidoEm = new Date();
+  Fonte.carimbo = m;
+  Fonte.erro = null;
+  return qtd;
+}
+
+/* ---- modo http: busca o caminho configurado ---- */
+async function leHttp(){
+  const url = CONFIG.arquivoDados + (CONFIG.arquivoDados.includes('?') ? '&' : '?') + 't=' + Date.now();
+  const r = await fetch(url, { cache:'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return aplicaTexto(await r.text());
+}
+
+/* ---- modo arquivo: relê o handle apontado pelo usuário ---- */
+async function lePermissaoHandle(h, pedir){
+  if (!h || !h.queryPermission) return 'granted';
+  const opt = { mode:'read' };
+  let p = await h.queryPermission(opt);
+  if (p !== 'granted' && pedir) p = await h.requestPermission(opt);
+  return p;
+}
+async function leArquivoApontado(pedirPermissao){
+  const h = Fonte.handle;
+  if (!h) throw new Error('nenhum arquivo apontado');
+  const p = await lePermissaoHandle(h, !!pedirPermissao);
+  if (p !== 'granted'){ Fonte.precisaPermissao = true; throw new Error('permissão pendente'); }
+  Fonte.precisaPermissao = false;
+  const f = await h.getFile();
+  return aplicaTexto(await f.text());
+}
+
+/** Uma passada de leitura, conforme o modo ativo. Nunca lança. */
+async function atualizaDaFonte(){
+  try{
+    if (Fonte.modo === 'http') await leHttp();
+    else if (Fonte.modo === 'arquivo') await leArquivoApontado(false);
+    else return;
+    Fonte.erro = null;
+  }catch(e){
+    Fonte.erro = e.message || String(e);
+    // força releitura completa na próxima tentativa: o arquivo pode voltar
+    // com conteúdo diferente e não queremos comparar com marca velha
+    Fonte.carimbo = null;
+  }
+  desenhaFonte();
+}
+
+/** Descobre a fonte no arranque. */
+async function iniciaFonte(){
+  // 1) servido por http? tenta o caminho configurado
+  if (/^https?:$/.test(location.protocol) && CONFIG.arquivoDados){
+    Fonte.modo = 'http'; Fonte.caminho = CONFIG.arquivoDados;
+    try{ await leHttp(); desenhaFonte(); return; }
+    catch(e){ Fonte.erro = e.message; }
+  }
+  // 2) arquivo apontado numa sessão anterior?
+  const h = await Cofre.get('arquivo');
+  if (h){
+    Fonte.handle = h; Fonte.modo = 'arquivo'; Fonte.caminho = h.name;
+    try{ await leArquivoApontado(false); desenhaFonte(); return; }
+    catch(e){ Fonte.erro = e.message; desenhaFonte(); return; }
+  }
+  // 3) nada: segue com a última cópia salva ou com os dados de exemplo
+  Fonte.modo = 'exemplo';
+  Fonte.caminho = /^https?:$/.test(location.protocol) ? CONFIG.arquivoDados : '';
+  desenhaFonte();
+}
+
+/** Deixa o usuário apontar o arquivo (modo file://). Exige clique. */
+async function apontarArquivo(){
+  if (typeof window.showOpenFilePicker !== 'function')
+    throw new Error('Este navegador não permite apontar arquivo. Use o Iniciar-Painel.bat.');
+  const [h] = await window.showOpenFilePicker({
+    multiple:false,
+    types:[{ description:'Lista de saídas', accept:{ 'text/csv':['.csv','.txt'], 'application/json':['.json'] } }],
+  });
+  Fonte.handle = h; Fonte.modo = 'arquivo'; Fonte.caminho = h.name;
+  await Cofre.set('arquivo', h);
+  const q = await leArquivoApontado(true);
+  desenhaFonte();
+  return q;
+}
+
+/** Linha de status da fonte no cabeçalho. */
+function desenhaFonte(){
+  const dot = document.querySelector('.live .dot');
+  const txt = document.getElementById('statusTxt');
+  const btn = document.getElementById('btnReconectar');
+  let cor = '#22c55e', msg;
+
+  if (Fonte.modo === 'exemplo'){
+    cor = '#f59e0b';
+    msg = Fonte.caminho ? 'SEM FONTE — ' + Fonte.caminho + ' não encontrado' : 'DADOS DE EXEMPLO';
+  } else if (Fonte.erro){
+    cor = '#ef4444';
+    msg = (Fonte.precisaPermissao ? 'PERMISSÃO PENDENTE' : 'FALHA AO LER')
+        + ' — ' + Fonte.caminho
+        + (Fonte.lidoEm ? ' · última leitura ' + hhmm(Fonte.lidoEm) : '');
+  } else {
+    msg = Fonte.caminho + ' · lido às ' + (Fonte.lidoEm ? hhmm(Fonte.lidoEm) : '--:--');
+  }
+  if (dot) dot.style.background = cor;
+  if (txt) txt.textContent = msg;
+  if (btn) btn.style.display = Fonte.precisaPermissao ? 'inline-flex' : 'none';
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   9. PERSISTÊNCIA (cópia de segurança local da última leitura)
    ══════════════════════════════════════════════════════════════════════ */
 function salvar(){
   try{
@@ -978,10 +1185,26 @@ function aviso(txt, ok=true){
   const m = $('msgCfg'); m.textContent = txt; m.className = 'msg ' + (ok ? 'ok' : 'err');
   setTimeout(()=>{ m.className = 'msg'; }, 5000);
 }
+/** Resumo da fonte dentro do ⚙. */
+function pintaBoxFonte(){
+  const b = $('boxFonte'); if (!b) return;
+  const rotulo = { http:'servidor (http)', arquivo:'arquivo apontado', exemplo:'nenhuma' }[Fonte.modo];
+  let linha;
+  if (Fonte.modo === 'exemplo'){
+    linha = `<span class="st-warn">sem fonte definida — exibindo dados de exemplo</span>`;
+  } else if (Fonte.erro){
+    linha = `<span class="st-err">falha: ${esc(Fonte.erro)}</span>`
+          + (Fonte.lidoEm ? `<br />última leitura boa: ${hhmm(Fonte.lidoEm)}` : '');
+  } else {
+    linha = `<span class="st-ok">lendo normalmente</span> · última leitura ${Fonte.lidoEm ? hhmm(Fonte.lidoEm) : '--:--'}`;
+  }
+  b.innerHTML = `<b>Modo:</b> ${rotulo}<br /><b>Arquivo:</b> ${esc(Fonte.caminho || '—')}<br />${linha}`;
+}
 function abreCfg(){
   $('inpEfetivo').value = estado.efetivo;
-  $('inpData').value = estado.dataRef
-    ? `${estado.dataRef.getFullYear()}-${p2(estado.dataRef.getMonth()+1)}-${p2(estado.dataRef.getDate())}` : '';
+  $('txtCiclo').textContent = CONFIG.recarregarSeg;
+  $('txtCaminho').textContent = CONFIG.arquivoDados;
+  pintaBoxFonte();
   $('cfgModal').classList.add('on');
 }
 const fechaCfg = () => $('cfgModal').classList.remove('on');
@@ -993,14 +1216,37 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') fechaCfg(); 
 
 $('btnAplicar').onclick = () => {
   estado.efetivo = Math.max(1, +$('inpEfetivo').value || CONFIG.efetivoTotal);
-  const d = $('inpData').value;
-  estado.dataRef = d ? parseData(d) : null;
   const txt = $('inpTexto').value.trim();
   if (txt){
-    try{ const q = importar(txt); $('inpTexto').value=''; aviso(`${q} registros importados.`); }
+    try{ const q = importar(txt); $('inpTexto').value=''; aviso(`${q} registros carregados.`); }
     catch(err){ aviso('Erro: ' + err.message, false); return; }
   } else { salvar(); render(); aviso('Configurações aplicadas.'); }
-  tique();
+  tique(); pintaBoxFonte();
+};
+
+/* -- apontar o arquivo que o painel vai reler para sempre -- */
+$('btnApontar').onclick = async () => {
+  try{
+    const q = await apontarArquivo();
+    aviso(`${Fonte.caminho}: ${q} registros. O painel vai reler este arquivo sozinho.`);
+  }catch(err){
+    if (err && err.name === 'AbortError') return;     // usuário fechou o seletor
+    aviso('Erro: ' + (err.message || err), false);
+  }
+  pintaBoxFonte();
+};
+$('btnReler').onclick = async () => {
+  if (Fonte.modo === 'exemplo'){ aviso('Nenhuma fonte definida ainda.', false); return; }
+  await atualizaDaFonte();
+  aviso(Fonte.erro ? 'Falha ao ler: ' + Fonte.erro : `Relido às ${hhmm(Fonte.lidoEm)}.`, !Fonte.erro);
+  pintaBoxFonte();
+};
+/* botão vermelho no cabeçalho: o Chrome exige um clique para devolver a
+   permissão do arquivo depois que o navegador é reaberto */
+$('btnReconectar').onclick = async () => {
+  try{ await leArquivoApontado(true); }
+  catch(e){ try{ await apontarArquivo(); }catch(_){ } }
+  desenhaFonte();
 };
 $('btnExportar').onclick = () => {
   const dados = estado.registros.map(r => ({
@@ -1014,10 +1260,14 @@ $('btnExportar').onclick = () => {
   a.download = 'powertrain-ausencias.json'; a.click();
   URL.revokeObjectURL(a.href);
 };
-$('btnLimpar').onclick = () => {
+$('btnLimpar').onclick = async () => {
   try{ localStorage.removeItem(CHAVE); }catch(e){}
+  await Cofre.set('arquivo', null);
+  Fonte.modo='exemplo'; Fonte.handle=null; Fonte.caminho=''; Fonte.lidoEm=null;
+  Fonte.carimbo=null; Fonte.erro=null; Fonte.precisaPermissao=false;
   estado.efetivo = CONFIG.efetivoTotal;
-  carregaDados(DADOS); render(); aviso('Dados de exemplo restaurados.');
+  carregaDados(DADOS); render(); desenhaFonte(); pintaBoxFonte();
+  aviso('Fonte desconectada e dados de exemplo restaurados.');
 };
 
 /* arquivo: clique + arrastar */
@@ -1054,12 +1304,19 @@ $('hTitulo').textContent = CONFIG.titulo;
 $('hSub').textContent    = CONFIG.subtitulo;
 document.title = CONFIG.titulo + ' — ETG';
 
+/* Ordem de arranque:
+   1) mostra algo na hora (última cópia salva, ou dados de exemplo);
+   2) descobre a fonte e lê o arquivo de verdade, substituindo o que veio do passo 1;
+   3) passa a reler o arquivo e a recalcular o painel em ciclo. */
 if (!restaurar()) carregaDados(DADOS);
 tique();
 render();
 
+iniciaFonte();
+
 setInterval(tique, 1000);
 setInterval(render, Math.max(15, CONFIG.atualizarSeg) * 1000);
+setInterval(atualizaDaFonte, Math.max(10, CONFIG.recarregarSeg) * 1000);
 quiosque();
 </script>
 </body>

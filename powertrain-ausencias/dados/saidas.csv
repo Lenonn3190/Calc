@@ -1,0 +1,22 @@
+Descrição da Saída;Motivo;Nome Colaborador;Departamento;Destino;Data de início;Data de término;Duração da viagem;Transporte
+Treinamento KUKA;Treinamento;"Tanaka; Nakahara";I/H;KUKA Systems;19/01/2026 06:00;23/01/2026 17:00;4;Carro
+JPN - Trip for foundry tryout verification;3YZ;Paiva;NMG;Suzuka;07/01/2026 08:15;05/02/2026 18:00;29;Avião
+Férias;Férias;Dutra;OUTSOURCE;;05/01/2026 00:00;19/01/2026 17:00;14;
+Férias;Férias;Tulio;I/H;;19/01/2026 00:00;02/02/2026 17:00;14;
+Consulta médica (Ortopedista);Consulta médica;Marco Antonio;OUTSOURCE;;16/01/2026 10:00;16/01/2026 17:26;0;
+Férias;Férias;Thiego;NMG;;19/01/2026 00:00;02/02/2026 00:00;14;
+Visita Atlas;Projetos;Thiego;NMG;;23/12/2025 08:00;23/12/2025 15:00;0;Carro
+Instalação Apertadeira Eletrônica (Evento);Projetos;Thiego;I/H;;05/02/2026 08:00;13/02/2026 17:00;8;Avião
+Férias;Férias;Gatto;I/H;;23/02/2026 08:15;27/02/2026 17:26;4;
+Visita Atlas;Projetos;Thiego Ferreira;NMG;;16/01/2026 07:00;16/01/2026 15:00;0;Carro
+Visita no fornecedor Maquistorno;Expansão MSC;Erick;I/H;;14/01/2026 14:30;14/01/2026 15:50;0;Carro
+VT-MAHLE;Visita técnica;Jefferson Vilela;OUTSOURCE;Mogi Guaçu-SP;19/01/2026 08:15;19/01/2026 17:30;0;Carro
+Saída no 1ºT;Férias;Marco Túlio;I/H;;16/01/2026 15:11;16/01/2026 17:15;0;
+Assunto particular;Saída antecipada;Carlos Eduardo;NMG;;21/01/2026 13:00;21/01/2026 17:26;0;
+Cartório / Poupa Tempo;Atraso;Douglas Marciano;OUTSOURCE;;27/01/2026 08:15;27/01/2026 11:00;0;
+Férias;Férias;Agenor Rodrigo;I/H;;09/03/2026 00:00;28/03/2026 23:59;19;
+Renovação CNH;Saída antecipada;Lenonn;I/H;;27/01/2026 14:00;27/01/2026 17:00;0;
+Viagem internacional;Projetos;Nelton M Borges;I/H;;30/01/2026 00:00;05/02/2026 00:00;6;Avião
+Visita na G/O JPN;Projetos;Nelton;I/H;;05/02/2026 00:00;18/02/2026 00:00;13;Avião
+Particular;Saída antecipada;William Nakahara;I/H;;29/01/2026 13:00;29/01/2026 17:26;0;
+Visita ferramentarias Joinville;Visita técnica;Jefferson;OUTSOURCE;Joinville-SC;02/02/2026 08:00;06/02/2026 17:00;4;Avião
