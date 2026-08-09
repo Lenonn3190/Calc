@@ -294,12 +294,15 @@ const CONFIG = {
      nesse caso aponte o arquivo uma vez pelo ⚙ e ele passa a ser relido
      igual — ver LEIA-ME.md.                                          */
   arquivoDados:  'dados/saidas.csv',
-  recarregarSeg: 60,   // de quanto em quanto tempo reler o arquivo
+  recarregarSeg: 3600, // de quanto em quanto tempo RELER o arquivo (3600 = 1 hora)
+  tentarDeNovoSeg: 60, // se a leitura falhar, tenta de novo neste prazo mais curto,
+                       // para uma queda de rede não deixar a tela parada 1 hora inteira
 
   efetivoTotal:  24,   // ← AJUSTE para o efetivo real do Powertrain (usado no % de presença)
   diasTimeline:  14,   // janela do gráfico de barras
   diasAgenda:    45,   // horizonte da lista "próximas saídas"
-  atualizarSeg:  60,   // recálculo do painel (segundos)
+  atualizarSeg:  60,   // recálculo do painel com o relógio andando (não lê arquivo:
+                       // é o que faz alguém sair de "ausente" na hora que o retorno chega)
   rolagemAuto:   true, // rola sozinho quando não cabe na tela
 };
 
@@ -433,7 +436,7 @@ const DADOS = [
         </div>
         <small>
           O painel <b>relê este arquivo sozinho</b> a cada
-          <b id="txtCiclo">60</b> s — basta salvar o CSV atualizado por cima, não precisa
+          <b id="txtCiclo">1 hora</b> — basta salvar o CSV atualizado por cima, não precisa
           importar de novo.<br />
           Servido pelo <b>Iniciar-Painel.bat</b>, ele lê direto o caminho
           <b id="txtCaminho">dados/saidas.csv</b> e nunca pede clique. Aberto direto do arquivo
@@ -540,6 +543,13 @@ const diasEntre = (a,b) => Math.round((meiaNoite(b)-meiaNoite(a))/MS_DIA);
 const iniciais = nome => (nome||'?').split(/[\s;]+/).filter(Boolean).slice(0,2)
                           .map(p=>p[0]).join('').toUpperCase() || '?';
 const esc = s => (s||'').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/** "1 h" / "30 min" / "45 s" — intervalo em linguagem de gente. */
+function intervaloTxt(seg){
+  if (seg % 3600 === 0) return (seg/3600) + (seg === 3600 ? ' hora' : ' horas');
+  if (seg % 60 === 0)   return (seg/60) + ' min';
+  return seg + ' s';
+}
 
 /** "4 dias" / "2h30" — duração humana entre duas datas. */
 function duracaoTxt(ini, fim){
@@ -1091,6 +1101,20 @@ async function atualizaDaFonte(){
   desenhaFonte();
 }
 
+/* Ciclo de leitura: relê no intervalo normal quando está tudo bem e volta
+   mais cedo enquanto houver falha — assim uma queda de rede não congela a
+   tela pelo intervalo inteiro. Reagenda a partir do fim de cada leitura,
+   nunca sobrepondo duas. */
+let _proximaLeitura = null;
+function agendaLeitura(seg){
+  clearTimeout(_proximaLeitura);
+  _proximaLeitura = setTimeout(cicloDeLeitura, Math.max(10, seg) * 1000);
+}
+async function cicloDeLeitura(){
+  if (Fonte.modo !== 'exemplo') await atualizaDaFonte();
+  agendaLeitura(Fonte.erro ? CONFIG.tentarDeNovoSeg : CONFIG.recarregarSeg);
+}
+
 /** Descobre a fonte no arranque. */
 async function iniciaFonte(){
   // 1) servido por http? tenta o caminho configurado
@@ -1202,7 +1226,7 @@ function pintaBoxFonte(){
 }
 function abreCfg(){
   $('inpEfetivo').value = estado.efetivo;
-  $('txtCiclo').textContent = CONFIG.recarregarSeg;
+  $('txtCiclo').textContent = intervaloTxt(CONFIG.recarregarSeg);
   $('txtCaminho').textContent = CONFIG.arquivoDados;
   pintaBoxFonte();
   $('cfgModal').classList.add('on');
@@ -1228,7 +1252,8 @@ $('btnAplicar').onclick = () => {
 $('btnApontar').onclick = async () => {
   try{
     const q = await apontarArquivo();
-    aviso(`${Fonte.caminho}: ${q} registros. O painel vai reler este arquivo sozinho.`);
+    agendaLeitura(CONFIG.recarregarSeg);
+    aviso(`${Fonte.caminho}: ${q} registros. O painel relê este arquivo a cada ${intervaloTxt(CONFIG.recarregarSeg)}.`);
   }catch(err){
     if (err && err.name === 'AbortError') return;     // usuário fechou o seletor
     aviso('Erro: ' + (err.message || err), false);
@@ -1238,6 +1263,7 @@ $('btnApontar').onclick = async () => {
 $('btnReler').onclick = async () => {
   if (Fonte.modo === 'exemplo'){ aviso('Nenhuma fonte definida ainda.', false); return; }
   await atualizaDaFonte();
+  agendaLeitura(Fonte.erro ? CONFIG.tentarDeNovoSeg : CONFIG.recarregarSeg);
   aviso(Fonte.erro ? 'Falha ao ler: ' + Fonte.erro : `Relido às ${hhmm(Fonte.lidoEm)}.`, !Fonte.erro);
   pintaBoxFonte();
 };
@@ -1312,11 +1338,11 @@ if (!restaurar()) carregaDados(DADOS);
 tique();
 render();
 
-iniciaFonte();
+// iniciaFonte() já faz a primeira leitura; o ciclo continua a partir dela
+iniciaFonte().then(() => agendaLeitura(Fonte.erro ? CONFIG.tentarDeNovoSeg : CONFIG.recarregarSeg));
 
 setInterval(tique, 1000);
 setInterval(render, Math.max(15, CONFIG.atualizarSeg) * 1000);
-setInterval(atualizaDaFonte, Math.max(10, CONFIG.recarregarSeg) * 1000);
 quiosque();
 </script>
 </body>

@@ -3,9 +3,9 @@
 Painel para TV/monitor que mostra **quem está fora agora**, quem volta e quem sai nos
 próximos dias, a partir da lista **"Gerenciamento de saídas"** (SharePoint) do ETG.
 
-O painel trabalha sempre com a **data e hora reais** do PC, e **relê sozinho** o arquivo de
-dados — é só salvar o CSV atualizado por cima que a tela muda. Ninguém precisa importar nada
-no dia a dia.
+O painel trabalha sempre com a **data e hora reais** do PC, e **relê sozinho o arquivo de dados
+a cada 1 hora** — é só salvar o CSV atualizado por cima que a tela muda. Ninguém precisa importar
+nada no dia a dia.
 
 ```
 powertrain-ausencias\
@@ -31,7 +31,10 @@ painel rola sozinho devagar (ida e volta) e pausa 45 s se alguém mexer no mouse
 ## Atualizar os dados
 
 **No SharePoint:** *Exportar → Exportar para CSV*. Salve por cima de `dados\saidas.csv`.
-Em até 1 minuto o painel se atualiza sozinho. Só isso.
+Em até 1 hora o painel se atualiza sozinho. Só isso.
+
+Precisa ver a mudança na hora, sem esperar o ciclo? ⚙ → **Reler agora**. E para mudar o ritmo,
+`recarregarSeg` no `CONFIG` (em segundos: 3600 = 1 h, 1800 = 30 min, 300 = 5 min).
 
 O cabeçalho mostra o tempo todo de onde os dados vieram e a que horas foram lidos:
 
@@ -53,7 +56,7 @@ segurança do Chrome/Edge, não dá para contornar por configuração. Duas saí
 
 - **Recomendado:** use o `Iniciar-Painel.bat`. Zero cliques, para sempre.
 - **Alternativa:** ⚙ → **Apontar arquivo…**, escolha o `saidas.csv` uma vez. O painel guarda a
-  referência e passa a reler **aquele mesmo arquivo** a cada minuto, igual. A ressalva é que,
+  referência e passa a reler **aquele mesmo arquivo** de hora em hora, igual. A ressalva é que,
   **ao reabrir o navegador**, o Chrome pede um clique para devolver a permissão — aparece um
   botão vermelho *Reconectar arquivo* no cabeçalho.
 
@@ -64,11 +67,12 @@ No bloco `CONFIG`, no início do `index.html`:
 | Campo | O que faz |
 |---|---|
 | `arquivoDados` | Caminho lido continuamente. Aceita subpasta ou URL completa. |
-| `recarregarSeg` | De quanto em quanto tempo reler o arquivo (padrão 60 s). |
+| `recarregarSeg` | De quanto em quanto tempo reler o arquivo (padrão 3600 s = 1 hora). |
+| `tentarDeNovoSeg` | Prazo curto para tentar de novo quando a leitura falha (padrão 60 s). |
 | `efetivoTotal` | Efetivo do Powertrain — base do indicador de **Presença (%)**. Ajuste para o número real. |
 | `diasTimeline` | Janela do gráfico de ocupação (padrão 14 dias). |
 | `diasAgenda` | Horizonte da lista "Próximas saídas" (padrão 45 dias). |
-| `atualizarSeg` | Intervalo de recálculo do painel (padrão 60 s). |
+| `atualizarSeg` | Recálculo do painel com o relógio andando — sem ler arquivo (padrão 60 s). É o que tira alguém de "ausente" na hora em que o retorno chega, então não convém aumentar. |
 | `rolagemAuto` | `false` desliga a rolagem de quiosque. |
 
 Cores por motivo e por departamento ficam em `CORES_MOTIVO` e `CORES_DEPTO`. Motivo não
@@ -82,7 +86,8 @@ porta 8090 no firewall) e use o endereço `http://<ip-do-pc>:8090/` que aparece 
 - O painel avisa em amarelo quando **todos os registros do arquivo já venceram** — sinal de
   que o CSV parou de ser atualizado.
 - Se o arquivo sumir ou o servidor cair, a tela **não fica em branco**: mantém a última leitura
-  e sinaliza a falha no cabeçalho.
+  e sinaliza a falha no cabeçalho. Enquanto durar a falha ele tenta de novo a cada minuto, em vez
+  de esperar a hora cheia — assim uma queda rápida de rede não deixa o painel parado.
 - Pessoas são agrupadas pelo texto do campo *Nome Colaborador*. Se a mesma pessoa aparecer como
   `Nelton` e `Nelton M Borges`, o painel conta como duas — vale padronizar o preenchimento na
   lista de origem.
