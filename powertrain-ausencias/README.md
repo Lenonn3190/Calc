@@ -13,7 +13,9 @@ powertrain-ausencias\
 ├── Iniciar-Painel.bat  duplo clique no PC do monitor
 ├── servir.ps1          servidor local (chamado pelo .bat)
 └── dados\
-    └── saidas.csv      ← é ESTE arquivo que o painel fica lendo
+    ├── saidas.csv      ← ausências (export do SharePoint)
+    ├── frota.csv       ← log do leitor RFID (uma linha por tag lida)
+    └── pessoas.csv     ← cadastro crachá -> nome
 ```
 
 ## Colocar no monitor (27" na vertical)
@@ -60,13 +62,69 @@ segurança do Chrome/Edge, não dá para contornar por configuração. Duas saí
   **ao reabrir o navegador**, o Chrome pede um clique para devolver a permissão — aparece um
   botão vermelho *Reconectar arquivo* no cabeçalho.
 
+## Frota — status dos carros por RFID
+
+O bloco **Frota** mostra se cada carro está **disponível** ou **em uso**, e com quem. A fonte é
+o leitor RFID, que só precisa **anexar uma linha** por tag lida em `dados\frota.csv`:
+
+```
+Data/Hora;Tag
+09/08/2026 07:02;HRV
+09/08/2026 07:02;CR-0421
+09/08/2026 11:30;HRV
+```
+
+**A regra são duas leituras para sair e uma para voltar:**
+
+1. Passa a tag do carro (`HRV` ou `CIVIC`) → o painel marca **AGUARDANDO CRACHÁ** (azul, piscando).
+2. Passa o crachá → vira **EM USO** com o nome do condutor, tirado de `pessoas.csv`.
+3. Passa a tag **do mesmo carro** de novo → **encerra** e volta a **DISPONÍVEL**.
+
+A barra embaixo é o **tempo decorrido desde a marcação**, na escala de `usoReferenciaHoras`
+(padrão 8 h). Passando disso, o card fica **vermelho** com "fora há mais de 8 h" — serve para
+enxergar de longe carro que não voltou.
+
+`dados\pessoas.csv` — cadastro dos crachás:
+
+```
+ID;Nome;Departamento
+CR-0421;Thiego Ferreira;NMG
+```
+
+O log é **append-only**: o leitor só acrescenta linhas, nunca reescreve o arquivo. O painel
+reprocessa o log inteiro a cada ciclo e chega no estado atual — então reiniciar o PC, recarregar
+a página ou trocar de monitor **não perde nem inventa estado**. O ciclo da frota é curto
+(20 s por padrão), separado do ciclo de 1 hora das ausências, porque carro saindo do pátio muda
+na hora.
+
+### Casos que o painel já trata
+
+| Situação | O que acontece |
+|---|---|
+| Crachá que não está no cadastro | Entra em uso mostrando o número do crachá e a marca "crachá fora do cadastro" |
+| Crachá passado sem tag de carro antes | Ignorado |
+| Tag do carro passada e crachá não vem em 2 min | Vira **EM USO · condutor não identificado** (configurável em `semCrachaViraUso`) |
+| Tag do mesmo carro duas vezes seguidas | Cancela a marcação, carro segue disponível |
+| Tag escrita como `hrv`, `HR-V`, `HRV2020` | Todas reconhecidas (veja `apelidos` em `CONFIG.veiculos`) |
+| Linha corrompida no log | Descartada; o resto do log continua valendo |
+| Log some ou o leitor para | Mantém o último estado na tela e avisa no bloco |
+
+> O bloco de frota **exige o painel servido** (`Iniciar-Painel.bat`). Aberto direto do arquivo, o
+> navegador não deixa a página ler o log — nesse caso o bloco explica isso na tela.
+
 ## Ajustes
 
 No bloco `CONFIG`, no início do `index.html`:
 
 | Campo | O que faz |
 |---|---|
-| `arquivoDados` | Caminho lido continuamente. Aceita subpasta ou URL completa. |
+| `arquivoDados` | Caminho das ausências, lido continuamente. Aceita subpasta ou URL completa. |
+| `arquivoFrota` / `arquivoPessoas` | Log do leitor RFID e cadastro de crachás. |
+| `frotaRecarregarSeg` | Ciclo do quadro de veículos (padrão 20 s). |
+| `esperaCrachaSeg` | Prazo entre a tag do carro e o crachá (padrão 120 s). |
+| `usoReferenciaHoras` | Escala da barra de tempo; acima disso o card fica vermelho (padrão 8 h). |
+| `semCrachaViraUso` | Sem crachá no prazo: `true` marca em uso sem condutor, `false` mantém disponível. |
+| `veiculos` | Cadastro dos carros: tag, modelo, ano, cor, placa, tipo (`suv`/`sedan`) e apelidos de tag. |
 | `recarregarSeg` | De quanto em quanto tempo reler o arquivo (padrão 3600 s = 1 hora). |
 | `tentarDeNovoSeg` | Prazo curto para tentar de novo quando a leitura falha (padrão 60 s). |
 | `efetivoTotal` | Efetivo do Powertrain — base do indicador de **Presença (%)**. Ajuste para o número real. |
