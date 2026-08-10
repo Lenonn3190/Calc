@@ -126,6 +126,22 @@ segurança do Chrome/Edge, não dá para contornar por configuração. Duas saí
   **ao reabrir o navegador**, o Chrome pede um clique para devolver a permissão — aparece um
   botão vermelho *Reconectar arquivo* no cabeçalho.
 
+## Esconder e recolher blocos
+
+Nem todo turno precisa de tudo na tela. Duas formas, e a escolha **fica guardada** — o painel
+reabre do mesmo jeito depois de reiniciar o PC:
+
+- **Recolher:** clique no **título** do bloco. Ele vira só uma faixa, com o contador ainda à
+  vista (ex.: *Frota — veículos · 2 de 2 livres*). Clique de novo para expandir.
+- **Esconder:** botão de blocos no cabeçalho (ao lado do ⚙) → desmarque o bloco. Ele sai da tela
+  por completo.
+
+No mesmo menu, **Mostrar tudo** devolve tudo ao normal e **Recolher tudo** enxuga a tela de uma
+vez, deixando só os títulos.
+
+Usar o menu **não é confundido com leitura de tag** — com ele aberto, o painel para de escutar o
+leitor.
+
 ## Frota — status dos carros por RFID
 
 O bloco **Frota** mostra se cada carro está **disponível** ou **em uso**, e com quem. A fonte é

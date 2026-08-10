@@ -5,7 +5,7 @@ function novoEl(id){return{id,innerHTML:'',textContent:'',value:'',scrollHeight:
   addEventListener(){},click(){},set onclick(v){},set onchange(v){}};}
 const proxy=new Proxy({},{get:(t,k)=>t[k]||(t[k]=novoEl(k))});
 global.document={getElementById:id=>proxy[id],querySelector:()=>novoEl('s'),querySelectorAll:()=>[],
-  addEventListener(){},createElement:()=>novoEl('t'),title:''};
+  addEventListener(){},createElement:()=>novoEl('t'),title:'',body:null};
 global.localStorage={_d:{},getItem(k){return this._d[k]||null},setItem(k,v){this._d[k]=v},removeItem(k){delete this._d[k]}};
 global.setInterval=()=>0; global.setTimeout=()=>0; global.clearTimeout=()=>{};
 global.window={addEventListener(){},scrollBy(){},scrollY:0,innerHeight:2560};

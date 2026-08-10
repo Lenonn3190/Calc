@@ -283,6 +283,41 @@ footer{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;justify-con
   padding:.4rem .6rem;font-size:.74rem;color:var(--faint);font-weight:600}
 footer .legend{display:flex;flex-wrap:wrap;gap:.4rem}
 
+/* ═══════════════ RECOLHER / ESCONDER BLOCOS ═══════════════ */
+.oculto{display:none !important}
+/* recolhido: fica só o título, com o resumo do lado */
+.panel.fechado > *:not(h2){display:none}
+.panel > h2{cursor:pointer;user-select:none}
+.panel > h2 .seta{width:1.15rem;height:1.15rem;color:var(--faint);transition:transform .2s;flex:none}
+.panel.fechado > h2 .seta{transform:rotate(-90deg)}
+.panel.fechado > h2{border-bottom:none;opacity:.78}
+
+/* menu de blocos no cabeçalho */
+.menu{position:relative}
+#listaBlocos{
+  position:absolute;right:0;top:calc(100% + .6rem);z-index:70;width:19rem;
+  background:var(--panel);border:1px solid var(--line-2);border-radius:var(--radius-sm);
+  box-shadow:0 24px 50px -20px #000;padding:.5rem;display:none;
+}
+#listaBlocos.aberto{display:block}
+#listaBlocos h4{font-size:.7rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--faint);padding:.45rem .6rem .5rem}
+#listaBlocos button{
+  display:flex;align-items:center;gap:.6rem;width:100%;padding:.5rem .6rem;border-radius:.5rem;
+  font-size:.9rem;font-weight:700;color:var(--txt);text-align:left;transition:.12s;
+}
+#listaBlocos button:hover{background:var(--panel-2)}
+#listaBlocos button .marca{
+  width:1.15rem;height:1.15rem;border-radius:.3rem;border:1.5px solid var(--line-2);flex:none;
+  display:grid;place-items:center;color:#08101f;
+}
+#listaBlocos button.on .marca{background:var(--brand);border-color:var(--brand)}
+#listaBlocos button .marca svg{width:.8rem;height:.8rem;opacity:0}
+#listaBlocos button.on .marca svg{opacity:1}
+#listaBlocos .rodape{display:flex;gap:.4rem;padding:.5rem .3rem .2rem;border-top:1px solid var(--line);margin-top:.4rem}
+#listaBlocos .rodape button{justify-content:center;font-size:.78rem;background:var(--panel-2);
+  border:1px solid var(--line);font-weight:800}
+
 /* ═══════════════ AVISO DE LEITURA (RFID) ═══════════════
    Retorno para quem está de pé na frente do monitor, sem mouse: aparece
    grande, cobre a faixa do cabeçalho e some sozinho. */
@@ -482,14 +517,20 @@ const DADOS = [
         </div>
       </div>
     </div>
+    <div class="menu" id="menuBlocos">
+      <button class="gear" id="btnBlocos" title="Mostrar ou esconder blocos" aria-label="Blocos">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="13" width="18" height="7" rx="1"/></svg>
+      </button>
+      <div class="lista" id="listaBlocos"></div>
+    </div>
     <button class="gear" id="btnCfg" title="Configurações e importação de dados" aria-label="Configurações">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
   </header>
 
-  <section class="kpis" id="kpis"></section>
+  <section class="kpis" id="kpis" data-bloco="indicadores" data-nome="Indicadores"></section>
 
-  <section class="panel">
+  <section class="panel" data-bloco="frota" data-nome="Frota — veículos">
     <h2>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 17v2M18 17v2"/><path d="M3 13l1.7-4.6A2 2 0 0 1 6.6 7h10.8a2 2 0 0 1 1.9 1.4L21 13v4H3z"/><circle cx="7.5" cy="14.5" r="1"/><circle cx="16.5" cy="14.5" r="1"/></svg>
       Frota — veículos <span class="n" id="nFrota">—</span>
@@ -497,7 +538,7 @@ const DADOS = [
     <div class="frota" id="listaFrota"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-bloco="ausentes" data-nome="Ausentes agora">
     <h2>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-12 0"/><circle cx="12" cy="11" r="4"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
       Ausentes agora <span class="n" id="nAusentes">0</span>
@@ -505,7 +546,7 @@ const DADOS = [
     <div class="scroller" id="scrAusentes"><div class="cards" id="listaAusentes"></div></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-bloco="ocupacao" data-nome="Ocupação (14 dias)">
     <h2>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
       Ocupação — próximos <span id="tlDias">14</span> dias
@@ -513,7 +554,7 @@ const DADOS = [
     <div class="tl"><div class="tl-grid" id="timeline"></div></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-bloco="proximas" data-nome="Próximas saídas">
     <h2>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
       Próximas saídas <span class="n" id="nProximas">0</span>
@@ -521,7 +562,7 @@ const DADOS = [
     <div class="scroller" id="scrProximas"><div class="rows" id="listaProximas"></div></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-bloco="retornos" data-nome="Retornos previstos">
     <h2>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l2 2 4-4"/><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>
       Retornos previstos <span class="n" id="nRetornos">0</span>
@@ -529,7 +570,7 @@ const DADOS = [
     <div class="rows" id="listaRetornos"></div>
   </section>
 
-  <div class="grid2">
+  <div class="grid2" data-bloco="estatisticas" data-nome="Por departamento e motivo">
     <section class="panel">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="13" y="5" width="3" height="13"/></svg>
@@ -1868,6 +1909,122 @@ async function salvaHistorico(n){
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   BLOCOS — esconder, recolher e lembrar
+   ──────────────────────────────────────────────────────────────────────
+   Duas formas, porque servem a coisas diferentes:
+     • recolher (clique no título) deixa o bloco só como faixa, útil para
+       enxugar a tela sem perder o bloco de vista;
+     • esconder (menu do cabeçalho) tira o bloco da tela por completo.
+   A escolha fica guardada e volta igual depois de reiniciar o PC.
+   ══════════════════════════════════════════════════════════════════════ */
+const CHAVE_BLOCOS = 'etg_powertrain_blocos_v1';
+let blocos = {};        // id -> { oculto:bool, fechado:bool }
+
+function leBlocos(){
+  try{ blocos = JSON.parse(localStorage.getItem(CHAVE_BLOCOS) || '{}') || {}; }
+  catch(e){ blocos = {}; }
+}
+function gravaBlocos(){
+  try{ localStorage.setItem(CHAVE_BLOCOS, JSON.stringify(blocos)); }catch(e){}
+}
+const secoes = () => [...document.querySelectorAll('[data-bloco]')];
+const estadoBloco = id => (blocos[id] = blocos[id] || { oculto:false, fechado:false });
+
+function aplicaBlocos(){
+  secoes().forEach(sec => {
+    const e = estadoBloco(sec.dataset.bloco);
+    sec.classList.toggle('oculto', !!e.oculto);
+    sec.classList.toggle('fechado', !!e.fechado && sec.classList.contains('panel'));
+  });
+  pintaMenuBlocos();
+}
+
+/** Monta a lista do menu a partir dos blocos que existem na página. */
+function pintaMenuBlocos(){
+  const alvo = $('listaBlocos'); if (!alvo) return;
+  const itens = secoes().map(sec => {
+    const id = sec.dataset.bloco, e = estadoBloco(id);
+    return `<button data-alvo="${id}" class="${e.oculto ? '' : 'on'}">
+        <span class="marca">${ICO.ok}</span>${esc(sec.dataset.nome || id)}
+      </button>`;
+  }).join('');
+  alvo.innerHTML = `<h4>Mostrar na tela</h4>${itens}
+    <div class="rodape">
+      <button data-tudo="mostrar">Mostrar tudo</button>
+      <button data-tudo="recolher">Recolher tudo</button>
+    </div>`;
+}
+
+function alternaOculto(id){
+  const e = estadoBloco(id);
+  e.oculto = !e.oculto;
+  gravaBlocos(); aplicaBlocos();
+}
+function alternaFechado(sec){
+  const e = estadoBloco(sec.dataset.bloco);
+  e.fechado = !e.fechado;
+  gravaBlocos(); aplicaBlocos();
+}
+
+function fechaMenu(){
+  const m = document.getElementById('menuBlocos');
+  if (m) m.classList.remove('aberto');
+  const l = document.getElementById('listaBlocos');
+  if (l) l.classList.remove('aberto');
+}
+
+function ligaBlocos(){
+  leBlocos();
+  // sem os controles na página não há nada a ligar (e o painel segue vivo)
+  if (!$('menuBlocos') || !$('listaBlocos') || !document.body) { aplicaBlocos(); return; }
+
+  // seta no título de cada painel + clique para recolher
+  secoes().filter(sec => sec.classList.contains('panel')).forEach(sec => {
+    const h = sec.querySelector('h2'); if (!h) return;
+    const seta = document.createElement('span');
+    seta.innerHTML = `<svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
+    h.appendChild(seta.firstElementChild);
+    h.addEventListener('click', () => alternaFechado(sec));
+  });
+
+  const menu = $('menuBlocos');
+  // a lista sai de dentro do cabeçalho: ele tem overflow:hidden (por causa
+  // da faixa colorida do topo) e recortava o menu pela metade
+  document.body.appendChild($('listaBlocos'));
+  $('btnBlocos').onclick = e => {
+    e.stopPropagation();
+    const lista = $('listaBlocos');
+    const abrindo = !lista.classList.contains('aberto');
+    if (abrindo){                    // ancora logo abaixo do botão, medindo na hora
+      const r = $('btnBlocos').getBoundingClientRect();
+      lista.style.top   = (r.bottom + 10) + 'px';
+      lista.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+    }
+    menu.classList.toggle('aberto', abrindo);
+    lista.classList.toggle('aberto', abrindo);
+  };
+  $('listaBlocos').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    e.stopPropagation();
+    // as ações "tudo" fecham o menu: a intenção já foi cumprida.
+    // Alternar um bloco de cada vez mantém aberto, para ajustar vários.
+    if (b.dataset.tudo === 'mostrar'){
+      secoes().forEach(sec => { const x = estadoBloco(sec.dataset.bloco); x.oculto = false; x.fechado = false; });
+      gravaBlocos(); aplicaBlocos(); fechaMenu(); return;
+    }
+    if (b.dataset.tudo === 'recolher'){
+      secoes().forEach(sec => { if (sec.classList.contains('panel')) estadoBloco(sec.dataset.bloco).fechado = true; });
+      gravaBlocos(); aplicaBlocos(); fechaMenu(); return;
+    }
+    if (b.dataset.alvo) alternaOculto(b.dataset.alvo);
+  });
+  document.addEventListener('click', fechaMenu);
+
+  aplicaBlocos();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    CAPTURA DO LEITOR RFID — na própria tela do painel
    ──────────────────────────────────────────────────────────────────────
    O leitor USB age como teclado: encostou a tag, ele digita o código
@@ -1995,8 +2152,10 @@ function ligaCaptura(){
   document.addEventListener('keydown', e => {
     const alvo = e.target;
     // não atrapalha quem está digitando nos campos do ⚙
-    if (alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA')) return;
+    if (alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' ||
+                 alvo.tagName === 'BUTTON' || alvo.tagName === 'SELECT')) return;
     if ($('cfgModal').classList.contains('on')) return;
+    if ($('menuBlocos').classList.contains('aberto')) return;
 
     if (e.key === 'Enter'){ e.preventDefault(); fechaCodigo(); return; }
     if (e.key === 'Escape'){ escondeAviso(); return; }
@@ -2302,6 +2461,7 @@ render();
 iniciaFonte().then(() => agendaLeitura(Fonte.erro ? CONFIG.tentarDeNovoSeg : CONFIG.recarregarSeg));
 
 cicloDaFrota();
+ligaBlocos();           // recolher/esconder, com a escolha lembrada
 ligaCaptura();          // painel passa a ouvir o leitor RFID
 
 setInterval(tique, 1000);
