@@ -346,7 +346,7 @@ const CONFIG = {
      Só funciona com o painel SERVIDO por http (use Iniciar-Painel.bat).
      Abrindo o index.html direto (file://) o navegador proíbe a leitura;
      nesse caso aponte o arquivo uma vez pelo ⚙ e ele passa a ser relido
-     igual — ver LEIA-ME.md.                                          */
+     igual — ver LEIA-ME.md (na pasta).                                          */
   arquivoDados:  'dados/saidas.csv',
   recarregarSeg: 3600, // de quanto em quanto tempo RELER o arquivo (3600 = 1 hora)
   tentarDeNovoSeg: 60, // se a leitura falhar, tenta de novo neste prazo mais curto,
@@ -1173,6 +1173,7 @@ function acharCol(cabs, campo, mapa){
     do mapa de apelidos. `exigidas` são as colunas sem as quais o arquivo
     não serve para nada — a falta delas vira erro explicativo. */
 function parseTabela(txt, alias, exigidas, permiteVazio){
+  txt = txt.replace(/^\uFEFF/, '');  // o export do SharePoint vem com BOM
   const sep = detectaSep(txt);
   const linhas = txt.split(/\r?\n/).filter(l => l.trim());
   if (!linhas.length) throw new Error('Arquivo vazio.');
