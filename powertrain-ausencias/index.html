@@ -168,7 +168,7 @@ header.top::after{content:"";position:absolute;inset:0;pointer-events:none;
 
 /* ═══════════════ FROTA (RFID) ═══════════════ */
 .frota{display:grid;grid-template-columns:repeat(auto-fit,minmax(21rem,1fr));gap:.9rem;padding:1.1rem 1.2rem}
-.veic{position:relative;display:grid;grid-template-columns:auto 1fr;gap:.55rem .95rem;
+.veic{display:grid;grid-template-columns:auto 1fr;gap:.55rem .95rem;align-items:center;
   padding:1rem 1.1rem;border-radius:var(--radius-sm);background:var(--panel-2);
   border:1px solid var(--line);border-left:5px solid var(--c)}
 .veic.livre{background:linear-gradient(120deg,rgba(34,197,94,.10),var(--panel-2))}
@@ -179,14 +179,18 @@ header.top::after{content:"";position:absolute;inset:0;pointer-events:none;
 .veic .foto{width:4.4rem;height:3.2rem;border-radius:.7rem;display:grid;place-items:center;
   background:rgba(255,255,255,.05);border:1px solid var(--line-2);color:var(--txt)}
 .veic .foto svg{width:3.4rem;height:2.4rem}
-.veic .id{min-width:0;display:flex;flex-direction:column;justify-content:center}
+/* identificação e selo dividem a linha; faltando espaço, o selo desce
+   sozinho em vez de espremer ou cobrir o nome do modelo */
+.veic .id{min-width:0;display:flex;flex-wrap:wrap;align-items:center;
+  justify-content:space-between;gap:.5rem .9rem}
+.veic .tit{min-width:0;flex:1 1 12rem}
 .veic .mod{font-size:1.3rem;font-weight:800;line-height:1.15;display:flex;align-items:center;
   gap:.5rem;flex-wrap:wrap}
 .veic .sub{font-size:.8rem;color:var(--muted);font-weight:600;margin-top:.15rem}
 .veic .placa{font-family:ui-monospace,Consolas,monospace;font-size:.74rem;font-weight:700;
   background:rgba(255,255,255,.07);border:1px solid var(--line-2);border-radius:.35rem;
   padding:.05rem .4rem;letter-spacing:.5px;color:var(--txt)}
-.veic .selo{position:absolute;top:.9rem;right:1rem;display:flex;align-items:center;gap:.4rem;
+.veic .selo{display:flex;align-items:center;gap:.4rem;white-space:nowrap;flex:none;
   padding:.28rem .75rem;border-radius:2rem;font-size:.78rem;font-weight:800;letter-spacing:.7px;
   background:var(--c);color:#08101f;box-shadow:0 6px 18px -8px var(--c)}
 .veic .selo svg{width:.9rem;height:.9rem}
@@ -208,6 +212,13 @@ header.top::after{content:"";position:absolute;inset:0;pointer-events:none;
 .aviso-frota{grid-column:1/-1;font-size:.82rem;font-weight:700;color:#fcd34d;
   background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);
   border-radius:.6rem;padding:.55rem .8rem}
+.aviso-cracha{grid-column:1/-1;display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;
+  font-size:.88rem;font-weight:700;color:#bae6fd;
+  background:rgba(56,189,248,.13);border:1px solid rgba(56,189,248,.35);
+  border-radius:.6rem;padding:.6rem .85rem;animation:piscando 1.6s ease-in-out infinite}
+.aviso-cracha svg{width:1.1rem;height:1.1rem;color:#38bdf8;flex:none}
+.aviso-cracha .conta{margin-left:auto;font-variant-numeric:tabular-nums;color:#38bdf8;
+  background:rgba(8,16,31,.5);border-radius:2rem;padding:.05rem .55rem;font-size:.8rem}
 
 /* ═══════════════ AGENDA / PRÓXIMAS ═══════════════ */
 .rows{display:flex;flex-direction:column}
@@ -970,7 +981,7 @@ function desenhaFrota(){
     return;
   }
 
-  const lista = calculaFrota(n);
+  const { lista, cracha } = calculaFrota(n);
   const livres = lista.filter(e => e.status === 'livre').length;
   // o plural acompanha o TOTAL, não a quantidade de livres ("1 de 2 livres")
   cont.textContent = `${livres} de ${lista.length} ${lista.length === 1 ? 'livre' : 'livres'}`;
@@ -980,7 +991,16 @@ function desenhaFrota(){
        mostrando a última leitura${FonteFrota.lidoEm ? ' de ' + hhmm(FonteFrota.lidoEm) : ''}.</div>`
     : '';
 
-  alvo.innerHTML = falha + lista.map(e => {
+  // crachá lido primeiro: falta encostar a tag do carro para fechar a dupla
+  const pendente = cracha
+    ? `<div class="aviso-cracha">${ICO.cracha}
+         <b>${esc(cracha.nome)}</b> passou o crachá às ${hhmm(cracha.quando)} —
+         encoste agora a tag do carro para registrar a saída
+         <span class="conta">${Math.max(0, Math.ceil((CONFIG.esperaCrachaSeg*1000 - (n - cracha.quando))/1000))}s</span>
+       </div>`
+    : '';
+
+  alvo.innerHTML = falha + pendente + lista.map(e => {
     const v = e.veiculo, st = ESTADO_VEIC[e.status];
     const ms = e.desde ? (n - e.desde) : 0;
     const pct = Math.min(100, ms / (CONFIG.usoReferenciaHoras*3600000) * 100);
@@ -1028,10 +1048,12 @@ function desenhaFrota(){
     <div class="veic ${e.status}" style="--c:${cor}">
       <div class="foto">${SILHUETA[v.tipo] || SILHUETA.sedan}</div>
       <div class="id">
-        <div class="mod">${esc(v.modelo)} <span class="placa">${esc(v.placa)}</span></div>
-        <div class="sub">${esc(v.ano)} · ${esc(v.cor)} · ${v.tipo === 'suv' ? 'SUV' : 'Sedã'}</div>
+        <div class="tit">
+          <div class="mod">${esc(v.modelo)} <span class="placa">${esc(v.placa)}</span></div>
+          <div class="sub">${esc(v.ano)} · ${esc(v.cor)} · ${v.tipo === 'suv' ? 'SUV' : 'Sedã'}</div>
+        </div>
+        <div class="selo">${st.ico} ${st.rot}</div>
       </div>
-      <div class="selo">${st.ico} ${st.rot}</div>
       <div class="corpo">
         ${corpo}
         <div class="bar2"><i style="width:${Math.max(2,pct)}%"></i></div>
@@ -1234,52 +1256,78 @@ function achaVeiculo(tag){
     chaveTag(v.tag) === k || (v.apelidos||[]).some(a => chaveTag(a) === k)) || null;
 }
 
-/** Reprocessa o log e devolve o estado atual de cada veículo. */
+/** Resolve um crachá em pessoa. Fora do cadastro, usa o próprio número. */
+function resolveCracha(tag){
+  const p = pessoas.get(norm(tag));
+  return p ? { ...p } : { nome:tag, depto:'', naoCadastrado:true };
+}
+
+/** Reprocessa o log e devolve o estado atual da frota.
+    O pareamento NÃO depende da ordem: tanto faz encostar primeiro a tag do
+    carro e depois o crachá, ou o contrário. Vale a dupla dentro da janela
+    de CONFIG.esperaCrachaSeg. O relógio do uso conta sempre a partir da
+    leitura DO CARRO, que é o momento em que ele saiu. */
 function calculaFrota(n){
   const est = new Map();
   CONFIG.veiculos.forEach(v => est.set(v.tag, {
     veiculo:v, status:'livre', desde:null, condutor:null, ultimoCondutor:null, marcacoes:0,
   }));
+  const janela = CONFIG.esperaCrachaSeg * 1000;
+  let cracha = null;                          // crachá lido esperando um carro
 
   for (const l of leiturasRfid){
     if (l.quando > n) break;                  // leitura futura: ignora
+    if (cracha && (l.quando - cracha.quando) > janela) cracha = null;   // venceu
     const v = achaVeiculo(l.tag);
 
-    if (v){                                   // ---- tag de veículo ----
+    if (v){                                   // ═══ tag de veículo ═══
       const e = est.get(v.tag);
       if (!e) continue;
       e.marcacoes++;
-      if (e.status === 'uso'){                // encerra o uso e libera
+
+      if (e.status === 'uso'){                // 2ª passagem: encerra e libera
         e.ultimoCondutor = e.condutor;
         e.status='livre'; e.desde=l.quando; e.condutor=null;
-      } else if (e.status === 'aguardando'){  // marcação cancelada
+        cracha = null;                        // crachá do retorno não abre viagem nova
+      } else if (e.status === 'aguardando'){  // mesma tag de novo: cancela
         e.status='livre'; e.desde=l.quando; e.condutor=null;
-      } else {                                // abre e espera o crachá
+      } else if (cracha){                     // crachá veio ANTES: fecha a dupla
+        e.status='uso'; e.desde=l.quando; e.condutor=resolveCracha(cracha.tag);
+        cracha = null;
+      } else {                                // carro primeiro: espera o crachá
         e.status='aguardando'; e.desde=l.quando; e.condutor=null;
       }
       continue;
     }
 
-    // ---- tag de crachá: casa com a marcação de carro mais recente ----
+    // ═══ tag de crachá ═══
     const abertos = [...est.values()]
-      .filter(e => e.status === 'aguardando' && (l.quando - e.desde) <= CONFIG.esperaCrachaSeg*1000)
+      .filter(e => e.status === 'aguardando' && (l.quando - e.desde) <= janela)
       .sort((a,b) => b.desde - a.desde);
-    if (!abertos.length) continue;            // crachá solto: ignora
-    const e = abertos[0];
-    const p = pessoas.get(norm(l.tag));
-    e.status = 'uso';
-    e.condutor = p ? { ...p } : { nome:l.tag, depto:'', naoCadastrado:true };
-    // 'desde' continua sendo a marcação do CARRO: é dali que conta o tempo
+    if (abertos.length){                      // carro veio ANTES: fecha a dupla
+      const e = abertos[0];
+      e.status = 'uso';
+      e.condutor = resolveCracha(l.tag);
+      // 'desde' segue sendo a marcação do CARRO
+    } else {                                  // guarda e espera um carro
+      cracha = { tag:l.tag, quando:l.quando };
+    }
   }
 
-  // marcações que ficaram sem crachá além do prazo
+  // marcação de carro que ficou sem crachá além do prazo
   for (const e of est.values()){
-    if (e.status === 'aguardando' && (n - e.desde) > CONFIG.esperaCrachaSeg*1000){
+    if (e.status === 'aguardando' && (n - e.desde) > janela){
       if (CONFIG.semCrachaViraUso){ e.status='uso'; e.condutor={ nome:'Condutor não identificado', semCracha:true }; }
       else { e.status='livre'; }
     }
   }
-  return [...est.values()];
+  // crachá que ficou sem carro só interessa enquanto está dentro da janela
+  if (cracha && (n - cracha.quando) > janela) cracha = null;
+
+  return {
+    lista: [...est.values()],
+    cracha: cracha ? { ...resolveCracha(cracha.tag), quando:cracha.quando } : null,
+  };
 }
 
 /* ══════════════════════════════════════════════════════════════════════

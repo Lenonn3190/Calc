@@ -76,9 +76,19 @@ Data/Hora;Tag
 
 **A regra são duas leituras para sair e uma para voltar:**
 
-1. Passa a tag do carro (`HRV` ou `CIVIC`) → o painel marca **AGUARDANDO CRACHÁ** (azul, piscando).
-2. Passa o crachá → vira **EM USO** com o nome do condutor, tirado de `pessoas.csv`.
+1. Encosta a tag do carro (`HRV` ou `CIVIC`) **e** o crachá — **em qualquer ordem**.
+2. Fechada a dupla, o carro vira **EM USO** com o nome do condutor, tirado de `pessoas.csv`.
 3. Passa a tag **do mesmo carro** de novo → **encerra** e volta a **DISPONÍVEL**.
+
+**A ordem não importa.** Quem estiver esperando aparece na tela enquanto isso:
+
+- Carro primeiro → o card fica **AGUARDANDO CRACHÁ** (azul, piscando), com contagem regressiva.
+- Crachá primeiro → uma faixa no topo do bloco avisa *"Fulano passou o crachá às 09:34 — encoste
+  agora a tag do carro"*, também com contagem.
+
+As duas leituras precisam cair dentro da janela de `esperaCrachaSeg` (padrão 2 min). O relógio do
+uso conta sempre a partir da leitura **do carro**, que é quando ele saiu — não importa se veio
+antes ou depois do crachá.
 
 A barra embaixo é o **tempo decorrido desde a marcação**, na escala de `usoReferenciaHoras`
 (padrão 8 h). Passando disso, o card fica **vermelho** com "fora há mais de 8 h" — serve para
@@ -102,7 +112,9 @@ na hora.
 | Situação | O que acontece |
 |---|---|
 | Crachá que não está no cadastro | Entra em uso mostrando o número do crachá e a marca "crachá fora do cadastro" |
-| Crachá passado sem tag de carro antes | Ignorado |
+| Crachá lido antes da tag do carro | Fica pendente e pareia quando o carro for lido (dentro da janela) |
+| Crachá sozinho, sem carro nenhum na sequência | Some do painel ao vencer a janela, sem abrir uso |
+| Crachá já usado numa dupla | Não é reaproveitado pelo carro seguinte |
 | Tag do carro passada e crachá não vem em 2 min | Vira **EM USO · condutor não identificado** (configurável em `semCrachaViraUso`) |
 | Tag do mesmo carro duas vezes seguidas | Cancela a marcação, carro segue disponível |
 | Tag escrita como `hrv`, `HR-V`, `HRV2020` | Todas reconhecidas (veja `apelidos` em `CONFIG.veiculos`) |
@@ -121,7 +133,7 @@ No bloco `CONFIG`, no início do `index.html`:
 | `arquivoDados` | Caminho das ausências, lido continuamente. Aceita subpasta ou URL completa. |
 | `arquivoFrota` / `arquivoPessoas` | Log do leitor RFID e cadastro de crachás. |
 | `frotaRecarregarSeg` | Ciclo do quadro de veículos (padrão 20 s). |
-| `esperaCrachaSeg` | Prazo entre a tag do carro e o crachá (padrão 120 s). |
+| `esperaCrachaSeg` | Janela entre as duas leituras, em qualquer ordem (padrão 120 s). |
 | `usoReferenciaHoras` | Escala da barra de tempo; acima disso o card fica vermelho (padrão 8 h). |
 | `semCrachaViraUso` | Sem crachá no prazo: `true` marca em uso sem condutor, `false` mantém disponível. |
 | `veiculos` | Cadastro dos carros: tag, modelo, ano, cor, placa, tipo (`suv`/`sedan`) e apelidos de tag. |
