@@ -19,6 +19,11 @@ cd /d "%~dp0"
 
 if not exist "dados" mkdir "dados"
 
+REM --- Tira a marca de "arquivo baixado da internet" (Mark of the Web) ---
+REM  E ela que faz o Windows perguntar "O fornecedor nao pode ser verificado".
+REM  Desbloqueia a pasta inteira, entao o aviso nao volta nas proximas vezes.
+powershell -NoProfile -Command "Get-ChildItem -LiteralPath '%~dp0' -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue" >nul 2>&1
+
 REM --- Libera a porta no Firewall, se estiver rodando como admin ---
 net session >nul 2>&1
 if %errorlevel% equ 0 (

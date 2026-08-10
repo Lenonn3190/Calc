@@ -28,6 +28,34 @@ powertrain-ausencias\
 
 Deixe a janela preta do servidor aberta — é ela que mantém o painel no ar.
 
+### "O fornecedor não pôde ser verificado" ao abrir o .bat
+
+Normal na primeira vez. O Windows marca todo arquivo que veio de download, e-mail ou OneDrive
+como "da internet" (*Mark of the Web*) e avisa antes de executar — não é problema do painel.
+
+- **Agora:** clique em **Executar** e desmarque *"Sempre perguntar antes de abrir este arquivo"*.
+  O próprio `.bat` já remove a marca do resto da pasta, então o aviso não volta.
+- **Para não aparecer nem na primeira vez:** antes de descompactar, clique com o botão direito
+  no **.zip** → **Propriedades** → marque **Desbloquear** → OK. Aí tudo sai limpo.
+- **Se já descompactou e quiser limpar de uma vez:** clique com o botão direito na pasta →
+  *Abrir no Terminal* (ou PowerShell) e rode:
+
+  ```powershell
+  Get-ChildItem -Recurse | Unblock-File
+  ```
+
+Se a política da empresa bloquear a execução de scripts de vez (não é o caso do aviso acima),
+fale com a TI — o painel precisa apenas rodar `powershell.exe` local, sem instalar nada e sem
+acesso à internet.
+
+### Onde colocar a pasta
+
+Prefira um caminho **local** do PC do monitor, tipo `C:\Powertrain-Monitor`. Rodar de dentro do
+**OneDrive** funciona, mas tem dois incômodos: o `historico.json` e o `frota.csv` mudam o tempo
+todo e ficam em sincronização constante, e se dois PCs abrirem a mesma pasta o OneDrive pode
+criar cópias de conflito (`historico-DESKTOP-XX.json`). Se quiser a pasta no OneDrive para
+compartilhar, tudo bem — só mantenha **um** PC rodando o `.bat`.
+
 O layout é dimensionado para **1440 × 2560**. Quando o conteúdo passa da altura da tela, o
 painel rola sozinho devagar (ida e volta) e pausa 45 s se alguém mexer no mouse.
 
