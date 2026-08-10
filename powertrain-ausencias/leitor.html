@@ -129,16 +129,19 @@ kbd{font-family:ui-monospace,Consolas,monospace;background:var(--panel-2);border
    CONFIGURAÇÃO
    ══════════════════════════════════════════════════════════════════════ */
 const CFG = {
-  api:            'api/leitura',       // rota que grava no dados/frota.csv
+  api:            'api/leitura',        // rota que grava no dados/frota.csv
   arquivoPessoas: 'dados/pessoas.csv',
+  arquivoVeiculos:'dados/veiculos.json', // MESMO arquivo que o painel usa
   esperaCrachaSeg: 120,   // igual ao CONFIG.esperaCrachaSeg do index.html
   repetirBloqSeg:  3,     // ignora a mesma tag lida de novo neste intervalo
   ociosoMs:        120,   // leitor sem Enter: fecha o código após esta pausa
 
-  /* MESMAS TAGS do CONFIG.veiculos no index.html. Mexeu lá, mexa aqui. */
+  /* Reserva, usada só enquanto o veiculos.json não carrega (ou se faltar).
+     Para trocar tag ou incluir carro, edite o ARQUIVO — as duas telas leem
+     dele, então não existe lista para manter sincronizada. */
   veiculos: [
-    { tag:'HRV',   nome:'HR-V',  apelidos:['HR-V','HRV2020'] },
-    { tag:'CIVIC', nome:'Civic', apelidos:['CIVIC9','CIVICG9'] },
+    { tag:'C3FE4090', nome:'HR-V',  apelidos:['HRV','HR-V'] },
+    { tag:'13B780FA', nome:'Civic', apelidos:['CIVIC','CIVIC9'] },
   ],
 };
 
@@ -154,6 +157,23 @@ const chave = t => (t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
 
 const achaVeiculo = tag => CFG.veiculos.find(v =>
   chave(v.tag) === chave(tag) || (v.apelidos||[]).some(a => chave(a) === chave(tag))) || null;
+
+/** Busca o mesmo cadastro de veículos que o painel usa. */
+async function carregaVeiculos(){
+  try{
+    const r = await fetch(CFG.arquivoVeiculos + '?t=' + Date.now(), { cache:'no-store' });
+    if (!r.ok) return;
+    const lista = JSON.parse(await r.text());
+    if (!Array.isArray(lista)) return;
+    const bons = lista.filter(v => v && typeof v.tag === 'string' && v.tag.trim());
+    if (!bons.length) return;
+    CFG.veiculos = bons.map(v => ({
+      tag: v.tag.trim(),
+      nome: (v.modelo || v.tag).replace(/^Honda\s+/i,'').trim(),
+      apelidos: Array.isArray(v.apelidos) ? v.apelidos : [],
+    }));
+  }catch(e){ /* sem o arquivo, segue com a reserva */ }
+}
 
 let pessoas = new Map();
 async function carregaPessoas(){
@@ -308,10 +328,11 @@ if (!/^https?:$/.test(location.protocol)){
   $('status').innerHTML = '<span class="erro">Abra esta página pelo Iniciar-Painel.bat ' +
     '(http://localhost:8090/leitor.html) — direto do arquivo não dá para gravar.</span>';
 }
+carregaVeiculos();
 carregaPessoas();
 tique();
 setInterval(tique, 1000);
-setInterval(carregaPessoas, 300000);
+setInterval(() => { carregaVeiculos(); carregaPessoas(); }, 300000);
 </script>
 </body>
 </html>

@@ -17,6 +17,7 @@ powertrain-ausencias\
     ├── saidas.csv      ← ausências (export do SharePoint)
     ├── frota.csv       ← log do leitor RFID (uma linha por tag lida)
     ├── pessoas.csv     ← cadastro crachá -> nome
+    ├── veiculos.json   ← cadastro dos carros (tag, placa, modelo)
     └── historico.json  ← histórico de uso dos carros (gravado pelo painel)
 ```
 
@@ -186,8 +187,29 @@ aparecer digitado, é do tipo teclado (HID) e o `leitor.html` funciona. Se não 
 o leitor é serial/COM ou usa software próprio — nesse caso ele precisa ser configurado para
 gravar no `dados\frota.csv`, ou chamar a rota `POST /api/leitura` com a tag no corpo.
 
-> As tags dos carros aparecem **em dois lugares**: `CONFIG.veiculos` no `index.html` e
-> `CFG.veiculos` no `leitor.html`. Mexeu em um, mexa no outro.
+### Cadastro dos carros — `dados/veiculos.json`
+
+Tag, placa, modelo e cor ficam **só nesse arquivo**, lido pelas duas telas. Para trocar uma tag
+ou incluir um carro, edite ele e pronto — nada para sincronizar:
+
+```json
+[
+  { "tag": "C3FE4090", "modelo": "Honda HR-V", "ano": "2020", "cor": "Branca",
+    "tipo": "suv", "placa": "FQK-2B71", "lugares": 5, "apelidos": ["HRV"] }
+]
+```
+
+`tipo` muda só o desenho do carro (`suv` ou `sedan`). `apelidos` são outros códigos que devem
+valer para o mesmo veículo. Se o arquivo faltar ou estiver com erro de digitação, as telas caem
+na lista de reserva embutida e continuam funcionando.
+
+### Descobrindo o número dos crachás
+
+O `pessoas.csv` que veio no pacote tem códigos de exemplo (`CR-0421`…). Para pegar os números
+reais: abra o `leitor.html`, peça para cada pessoa encostar o crachá e anote o código que
+aparece em **Últimas leituras**. Depois é só preencher o `dados/pessoas.csv`. Enquanto um crachá
+não estiver cadastrado, o painel mostra o próprio número e marca *"crachá fora do cadastro"* —
+não trava nada.
 
 ### Histórico de uso — `dados/historico.json`
 

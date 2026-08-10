@@ -364,6 +364,7 @@ const CONFIG = {
      Passar a tag DO MESMO CARRO de novo ENCERRA o uso e libera.        */
   arquivoFrota:   'dados/frota.csv',      // log de leituras do RFID
   arquivoPessoas: 'dados/pessoas.csv',    // cadastro crachá -> nome
+  arquivoVeiculos:'dados/veiculos.json',  // cadastro dos carros (vale para as DUAS telas)
   apiHistorico:   'api/historico',        // rota do servidor que grava dados/historico.json
   frotaRecarregarSeg: 20,  // status de carro muda na hora: ciclo curto (≠ 1 h das saídas)
   esperaCrachaSeg: 120,    // prazo para o crachá chegar depois da tag do carro
@@ -375,11 +376,14 @@ const CONFIG = {
      false = descarta a marcação e mantém DISPONÍVEL                        */
   semCrachaViraUso: true,
 
+  /* Reserva, usada só se o dados/veiculos.json faltar ou estiver torto.
+     Para mudar tag, placa ou incluir carro, edite o ARQUIVO — assim o
+     leitor.html enxerga a mesma lista e não há o que sincronizar. */
   veiculos: [
-    { tag:'HRV',   modelo:'Honda HR-V',  ano:'2020',        cor:'Branca', tipo:'suv',
-      placa:'FQK-2B71', lugares:5, apelidos:['HR-V','HRV2020'] },
-    { tag:'CIVIC', modelo:'Honda Civic', ano:'9ª geração',  cor:'Prata',  tipo:'sedan',
-      placa:'GDT-9J40', lugares:5, apelidos:['CIVIC9','CIVICG9'] },
+    { tag:'C3FE4090', modelo:'Honda HR-V',  ano:'2020',       cor:'Branca', tipo:'suv',
+      placa:'FQK-2B71', lugares:5, apelidos:['HRV','HR-V'] },
+    { tag:'13B780FA', modelo:'Honda Civic', ano:'9ª geração', cor:'Prata',  tipo:'sedan',
+      placa:'GDT-9J40', lugares:5, apelidos:['CIVIC','CIVIC9'] },
   ],
 
   efetivoTotal:  24,   // ← AJUSTE para o efetivo real do Powertrain (usado no % de presença)
@@ -1251,6 +1255,26 @@ function carregaPessoas(txt){
   return m.size;
 }
 
+/** Lê dados/veiculos.json e substitui a lista em uso. Só troca se o
+    conteúdo for utilizável — cadastro quebrado não pode apagar a frota. */
+function carregaVeiculos(txt){
+  const lista = JSON.parse(txt);
+  if (!Array.isArray(lista)) throw new Error('esperava uma lista');
+  const bons = lista.filter(v => v && typeof v.tag === 'string' && v.tag.trim());
+  if (!bons.length) throw new Error('nenhum veículo com tag');
+  CONFIG.veiculos = bons.map(v => ({
+    tag:v.tag.trim(),
+    modelo:(v.modelo||'').trim() || v.tag.trim(),
+    ano:(v.ano||'').toString().trim(),
+    cor:(v.cor||'').trim(),
+    tipo:(v.tipo||'sedan').trim(),
+    placa:(v.placa||'').trim(),
+    lugares:v.lugares || 5,
+    apelidos:Array.isArray(v.apelidos) ? v.apelidos : [],
+  }));
+  return CONFIG.veiculos.length;
+}
+
 function carregaLeiturasRfid(txt){
   leiturasRfid = parseTabela(txt, ALIAS_RFID, ['tag'], true)
     .map(l => ({ quando: parseData(l.quando), tag: (l.tag||'').trim() }))
@@ -1462,7 +1486,8 @@ async function leHttp(){
    não deixa a página ler caminho nenhum.
    ══════════════════════════════════════════════════════════════════════ */
 const FonteFrota = {
-  ativa:false, lidoEm:null, erro:null, carimboLog:null, carimboPessoas:null, qtdLeituras:0,
+  ativa:false, lidoEm:null, erro:null,
+  carimboLog:null, carimboPessoas:null, carimboVeiculos:null, qtdLeituras:0,
 };
 
 async function atualizaFrota(){
@@ -1472,11 +1497,20 @@ async function atualizaFrota(){
     return;
   }
   try{
-    // o cadastro é opcional: sem ele o painel mostra o número do crachá
-    const [logTxt, pesTxt] = await Promise.all([
+    // cadastros são opcionais: sem eles o painel usa a reserva do CONFIG
+    const [logTxt, pesTxt, veiTxt] = await Promise.all([
       buscaTexto(CONFIG.arquivoFrota),
       buscaTexto(CONFIG.arquivoPessoas).catch(() => null),
+      buscaTexto(CONFIG.arquivoVeiculos).catch(() => null),
     ]);
+
+    if (veiTxt !== null){
+      const mv = marca(veiTxt);
+      if (mv !== FonteFrota.carimboVeiculos){
+        try{ carregaVeiculos(veiTxt); FonteFrota.carimboVeiculos = mv; }
+        catch(e){ /* cadastro torto: segue com a lista que já estava valendo */ }
+      }
+    }
 
     if (pesTxt !== null){
       const mp = marca(pesTxt);

@@ -1,0 +1,22 @@
+[
+  {
+    "tag": "C3FE4090",
+    "modelo": "Honda HR-V",
+    "ano": "2020",
+    "cor": "Branca",
+    "tipo": "suv",
+    "placa": "FQK-2B71",
+    "lugares": 5,
+    "apelidos": ["HRV", "HR-V"]
+  },
+  {
+    "tag": "13B780FA",
+    "modelo": "Honda Civic",
+    "ano": "9ª geração",
+    "cor": "Prata",
+    "tipo": "sedan",
+    "placa": "GDT-9J40",
+    "lugares": 5,
+    "apelidos": ["CIVIC", "CIVIC9"]
+  }
+]
