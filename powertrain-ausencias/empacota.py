@@ -13,6 +13,7 @@ RAIZ   = 'Powertrain-Monitor'          # pasta que aparece ao descompactar
 
 ARQUIVOS = [
     'index.html',
+    'leitor.html',
     'Iniciar-Painel.bat',
     'servir.ps1',
     'LEIA-ME.md',

@@ -9,7 +9,8 @@ nada no dia a dia.
 
 ```
 powertrain-ausencias\
-├── index.html          o painel
+├── index.html          o painel (monitor da parede)
+├── leitor.html         tela do leitor RFID (PC onde fica o leitor)
 ├── Iniciar-Painel.bat  duplo clique no PC do monitor
 ├── servir.ps1          servidor local (chamado pelo .bat)
 └── dados\
@@ -152,6 +153,41 @@ na hora.
 
 > O bloco de frota **exige o painel servido** (`Iniciar-Painel.bat`). Aberto direto do arquivo, o
 > navegador não deixa a página ler o log — nesse caso o bloco explica isso na tela.
+
+### Ligando o leitor RFID
+
+**O leitor não escreve no arquivo sozinho.** A maioria dos leitores USB se comporta como
+**teclado**: ao encostar a tag, ele *digita* o código na janela que estiver em foco. Quem
+transforma isso em linha no `frota.csv` é a página **`leitor.html`**.
+
+1. No PC onde está o leitor, abra **`http://localhost:8090/leitor.html`**
+   (ou `http://<ip-do-servidor>:8090/leitor.html`, se o leitor estiver em outro PC da rede).
+2. Deixe essa janela **aberta e em foco** — de preferência em tela cheia (**F11**).
+3. Encoste a tag. A tela responde na hora: *"HR-V lido — agora encoste o crachá"*.
+
+A tela do leitor dá o retorno imediato para quem está no balcão; o painel da parede atualiza
+no ciclo dele (20 s).
+
+**Teste sem tag nenhuma:** com o `leitor.html` aberto, digite `HRV` no teclado e tecle
+<kbd>Enter</kbd>. Se a tela reagir e aparecer uma linha nova no `dados/frota.csv`, a cadeia
+inteira está funcionando.
+
+**Se nada acontecer ao encostar a tag**, verifique nesta ordem:
+
+| Sintoma | Causa provável |
+|---|---|
+| A tela do leitor não reage | A janela não está em foco — clique nela uma vez |
+| Reage, mas diz "sem gravar" em vermelho | O `Iniciar-Painel.bat` não está aberto |
+| Não reage e o leitor não digita nada em lugar nenhum | Leitor não é do tipo teclado (veja abaixo) |
+| Reage, mas o painel não muda | Espere o ciclo de 20 s, ou confira se a tag está em `CONFIG.veiculos` |
+
+Para saber o tipo do seu leitor: abra o **Bloco de Notas** e encoste uma tag. Se o código
+aparecer digitado, é do tipo teclado (HID) e o `leitor.html` funciona. Se não aparecer nada,
+o leitor é serial/COM ou usa software próprio — nesse caso ele precisa ser configurado para
+gravar no `dados\frota.csv`, ou chamar a rota `POST /api/leitura` com a tag no corpo.
+
+> As tags dos carros aparecem **em dois lugares**: `CONFIG.veiculos` no `index.html` e
+> `CFG.veiculos` no `leitor.html`. Mexeu em um, mexa no outro.
 
 ### Histórico de uso — `dados/historico.json`
 
