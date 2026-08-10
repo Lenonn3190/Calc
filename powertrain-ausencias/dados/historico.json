@@ -1,0 +1,14 @@
+{
+  "gerado_em": null,
+  "fonte": "dados/frota.csv",
+  "leituras_no_log": 0,
+  "veiculos": [
+    { "tag": "HRV", "modelo": "Honda HR-V", "placa": "FQK-2B71", "cor": "Branca", "ano": "2020" },
+    { "tag": "CIVIC", "modelo": "Honda Civic", "placa": "GDT-9J40", "cor": "Prata", "ano": "9ª geração" }
+  ],
+  "total_viagens": 0,
+  "em_andamento": 0,
+  "por_veiculo": [],
+  "por_condutor": [],
+  "viagens": []
+}

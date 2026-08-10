@@ -21,6 +21,7 @@ $ErrorActionPreference = "Stop"
 
 $DataDir  = Join-Path $Root "dados"
 $DataFile = Join-Path $DataDir "saidas.csv"
+$HistFile = Join-Path $DataDir "historico.json"
 if (-not (Test-Path $DataDir)) { New-Item -ItemType Directory -Path $DataDir -Force | Out-Null }
 
 $mime = @{
@@ -66,6 +67,8 @@ Write-Host "  Powertrain - Monitor de Ausencias" -ForegroundColor Cyan
 Write-Host $sep -ForegroundColor Cyan
 Write-Host "  Painel : $Root"
 Write-Host "  Dados  : $DataFile"
+Write-Host "  Frota  : $(Join-Path $DataDir 'frota.csv')"
+Write-Host "  Histor.: $HistFile"
 if (-not (Test-Path $DataFile)) {
   Write-Host "           (ainda nao existe - exporte o CSV da lista para ai)" -ForegroundColor Yellow
 }
@@ -89,6 +92,26 @@ while ($listener.IsListening) {
     $req  = $ctx.Request
     $path = [System.Uri]::UnescapeDataString($req.Url.AbsolutePath)
     $now  = (Get-Date).ToString("HH:mm:ss")
+
+    # ---------- API: grava o historico de uso dos carros ----------
+    # O painel monta o JSON e manda por POST; pagina de navegador nao
+    # escreve em disco sozinha. Gravacao atomica (.tmp + move) para o
+    # arquivo nunca ficar pela metade se alguem abrir no meio da escrita.
+    if ($path -eq "/api/historico" -and ($req.HttpMethod -eq "POST" -or $req.HttpMethod -eq "PUT")) {
+      $ms = New-Object System.IO.MemoryStream
+      $req.InputStream.CopyTo($ms)
+      $bytes = $ms.ToArray()
+      $tmp = "$HistFile.tmp"
+      [System.IO.File]::WriteAllBytes($tmp, $bytes)
+      Move-Item -Force $tmp $HistFile
+      $ctx.Response.StatusCode = 200
+      $ctx.Response.ContentType = "application/json; charset=utf-8"
+      $okMsg = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true}')
+      $ctx.Response.OutputStream.Write($okMsg, 0, $okMsg.Length)
+      $ctx.Response.OutputStream.Close()
+      Write-Host "[$now] historico gravado ($($bytes.Length) b)" -ForegroundColor Green
+      continue
+    }
 
     if ($req.HttpMethod -ne "GET" -and $req.HttpMethod -ne "HEAD") {
       $ctx.Response.StatusCode = 405; $ctx.Response.OutputStream.Close(); continue

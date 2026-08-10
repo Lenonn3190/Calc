@@ -364,6 +364,7 @@ const CONFIG = {
      Passar a tag DO MESMO CARRO de novo ENCERRA o uso e libera.        */
   arquivoFrota:   'dados/frota.csv',      // log de leituras do RFID
   arquivoPessoas: 'dados/pessoas.csv',    // cadastro crachá -> nome
+  apiHistorico:   'api/historico',        // rota do servidor que grava dados/historico.json
   frotaRecarregarSeg: 20,  // status de carro muda na hora: ciclo curto (≠ 1 h das saídas)
   esperaCrachaSeg: 120,    // prazo para o crachá chegar depois da tag do carro
   usoReferenciaHoras: 8,   // escala da barra de tempo decorrido (passou disso, fica vermelha)
@@ -634,6 +635,15 @@ const diasEntre = (a,b) => Math.round((meiaNoite(b)-meiaNoite(a))/MS_DIA);
 const iniciais = nome => (nome||'?').split(/[\s;]+/).filter(Boolean).slice(0,2)
                           .map(p=>p[0]).join('').toUpperCase() || '?';
 const esc = s => (s||'').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/** Data/hora local em ISO, sem fuso: "2026-08-09T07:02:00".
+    Usar toISOString() aqui converteria para UTC e o histórico sairia com
+    as horas deslocadas em relação ao que o painel mostrou. */
+function iso(d){
+  if (!d) return null;
+  return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`
+       + `T${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+}
 
 /** "1 h" / "30 min" / "45 s" — intervalo em linguagem de gente. */
 function intervaloTxt(seg){
@@ -1259,7 +1269,7 @@ function achaVeiculo(tag){
 /** Resolve um crachá em pessoa. Fora do cadastro, usa o próprio número. */
 function resolveCracha(tag){
   const p = pessoas.get(norm(tag));
-  return p ? { ...p } : { nome:tag, depto:'', naoCadastrado:true };
+  return p ? { ...p, cracha:tag } : { nome:tag, depto:'', cracha:tag, naoCadastrado:true };
 }
 
 /** Reprocessa o log e devolve o estado atual da frota.
@@ -1274,6 +1284,7 @@ function calculaFrota(n){
   }));
   const janela = CONFIG.esperaCrachaSeg * 1000;
   let cracha = null;                          // crachá lido esperando um carro
+  const viagens = [];                         // usos já encerrados, em ordem
 
   for (const l of leiturasRfid){
     if (l.quando > n) break;                  // leitura futura: ignora
@@ -1286,6 +1297,7 @@ function calculaFrota(n){
       e.marcacoes++;
 
       if (e.status === 'uso'){                // 2ª passagem: encerra e libera
+        viagens.push(montaViagem(v, e.desde, l.quando, e.condutor));
         e.ultimoCondutor = e.condutor;
         e.status='livre'; e.desde=l.quando; e.condutor=null;
         cracha = null;                        // crachá do retorno não abre viagem nova
@@ -1324,9 +1336,34 @@ function calculaFrota(n){
   // crachá que ficou sem carro só interessa enquanto está dentro da janela
   if (cracha && (n - cracha.quando) > janela) cracha = null;
 
+  // usos ainda abertos entram no histórico sem retorno
+  const abertas = [...est.values()]
+    .filter(e => e.status === 'uso')
+    .map(e => montaViagem(e.veiculo, e.desde, null, e.condutor));
+
   return {
     lista: [...est.values()],
     cracha: cracha ? { ...resolveCracha(cracha.tag), quando:cracha.quando } : null,
+    viagens, abertas,
+  };
+}
+
+/** Um registro de viagem, do jeito que vai para o histórico. */
+function montaViagem(v, ini, fim, condutor){
+  const c = condutor || {};
+  return {
+    id: `${v.tag}-${iso(ini)}`,               // saída identifica a viagem
+    veiculo: v.tag,
+    modelo: v.modelo,
+    placa: v.placa,
+    condutor: c.nome || null,
+    cracha: c.naoCadastrado ? c.nome : (c.cracha || null),
+    departamento: c.depto || null,
+    identificado: !!(c.nome && !c.semCracha),
+    saida: iso(ini),
+    retorno: fim ? iso(fim) : null,
+    duracao_min: fim ? Math.round((fim - ini)/60000) : null,
+    em_andamento: !fim,
   };
 }
 
@@ -1455,11 +1492,77 @@ async function atualizaFrota(){
     FonteFrota.ativa = true;
     FonteFrota.lidoEm = new Date();
     FonteFrota.erro = null;
+    await salvaHistorico(agora());          // regrava o .json quando algo mudou
   }catch(e){
     FonteFrota.erro = e.message || String(e);
     FonteFrota.carimboLog = null;      // força releitura completa quando voltar
   }
   desenhaFrota();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HISTÓRICO DE USO DOS CARROS (dados/historico.json)
+   ──────────────────────────────────────────────────────────────────────
+   Página de navegador não escreve em disco. O painel monta o JSON e manda
+   por POST para o servidor (Iniciar-Painel.bat), que grava o arquivo na
+   pasta dados/ — mesmo caminho que o CheckSync usa para a base em rede.
+
+   O arquivo é DERIVADO do log: é recalculado do zero a cada mudança. Se o
+   frota.csv for truncado, o histórico encolhe junto — para guardar período
+   longo, arquive o CSV (ver LEIA-ME).
+   ══════════════════════════════════════════════════════════════════════ */
+const Historico = { gravadoEm:null, erro:null, marca:null, viagens:0 };
+
+function montaHistorico(n){
+  const { viagens, abertas } = calculaFrota(n);
+  const todas = [...viagens, ...abertas].sort((a,b) => a.saida < b.saida ? 1 : -1);
+
+  // resumo por carro e por condutor: evita ter que recalcular fora daqui
+  const soma = (chave, rotulo) => {
+    const m = new Map();
+    todas.filter(v => !v.em_andamento).forEach(v => {
+      const k = v[chave]; if (!k) return;
+      const o = m.get(k) || { [rotulo]:k, viagens:0, minutos:0 };
+      o.viagens++; o.minutos += v.duracao_min || 0;
+      m.set(k, o);
+    });
+    return [...m.values()]
+      .map(o => ({ ...o, horas: +(o.minutos/60).toFixed(1) }))
+      .sort((a,b) => b.minutos - a.minutos);
+  };
+
+  return {
+    gerado_em: iso(n),
+    fonte: CONFIG.arquivoFrota,
+    leituras_no_log: leiturasRfid.length,
+    veiculos: CONFIG.veiculos.map(v => ({ tag:v.tag, modelo:v.modelo, placa:v.placa, cor:v.cor, ano:v.ano })),
+    total_viagens: todas.filter(v => !v.em_andamento).length,
+    em_andamento: abertas.length,
+    por_veiculo: soma('veiculo','veiculo'),
+    por_condutor: soma('condutor','condutor'),
+    viagens: todas,
+  };
+}
+
+/** Manda o histórico para o servidor gravar, só quando mudou. */
+async function salvaHistorico(n){
+  if (!/^https?:$/.test(location.protocol)) return;      // sem servidor, sem gravação
+  const h = montaHistorico(n);
+  const corpo = JSON.stringify(h, null, 2);
+  const m = marca(corpo.replace(/"gerado_em":.*/, ''));  // ignora o carimbo de hora
+  if (m === Historico.marca) return;                     // nada mudou: não regrava
+  try{
+    const r = await fetch(CONFIG.apiHistorico, {
+      method:'POST', headers:{ 'content-type':'application/json' }, body:corpo,
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    Historico.marca = m;
+    Historico.gravadoEm = new Date();
+    Historico.viagens = h.total_viagens;
+    Historico.erro = null;
+  }catch(e){
+    Historico.erro = e.message || String(e);
+  }
 }
 
 let _proximaFrota = null;

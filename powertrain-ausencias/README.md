@@ -15,7 +15,8 @@ powertrain-ausencias\
 └── dados\
     ├── saidas.csv      ← ausências (export do SharePoint)
     ├── frota.csv       ← log do leitor RFID (uma linha por tag lida)
-    └── pessoas.csv     ← cadastro crachá -> nome
+    ├── pessoas.csv     ← cadastro crachá -> nome
+    └── historico.json  ← histórico de uso dos carros (gravado pelo painel)
 ```
 
 ## Colocar no monitor (27" na vertical)
@@ -124,6 +125,46 @@ na hora.
 > O bloco de frota **exige o painel servido** (`Iniciar-Painel.bat`). Aberto direto do arquivo, o
 > navegador não deixa a página ler o log — nesse caso o bloco explica isso na tela.
 
+### Histórico de uso — `dados/historico.json`
+
+O painel grava sozinho o histórico das viagens nesse arquivo, na mesma pasta, sempre que algo
+muda. Serve para relatório mensal, rateio de custo ou conferência de quem estava com o carro.
+
+```json
+{
+  "gerado_em": "2026-08-10T09:45:53",
+  "total_viagens": 1,
+  "em_andamento": 1,
+  "por_veiculo":  [ { "veiculo": "CIVIC", "viagens": 1, "minutos": 90, "horas": 1.5 } ],
+  "por_condutor": [ { "condutor": "Thiego Ferreira", "viagens": 1, "minutos": 90, "horas": 1.5 } ],
+  "viagens": [
+    {
+      "id": "CIVIC-2026-08-10T03:05:00",
+      "veiculo": "CIVIC", "modelo": "Honda Civic", "placa": "GDT-9J40",
+      "condutor": "Thiego Ferreira", "cracha": "CR-0421", "departamento": "NMG",
+      "identificado": true,
+      "saida": "2026-08-10T03:05:00", "retorno": "2026-08-10T04:35:00",
+      "duracao_min": 90, "em_andamento": false
+    }
+  ]
+}
+```
+
+- Viagem **em aberto** entra na lista com `retorno: null` e `em_andamento: true`, e só entra nos
+  resumos quando o carro é devolvido.
+- Datas em **hora local**, sem fuso — batem com o que aparece na tela.
+- Ordenado da viagem **mais recente para a mais antiga**.
+- `identificado: false` marca a viagem em que ninguém passou o crachá.
+
+**Duas coisas importantes sobre esse arquivo:**
+
+1. Ele é **derivado** do `frota.csv`: o painel recalcula tudo do zero a cada mudança e regrava.
+   Se o log for apagado ou truncado, **o histórico encolhe junto**. Para guardar período longo,
+   arquive o `frota.csv` (ex.: `frota-2026-08.csv` no fim do mês) — ou copie o `historico.json`
+   antes de zerar o log.
+2. Quem grava é o **servidor** (`Iniciar-Painel.bat`), porque página de navegador não escreve em
+   disco. Sem o `.bat`, o quadro de frota não funciona e o histórico não é gerado.
+
 ## Ajustes
 
 No bloco `CONFIG`, no início do `index.html`:
@@ -132,6 +173,7 @@ No bloco `CONFIG`, no início do `index.html`:
 |---|---|
 | `arquivoDados` | Caminho das ausências, lido continuamente. Aceita subpasta ou URL completa. |
 | `arquivoFrota` / `arquivoPessoas` | Log do leitor RFID e cadastro de crachás. |
+| `apiHistorico` | Rota do servidor que grava `dados/historico.json`. |
 | `frotaRecarregarSeg` | Ciclo do quadro de veículos (padrão 20 s). |
 | `esperaCrachaSeg` | Janela entre as duas leituras, em qualquer ordem (padrão 120 s). |
 | `usoReferenciaHoras` | Escala da barra de tempo; acima disso o card fica vermelho (padrão 8 h). |
