@@ -283,6 +283,37 @@ footer{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;justify-con
   padding:.4rem .6rem;font-size:.74rem;color:var(--faint);font-weight:600}
 footer .legend{display:flex;flex-wrap:wrap;gap:.4rem}
 
+/* ═══════════════ AVISO DE LEITURA (RFID) ═══════════════
+   Retorno para quem está de pé na frente do monitor, sem mouse: some
+   sozinho e nunca exige interação. */
+.leitura{
+  /* ocupa exatamente a faixa do cabeçalho: cobre por inteiro em vez de
+     deixar o relógio aparecendo pela metade atrás */
+  position:fixed;left:50%;top:1.4rem;transform:translate(-50%,-140%);
+  width:min(calc(1600px - 2.8rem), calc(100vw - 2.8rem));
+  z-index:60;border-radius:1.2rem;padding:1.5rem 1.8rem;
+  display:flex;align-items:center;gap:1.4rem;
+  background:linear-gradient(120deg,color-mix(in srgb,var(--c) 26%,#0b1424),#0b1424);
+  border:1px solid color-mix(in srgb,var(--c) 55%,transparent);
+  border-left:8px solid var(--c);
+  box-shadow:0 30px 70px -20px #000, 0 0 60px -20px var(--c);
+  transition:transform .35s cubic-bezier(.2,.9,.3,1.1),opacity .35s;opacity:0;
+}
+.leitura.on{transform:translate(-50%,0);opacity:1}
+.leitura .ic{width:5rem;height:5rem;border-radius:1rem;display:grid;place-items:center;flex:none;
+  background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--c)}
+.leitura .ic svg{width:3rem;height:3rem}
+.leitura .txt{min-width:0;flex:1}
+.leitura .t{font-size:2.1rem;font-weight:800;line-height:1.15;color:var(--c);letter-spacing:-.5px}
+.leitura .d{font-size:1.15rem;font-weight:700;color:var(--txt);margin-top:.3rem;line-height:1.35}
+.leitura .d b{color:var(--c)}
+.leitura .cod{font-family:ui-monospace,Consolas,monospace;font-size:.85rem;font-weight:700;
+  color:var(--muted);margin-top:.45rem;letter-spacing:1px}
+.leitura .cont{font-size:2.4rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--c);
+  flex:none;opacity:.85}
+.leitura.pisca{animation:baque .5s ease-out}
+@keyframes baque{0%{transform:translate(-50%,0) scale(1)}35%{transform:translate(-50%,0) scale(1.025)}100%{transform:translate(-50%,0) scale(1)}}
+
 /* ═══════════════ PAINEL DE CONFIGURAÇÃO ═══════════════ */
 .cfg{
   position:fixed;inset:0;z-index:50;display:none;place-items:center;padding:1.5rem;
@@ -366,6 +397,15 @@ const CONFIG = {
   arquivoPessoas: 'dados/pessoas.csv',    // cadastro crachá -> nome
   arquivoVeiculos:'dados/veiculos.json',  // cadastro dos carros (vale para as DUAS telas)
   apiHistorico:   'api/historico',        // rota do servidor que grava dados/historico.json
+  apiLeitura:     'api/leitura',          // rota que anexa a leitura no frota.csv
+
+  /* O leitor RFID USB se comporta como TECLADO: encostou a tag, ele
+     "digita" o código nesta tela. O painel captura isso direto — não
+     existe outra janela para alternar, e ninguém precisa de mouse.     */
+  capturaLeitor:   true,   // false desliga a captura (painel só de exibição)
+  repetirBloqSeg:  3,      // ignora a mesma tag relida neste intervalo
+  leitorOciosoMs:  120,    // leitor que não manda Enter: fecha o código nesta pausa
+  avisoLeituraSeg: 7,      // quanto tempo o aviso grande fica na tela
   frotaRecarregarSeg: 20,  // status de carro muda na hora: ciclo curto (≠ 1 h das saídas)
   esperaCrachaSeg: 120,    // prazo para o crachá chegar depois da tag do carro
   usoReferenciaHoras: 8,   // escala da barra de tempo decorrido (passou disso, fica vermelha)
@@ -378,7 +418,7 @@ const CONFIG = {
 
   /* Reserva, usada só se o dados/veiculos.json faltar ou estiver torto.
      Para mudar tag, placa ou incluir carro, edite o ARQUIVO — assim o
-     leitor.html enxerga a mesma lista e não há o que sincronizar. */
+     tela de leitura usa a mesma lista, sem nada para sincronizar. */
   veiculos: [
     { tag:'C3FE4090', modelo:'Honda HR-V',  ano:'2020',       cor:'Branca', tipo:'suv',
       placa:'FQK-2B71', lugares:5, apelidos:['HRV','HR-V'] },
@@ -510,6 +550,17 @@ const DADOS = [
     <div class="legend" id="legenda"></div>
     <div id="rodape">—</div>
   </footer>
+</div>
+
+<!-- aviso grande de leitura do RFID: aparece e some sozinho -->
+<div class="leitura" id="aviso" style="--c:var(--info)">
+  <div class="ic" id="avisoIc"></div>
+  <div class="txt">
+    <div class="t" id="avisoT">—</div>
+    <div class="d" id="avisoD"></div>
+    <div class="cod" id="avisoC"></div>
+  </div>
+  <div class="cont" id="avisoN"></div>
 </div>
 
 <!-- ═══════════════ CONFIGURAÇÃO / IMPORTAÇÃO ═══════════════ -->
@@ -1600,6 +1651,152 @@ async function salvaHistorico(n){
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   CAPTURA DO LEITOR RFID — na própria tela do painel
+   ──────────────────────────────────────────────────────────────────────
+   O leitor USB age como teclado: encostou a tag, ele digita o código
+   aqui. Capturamos, gravamos no log pelo servidor e recarregamos a frota
+   NA HORA (sem esperar o ciclo de 20 s), mostrando um aviso grande.
+   Tudo numa tela só, sem mouse e sem trocar de janela.
+   ══════════════════════════════════════════════════════════════════════ */
+let _avisoTimer = null, _avisoConta = null;
+
+/** Mostra o aviso grande e some sozinho. */
+function mostraAviso({ cor, titulo, detalhe, codigo, ate }){
+  const el = $('aviso');
+  el.style.setProperty('--c', cor);
+  $('avisoIc').innerHTML = { leitura:ICO.cracha, carro:ICO.carro, ok:ICO.ok, erro:ICO.relogio }[titulo.ico] || ICO.cracha;
+  $('avisoT').textContent = titulo.txt;
+  $('avisoD').innerHTML = detalhe || '';
+  $('avisoC').textContent = codigo ? 'código lido: ' + codigo : '';
+  el.classList.add('on','pisca');
+  setTimeout(() => el.classList.remove('pisca'), 500);
+
+  clearTimeout(_avisoTimer); clearInterval(_avisoConta);
+  // contagem regressiva só faz sentido quando falta a segunda leitura
+  if (ate){
+    const passo = () => {
+      const resta = Math.max(0, Math.ceil((ate - Date.now())/1000));
+      $('avisoN').textContent = resta + 's';
+      if (resta <= 0){ clearInterval(_avisoConta); escondeAviso(); }
+    };
+    passo(); _avisoConta = setInterval(passo, 1000);
+  } else {
+    $('avisoN').textContent = '';
+  }
+  _avisoTimer = setTimeout(escondeAviso, Math.max(3, CONFIG.avisoLeituraSeg) * 1000);
+}
+function escondeAviso(){
+  clearInterval(_avisoConta);
+  $('aviso').classList.remove('on');
+  $('avisoN').textContent = '';
+}
+
+/** Traz o quadro de veículos para a vista de quem acabou de encostar a tag. */
+function mostraFrota(){
+  const sec = $('listaFrota') && $('listaFrota').closest('section');
+  if (sec) sec.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+let _ultimaLeitura = { tag:null, quando:0 };
+
+/** Grava a leitura e reage na tela imediatamente. */
+async function registraLeitura(tag){
+  // 'momento', não 'agora': agora() é a função do relógio usada adiante
+  const momento = Date.now();
+  // o leitor costuma disparar duas vezes na mesma encostada
+  if (tag === _ultimaLeitura.tag && (momento - _ultimaLeitura.quando) < CONFIG.repetirBloqSeg*1000) return;
+  _ultimaLeitura = { tag, quando:momento };
+
+  const v = achaVeiculo(tag);
+
+  if (!/^https?:$/.test(location.protocol)){
+    mostraAviso({ cor:'#ef4444', titulo:{txt:'Sem servidor', ico:'erro'},
+      detalhe:'Abra o painel pelo <b>Iniciar-Painel.bat</b> para registrar leituras.', codigo:tag });
+    return;
+  }
+
+  try{
+    const r = await fetch(CONFIG.apiLeitura, {
+      method:'POST', headers:{'content-type':'text/plain; charset=utf-8'}, body:tag });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+  }catch(e){
+    mostraAviso({ cor:'#ef4444', titulo:{txt:'Não consegui gravar', ico:'erro'},
+      detalhe:`A leitura não entrou no log (${esc(e.message)}). Confira se a janela do servidor está aberta.`,
+      codigo:tag });
+    return;
+  }
+
+  await atualizaFrota();          // relê o log já com a linha nova
+  render();
+  mostraFrota();
+
+  // conta a história a partir do estado real, recém-calculado
+  const n = agora();
+  const { lista, cracha } = calculaFrota(n);
+  const janelaAte = ts => ts + CONFIG.esperaCrachaSeg*1000;
+
+  if (v){
+    const e = lista.find(x => x.veiculo.tag === v.tag);
+    if (!e) return;
+    if (e.status === 'aguardando'){
+      mostraAviso({ cor:'#38bdf8', titulo:{txt:v.modelo + ' lido', ico:'carro'},
+        detalhe:'Agora encoste o <b>crachá do condutor</b> para registrar a saída.',
+        codigo:tag, ate:janelaAte(+e.desde) });
+    } else if (e.status === 'uso'){
+      mostraAviso({ cor:'#22c55e', titulo:{txt:'Saída registrada', ico:'ok'},
+        detalhe:`<b>${esc((e.condutor||{}).nome || '—')}</b> saiu com o <b>${esc(v.modelo)}</b>.`,
+        codigo:tag });
+    } else {
+      const ult = e.ultimoCondutor ? ` — <b>${esc(e.ultimoCondutor.nome)}</b> devolveu` : '';
+      mostraAviso({ cor:'#22c55e', titulo:{txt:v.modelo + ' devolvido', ico:'ok'},
+        detalhe:`Disponível de novo${ult}.`, codigo:tag });
+    }
+    return;
+  }
+
+  // crachá
+  const emUso = lista.find(x => x.status === 'uso' && x.condutor && chaveTag(x.condutor.cracha||'') === chaveTag(tag));
+  if (emUso){
+    mostraAviso({ cor:'#22c55e', titulo:{txt:'Saída registrada', ico:'ok'},
+      detalhe:`<b>${esc(emUso.condutor.nome)}</b> saiu com o <b>${esc(emUso.veiculo.modelo)}</b>.`,
+      codigo:tag });
+  } else if (cracha){
+    mostraAviso({ cor:'#14b8a6', titulo:{txt:cracha.nome, ico:'leitura'},
+      detalhe:'Agora encoste a <b>tag do carro</b> para registrar a saída.',
+      codigo:tag, ate:janelaAte(+cracha.quando) });
+  } else {
+    mostraAviso({ cor:'#f59e0b', titulo:{txt:'Leitura registrada', ico:'leitura'},
+      detalhe:'Não casou com nenhum carro. Encoste a <b>tag do carro</b> logo em seguida.',
+      codigo:tag });
+  }
+}
+
+/* montagem do código digitado pelo leitor */
+let _buf = '', _bufTimer = null;
+function fechaCodigo(){
+  const t = _buf.trim(); _buf = '';
+  clearTimeout(_bufTimer); _bufTimer = null;
+  if (t.length >= 2) registraLeitura(t);      // 1 tecla solta não é leitura
+}
+function ligaCaptura(){
+  if (!CONFIG.capturaLeitor) return;
+  document.addEventListener('keydown', e => {
+    const alvo = e.target;
+    // não atrapalha quem está digitando nos campos do ⚙
+    if (alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA')) return;
+    if ($('cfgModal').classList.contains('on')) return;
+
+    if (e.key === 'Enter'){ e.preventDefault(); fechaCodigo(); return; }
+    if (e.key === 'Escape'){ escondeAviso(); return; }
+    if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey){
+      _buf += e.key;
+      clearTimeout(_bufTimer);
+      _bufTimer = setTimeout(fechaCodigo, CONFIG.leitorOciosoMs);  // leitor sem Enter
+    }
+  });
+}
+
 let _proximaFrota = null;
 function cicloDaFrota(){
   clearTimeout(_proximaFrota);
@@ -1886,6 +2083,7 @@ render();
 iniciaFonte().then(() => agendaLeitura(Fonte.erro ? CONFIG.tentarDeNovoSeg : CONFIG.recarregarSeg));
 
 cicloDaFrota();
+ligaCaptura();          // painel passa a ouvir o leitor RFID
 
 setInterval(tique, 1000);
 setInterval(render, Math.max(15, CONFIG.atualizarSeg) * 1000);

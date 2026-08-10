@@ -9,8 +9,7 @@ nada no dia a dia.
 
 ```
 powertrain-ausencias\
-├── index.html          o painel (monitor da parede)
-├── leitor.html         tela do leitor RFID (PC onde fica o leitor)
+├── index.html          o painel (também captura o leitor RFID)
 ├── Iniciar-Painel.bat  duplo clique no PC do monitor
 ├── servir.ps1          servidor local (chamado pelo .bat)
 └── dados\
@@ -157,35 +156,44 @@ na hora.
 
 ### Ligando o leitor RFID
 
-**O leitor não escreve no arquivo sozinho.** A maioria dos leitores USB se comporta como
-**teclado**: ao encostar a tag, ele *digita* o código na janela que estiver em foco. Quem
-transforma isso em linha no `frota.csv` é a página **`leitor.html`**.
+**Tela única, sem mouse.** O leitor USB se comporta como **teclado**: ao encostar a tag, ele
+"digita" o código na janela em foco. O **próprio painel** captura isso — não há outra página
+para abrir nem janela para alternar.
 
-1. No PC onde está o leitor, abra **`http://localhost:8090/leitor.html`**
-   (ou `http://<ip-do-servidor>:8090/leitor.html`, se o leitor estiver em outro PC da rede).
-2. Deixe essa janela **aberta e em foco** — de preferência em tela cheia (**F11**).
-3. Encoste a tag. A tela responde na hora: *"HR-V lido — agora encoste o crachá"*.
+Basta o painel estar aberto e em foco (o `Iniciar-Painel.bat` já abre em tela cheia). Encostou a
+tag, aparece um **aviso grande no topo da tela**:
 
-A tela do leitor dá o retorno imediato para quem está no balcão; o painel da parede atualiza
-no ciclo dele (20 s).
+| Situação | O que o painel mostra |
+|---|---|
+| Tag do carro lida | *"Honda HR-V lido — agora encoste o crachá do condutor"*, com contagem regressiva |
+| Crachá lido primeiro | *"Fulano — agora encoste a tag do carro"*, com contagem |
+| Dupla completa | *"Saída registrada — Fulano saiu com o Honda HR-V"* |
+| Tag do carro em uso | *"Honda HR-V devolvido — disponível de novo"* |
+| Servidor fora do ar | *"Não consegui gravar"*, em vermelho |
 
-**Teste sem tag nenhuma:** com o `leitor.html` aberto, digite `HRV` no teclado e tecle
-<kbd>Enter</kbd>. Se a tela reagir e aparecer uma linha nova no `dados/frota.csv`, a cadeia
-inteira está funcionando.
+O aviso **some sozinho** depois de 7 segundos (`avisoLeituraSeg`) — ninguém precisa clicar em
+nada. O quadro de veículos é recarregado **na hora**, sem esperar o ciclo de 20 s, e a tela rola
+sozinha até o bloco Frota para quem está de pé em frente ao monitor.
+
+**Teste sem tag nenhuma:** com o painel aberto, digite `C3FE4090` no teclado e tecle
+<kbd>Enter</kbd>. Se o aviso aparecer, a cadeia inteira está funcionando.
 
 **Se nada acontecer ao encostar a tag**, verifique nesta ordem:
 
 | Sintoma | Causa provável |
 |---|---|
-| A tela do leitor não reage | A janela não está em foco — clique nela uma vez |
-| Reage, mas diz "sem gravar" em vermelho | O `Iniciar-Painel.bat` não está aberto |
-| Não reage e o leitor não digita nada em lugar nenhum | Leitor não é do tipo teclado (veja abaixo) |
-| Reage, mas o painel não muda | Espere o ciclo de 20 s, ou confira se a tag está em `CONFIG.veiculos` |
+| Nada acontece na tela | A janela do painel não está em foco — clique nela uma vez |
+| Aviso vermelho "não consegui gravar" | O `Iniciar-Painel.bat` não está aberto |
+| O leitor não digita nada em lugar nenhum | Leitor não é do tipo teclado (veja abaixo) |
+| Aviso aparece mas o carro não muda de estado | A tag não está no `dados/veiculos.json` |
 
 Para saber o tipo do seu leitor: abra o **Bloco de Notas** e encoste uma tag. Se o código
-aparecer digitado, é do tipo teclado (HID) e o `leitor.html` funciona. Se não aparecer nada,
-o leitor é serial/COM ou usa software próprio — nesse caso ele precisa ser configurado para
-gravar no `dados\frota.csv`, ou chamar a rota `POST /api/leitura` com a tag no corpo.
+aparecer digitado, é do tipo teclado (HID) e funciona direto. Se não aparecer nada, o leitor é
+serial/COM ou usa software próprio — nesse caso ele precisa gravar no `dados\frota.csv` ou
+chamar a rota `POST /api/leitura` com a tag no corpo.
+
+Digitação nos campos do ⚙ **não** é confundida com leitura. Para desligar a captura e deixar o
+painel só de exibição, `capturaLeitor: false` no `CONFIG`.
 
 ### Cadastro dos carros — `dados/veiculos.json`
 
@@ -206,8 +214,8 @@ na lista de reserva embutida e continuam funcionando.
 ### Descobrindo o número dos crachás
 
 O `pessoas.csv` que veio no pacote tem códigos de exemplo (`CR-0421`…). Para pegar os números
-reais: abra o `leitor.html`, peça para cada pessoa encostar o crachá e anote o código que
-aparece em **Últimas leituras**. Depois é só preencher o `dados/pessoas.csv`. Enquanto um crachá
+reais: com o painel aberto, peça para cada pessoa encostar o crachá e anote o código que aparece
+no aviso (*"código lido: ..."*). Depois é só preencher o `dados/pessoas.csv`. Enquanto um crachá
 não estiver cadastrado, o painel mostra o próprio número e marca *"crachá fora do cadastro"* —
 não trava nada.
 

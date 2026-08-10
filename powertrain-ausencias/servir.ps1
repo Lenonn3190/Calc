@@ -78,8 +78,6 @@ Write-Host "  Abra no monitor:"
 Write-Host "    http://localhost:$Port/" -ForegroundColor Green
 if (-not $LocalOnly) { foreach ($ip in Get-LocalIPs) { Write-Host "    http://$ip`:$Port/   (outros PCs da rede)" -ForegroundColor Green } }
 Write-Host ""
-Write-Host "  Leitor RFID: http://localhost:$Port/leitor.html" -ForegroundColor Green
-Write-Host ""
 Write-Host "  O painel rele o CSV sozinho: salve por cima que a tela atualiza." -ForegroundColor DarkGray
 Write-Host "  Para parar: feche esta janela." -ForegroundColor DarkGray
 Write-Host $sep -ForegroundColor Cyan
@@ -97,7 +95,7 @@ while ($listener.IsListening) {
     $now  = (Get-Date).ToString("HH:mm:ss")
 
     # ---------- API: registra uma leitura do RFID ----------
-    # A pagina leitor.html captura o que o leitor "digita" e manda a tag
+    # O painel captura o que o leitor "digita" e manda a tag
     # aqui. O carimbo de hora e do servidor, para nao depender do relogio
     # do PC do leitor. So acrescenta linha: nunca reescreve o log.
     if ($path -eq "/api/leitura" -and $req.HttpMethod -eq "POST") {
