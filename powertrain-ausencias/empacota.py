@@ -16,11 +16,10 @@ ARQUIVOS = [
     'Iniciar-Painel.bat',
     'servir.ps1',
     'LEIA-ME.md',
+    'dados/fonte.txt',
     'dados/saidas.csv',
     'dados/frota.csv',
     'dados/pessoas.csv',
-    'dados/veiculos.json',
-    'dados/fonte.txt',
     'dados/veiculos.json',
     'dados/historico.json',
 ]

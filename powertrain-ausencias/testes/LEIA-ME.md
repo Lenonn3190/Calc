@@ -1,0 +1,22 @@
+# Testes do painel
+
+Não entram no `.zip` de distribuição (veja a lista em `empacota.py`).
+
+```
+node testes/test.js         regras de data, duração, CSV e classificação
+node testes/xlsx.js         leitura da planilha .xlsx (gera a própria amostra)
+node testes/rfid.js         máquina de estados da frota
+node testes/e2e-frota.js    leitor gravando no log, painel reagindo
+node testes/historico.js    geração do historico.json
+node testes/fonte.js        releitura do arquivo, falha e recuperação
+node testes/ciclo.js        ritmo de 1 h e retentativa em 1 min
+node testes/pacote.js       o .zip extraído, como o usuário recebe
+python3 testes/servidor.py  estrutura do servir.ps1 (não há PowerShell aqui)
+```
+
+`servidor.py` existe porque não dá para executar o `servir.ps1` neste
+ambiente: ele confere que as rotas que o painel chama continuam no script.
+Uma rota inteira já se perdeu numa edição sem ninguém notar, porque os
+testes de navegador usam um servidor Node equivalente e não tocam no `.ps1`.
+
+Precisam de `playwright-core` e do Chromium do ambiente.
