@@ -1,0 +1,14 @@
+# Caminho do arquivo com os registros de saídas apontados pela equipe.
+# Aponte UMA VEZ aqui e o painel busca sempre nesse mesmo lugar, inclusive
+# depois de reiniciar o PC. Aceita .xlsx e .csv, local ou de rede.
+#
+# Cole o caminho completo numa linha só, SEM aspas. Exemplos:
+#   C:\Users\sb026431\OneDrive - Honda\05 - ETG\Registros de saidas.xlsx
+#   \\servidor\ETG\Powertrain\Registros de saidas.xlsx
+#
+# Para pegar o caminho: no Explorer, Shift + botão direito no arquivo →
+# "Copiar como caminho", e cole aqui embaixo tirando as aspas.
+#
+# Enquanto nenhuma linha estiver preenchida, o painel usa dados\saidas.xlsx
+# ou dados\saidas.csv desta pasta.
+

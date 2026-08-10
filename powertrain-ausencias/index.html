@@ -284,11 +284,9 @@ footer{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;justify-con
 footer .legend{display:flex;flex-wrap:wrap;gap:.4rem}
 
 /* ═══════════════ AVISO DE LEITURA (RFID) ═══════════════
-   Retorno para quem está de pé na frente do monitor, sem mouse: some
-   sozinho e nunca exige interação. */
+   Retorno para quem está de pé na frente do monitor, sem mouse: aparece
+   grande, cobre a faixa do cabeçalho e some sozinho. */
 .leitura{
-  /* ocupa exatamente a faixa do cabeçalho: cobre por inteiro em vez de
-     deixar o relógio aparecendo pela metade atrás */
   position:fixed;left:50%;top:1.4rem;transform:translate(-50%,-140%);
   width:min(calc(1600px - 2.8rem), calc(100vw - 2.8rem));
   z-index:60;border-radius:1.2rem;padding:1.5rem 1.8rem;
@@ -374,11 +372,14 @@ const CONFIG = {
      nada. Vale caminho relativo à pasta do painel, subpasta ou URL.
        'dados/saidas.csv'                         (recomendado)
        'http://servidor/painel/dados/saidas.csv'
-     Só funciona com o painel SERVIDO por http (use Iniciar-Painel.bat).
-     Abrindo o index.html direto (file://) o navegador proíbe a leitura;
-     nesse caso aponte o arquivo uma vez pelo ⚙ e ele passa a ser relido
-     igual — ver LEIA-ME.md (na pasta).                                          */
-  arquivoDados:  'dados/saidas.csv',
+     'api/saidas' é o padrão: o SERVIDOR resolve de onde vem o arquivo,
+     lendo o caminho de dados/fonte.txt. Aponte lá uma vez e o painel
+     busca sempre no mesmo lugar, inclusive depois de reiniciar o PC, sem
+     precisar de clique — o monitor não tem mouse. Aceita .xlsx e .csv:
+     o formato é reconhecido pelo conteúdo, não pela extensão.
+     Sem fonte.txt, o servidor usa dados/saidas.xlsx ou dados/saidas.csv.
+     Ver LEIA-ME.md (na pasta).                                          */
+  arquivoDados:  'api/saidas',
   recarregarSeg: 3600, // de quanto em quanto tempo RELER o arquivo (3600 = 1 hora)
   tentarDeNovoSeg: 60, // se a leitura falhar, tenta de novo neste prazo mais curto,
                        // para uma queda de rede não deixar a tela parada 1 hora inteira
@@ -395,14 +396,14 @@ const CONFIG = {
      Passar a tag DO MESMO CARRO de novo ENCERRA o uso e libera.        */
   arquivoFrota:   'dados/frota.csv',      // log de leituras do RFID
   arquivoPessoas: 'dados/pessoas.csv',    // cadastro crachá -> nome
-  arquivoVeiculos:'dados/veiculos.json',  // cadastro dos carros (vale para as DUAS telas)
+  arquivoVeiculos:'dados/veiculos.json',  // cadastro dos carros (tag, placa, modelo)
   apiHistorico:   'api/historico',        // rota do servidor que grava dados/historico.json
   apiLeitura:     'api/leitura',          // rota que anexa a leitura no frota.csv
 
   /* O leitor RFID USB se comporta como TECLADO: encostou a tag, ele
-     "digita" o código nesta tela. O painel captura isso direto — não
-     existe outra janela para alternar, e ninguém precisa de mouse.     */
-  capturaLeitor:   true,   // false desliga a captura (painel só de exibição)
+     "digita" o código nesta tela. O painel captura direto — é uma tela
+     só, e o monitor não tem mouse nem toque para alternar janelas.      */
+  capturaLeitor:   true,   // false deixa o painel apenas de exibição
   repetirBloqSeg:  3,      // ignora a mesma tag relida neste intervalo
   leitorOciosoMs:  120,    // leitor que não manda Enter: fecha o código nesta pausa
   avisoLeituraSeg: 7,      // quanto tempo o aviso grande fica na tela
@@ -417,8 +418,7 @@ const CONFIG = {
   semCrachaViraUso: true,
 
   /* Reserva, usada só se o dados/veiculos.json faltar ou estiver torto.
-     Para mudar tag, placa ou incluir carro, edite o ARQUIVO — assim o
-     tela de leitura usa a mesma lista, sem nada para sincronizar. */
+     Para mudar tag, placa ou incluir carro, edite o ARQUIVO. */
   veiculos: [
     { tag:'C3FE4090', modelo:'Honda HR-V',  ano:'2020',       cor:'Branca', tipo:'suv',
       placa:'FQK-2B71', lugares:5, apelidos:['HRV','HR-V'] },
@@ -1227,28 +1227,216 @@ function acharCol(cabs, campo, mapa){
 /** Lê uma tabela CSV genérica: devolve um objeto por linha, com as chaves
     do mapa de apelidos. `exigidas` são as colunas sem as quais o arquivo
     não serve para nada — a falta delas vira erro explicativo. */
-function parseTabela(txt, alias, exigidas, permiteVazio){
+/** CSV -> matriz de células (uma lista por linha). */
+function matrizDeCSV(txt){
   txt = txt.replace(/^\uFEFF/, '');  // o export do SharePoint vem com BOM
   const sep = detectaSep(txt);
-  const linhas = txt.split(/\r?\n/).filter(l => l.trim());
-  if (!linhas.length) throw new Error('Arquivo vazio.');
+  return txt.split(/\r?\n/).filter(l => l.trim()).map(l => partirLinha(l, sep));
+}
+
+/** Matriz -> objetos, casando as colunas pelo nome do cabeçalho.
+    Serve para CSV e para planilha do Excel: as duas viram matriz antes. */
+function tabelaDeMatriz(matriz, alias, exigidas, permiteVazio){
+  if (!matriz.length) throw new Error('Arquivo vazio.');
   // um log de RFID recém-criado tem só o cabeçalho: isso é estado normal
-  if (linhas.length < 2 && !permiteVazio) throw new Error('Arquivo sem linhas de dados.');
-  const cabs = partirLinha(linhas[0], sep);
+  if (matriz.length < 2 && !permiteVazio) throw new Error('Arquivo sem linhas de dados.');
+  const cabs = matriz[0];
   const idx = {}; Object.keys(alias).forEach(k => idx[k] = acharCol(cabs, k, alias));
   for (const k of (exigidas || [])){
     if (idx[k] < 0) throw new Error(`Coluna "${alias[k][0]}" não encontrada no cabeçalho.`);
   }
   const val = (cel, k) => idx[k] >= 0 ? (cel[idx[k]] || '') : '';
-  return linhas.slice(1).map(l => {
-    const c = partirLinha(l, sep);
+  return matriz.slice(1).map(c => {
     const o = {}; Object.keys(alias).forEach(k => o[k] = val(c, k));
     return o;
   });
 }
 
+function parseTabela(txt, alias, exigidas, permiteVazio){
+  return tabelaDeMatriz(matrizDeCSV(txt), alias, exigidas, permiteVazio);
+}
+
 function parseCSV(txt){
   return parseTabela(txt, ALIAS, ['inicio']).filter(r => r.inicio);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LEITURA DE .XLSX — direto, sem biblioteca externa
+   ──────────────────────────────────────────────────────────────────────
+   Um .xlsx é um ZIP com XMLs dentro. O navegador já sabe descompactar
+   (DecompressionStream) e ler XML (DOMParser), então dá para abrir a
+   planilha do Excel mantendo o painel em UM arquivo só, sem depender de
+   nada de fora e sem instalar nada na máquina.
+   ══════════════════════════════════════════════════════════════════════ */
+async function inflaRaw(bytes){
+  const fluxo = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(fluxo).arrayBuffer());
+}
+
+/** Abre o ZIP e devolve uma função que lê um arquivo interno como texto. */
+async function abreZip(buffer){
+  const dv = new DataView(buffer), u8 = new Uint8Array(buffer);
+  // o fim do diretório central fica no rodapé do arquivo; varre de trás
+  let fim = -1;
+  for (let i = u8.length - 22; i >= 0 && i > u8.length - 66000; i--){
+    if (dv.getUint32(i, true) === 0x06054b50){ fim = i; break; }
+  }
+  if (fim < 0) throw new Error('não parece um .xlsx (zip inválido)');
+
+  const total = dv.getUint16(fim + 10, true);
+  let p = dv.getUint32(fim + 16, true);
+  const itens = new Map();
+  for (let i = 0; i < total; i++){
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const metodo   = dv.getUint16(p + 10, true);
+    const tamComp  = dv.getUint32(p + 20, true);
+    const nomeLen  = dv.getUint16(p + 28, true);
+    const extraLen = dv.getUint16(p + 30, true);
+    const comLen   = dv.getUint16(p + 32, true);
+    const offset   = dv.getUint32(p + 42, true);
+    const nome = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nomeLen));
+    itens.set(nome, { metodo, tamComp, offset });
+    p += 46 + nomeLen + extraLen + comLen;
+  }
+
+  return async nome => {
+    const it = itens.get(nome);
+    if (!it) return null;
+    if (dv.getUint32(it.offset, true) !== 0x04034b50) throw new Error('zip corrompido');
+    const nl = dv.getUint16(it.offset + 26, true);
+    const el = dv.getUint16(it.offset + 28, true);
+    const ini = it.offset + 30 + nl + el;
+    const dados = u8.subarray(ini, ini + it.tamComp);
+    const cru = it.metodo === 0 ? dados : await inflaRaw(dados);
+    return new TextDecoder('utf-8').decode(cru);
+  };
+}
+
+const xmlDoc = txt => new DOMParser().parseFromString(txt, 'application/xml');
+
+/** "BC" -> 54. Célula traz a referência, e colunas vazias são puladas. */
+function colunaDeRef(ref){
+  let n = 0;
+  for (const ch of ref){
+    const c = ch.charCodeAt(0);
+    if (c < 65 || c > 90) break;
+    n = n * 26 + (c - 64);
+  }
+  return n - 1;
+}
+
+/** Serial do Excel -> "dd/mm/aaaa hh:mm".
+    O serial não tem fuso: usa getUTC* para não deslocar a hora digitada. */
+function dataDoSerial(n){
+  const d = new Date(Math.round((n - 25569) * 86400) * 1000);
+  if (isNaN(d)) return String(n);
+  return `${p2(d.getUTCDate())}/${p2(d.getUTCMonth()+1)}/${d.getUTCFullYear()} `
+       + `${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
+}
+
+/** Quais índices de estilo representam data (senão a data vira número). */
+function estilosDeData(xmlEstilos){
+  const doc = xmlDoc(xmlEstilos);
+  const embutido = id => (id >= 14 && id <= 22) || (id >= 45 && id <= 47) || id === 27 ||
+                         (id >= 30 && id <= 36) || (id >= 50 && id <= 58);
+  const proprios = new Map();
+  doc.querySelectorAll('numFmts > numFmt').forEach(f => {
+    const id = +f.getAttribute('numFmtId');
+    // tira textos entre aspas e blocos [..] antes de procurar marcas de data
+    const cod = (f.getAttribute('formatCode') || '').toLowerCase()
+                  .replace(/"[^"]*"/g, '').replace(/\[[^\]]*\]/g, '');
+    proprios.set(id, /[dmyh]/.test(cod));
+  });
+  const datas = new Set();
+  doc.querySelectorAll('cellXfs > xf').forEach((xf, i) => {
+    const id = +(xf.getAttribute('numFmtId') || 0);
+    if (embutido(id) || proprios.get(id)) datas.add(i);
+  });
+  return datas;
+}
+
+/** .xlsx -> matriz de células, já com as datas legíveis. */
+async function matrizDeXlsx(buffer){
+  const ler = await abreZip(buffer);
+
+  const textos = [];
+  const ss = await ler('xl/sharedStrings.xml');
+  if (ss) xmlDoc(ss).querySelectorAll('si').forEach(si => {
+    let t = ''; si.querySelectorAll('t').forEach(x => t += x.textContent);
+    textos.push(t);
+  });
+
+  const est = await ler('xl/styles.xml');
+  const datas = est ? estilosDeData(est) : new Set();
+
+  // lê a PRIMEIRA planilha do arquivo, seja qual for o nome dela
+  let alvo = 'xl/worksheets/sheet1.xml';
+  const wb = await ler('xl/workbook.xml'), rels = await ler('xl/_rels/workbook.xml.rels');
+  if (wb && rels){
+    const sh = xmlDoc(wb).querySelector('sheets > sheet');
+    const rid = sh && (sh.getAttribute('r:id') ||
+      sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id'));
+    if (rid){
+      const rel = [...xmlDoc(rels).querySelectorAll('Relationship')]
+                    .find(r => r.getAttribute('Id') === rid);
+      const t = rel && rel.getAttribute('Target');
+      if (t) alvo = 'xl/' + t.replace(/^\/?(xl\/)?/, '');
+    }
+  }
+  const folha = (await ler(alvo)) || (await ler('xl/worksheets/sheet1.xml'));
+  if (!folha) throw new Error('planilha não encontrada dentro do .xlsx');
+
+  const linhas = [];
+  xmlDoc(folha).querySelectorAll('sheetData > row').forEach(row => {
+    const cels = [];
+    row.querySelectorAll('c').forEach(c => {
+      const ref = c.getAttribute('r') || '';
+      const i = ref ? colunaDeRef(ref) : cels.length;
+      const tipo = c.getAttribute('t');
+      const estilo = +(c.getAttribute('s') || -1);
+      let v = '';
+      if (tipo === 'inlineStr'){
+        const is = c.querySelector('is'); v = is ? is.textContent : '';
+      } else {
+        const no = c.querySelector('v');
+        const bruto = no ? no.textContent : '';
+        if (tipo === 's')            v = textos[+bruto] || '';
+        else if (tipo === 'b')       v = bruto === '1' ? 'VERDADEIRO' : 'FALSO';
+        else if (bruto !== '' && datas.has(estilo) && !isNaN(+bruto)) v = dataDoSerial(+bruto);
+        else                         v = bruto;
+      }
+      cels[i] = (v || '').trim();
+    });
+    for (let i = 0; i < cels.length; i++) if (cels[i] === undefined) cels[i] = '';
+    linhas.push(cels);
+  });
+  return linhas.filter(l => l.some(x => x !== ''));   // fora as linhas em branco
+}
+
+/** .xlsx é um ZIP: começa com "PK\x03\x04". Farejar os bytes é mais
+    confiável que olhar a extensão — funciona com arquivo renomeado e com
+    caminho servido por rota sem extensão. */
+function ehZip(buffer){
+  if (!buffer || buffer.byteLength < 4) return false;
+  const u = new Uint8Array(buffer, 0, 4);
+  return u[0] === 0x50 && u[1] === 0x4b && u[2] === 0x03 && u[3] === 0x04;
+}
+
+/** Aplica uma lista de registros brutos, venha de onde vier. */
+function importarLinhas(lista){
+  if (!lista.length) throw new Error('Nenhum registro válido encontrado.');
+  carregaDados(lista);
+  if (!estado.registros.length)
+    throw new Error('Nenhuma data pôde ser interpretada. Confira o formato (dd/mm/aaaa).');
+  salvar();
+  render();
+  return estado.registros.length;
+}
+
+/** Planilha do Excel -> registros. */
+async function importarXlsx(buffer){
+  const matriz = await matrizDeXlsx(buffer);
+  return importarLinhas(tabelaDeMatriz(matriz, ALIAS, ['inicio']).filter(r => r.inicio));
 }
 
 function importar(txt){
@@ -1260,12 +1448,7 @@ function importar(txt){
   } else {
     lista = parseCSV(t);
   }
-  if (!lista.length) throw new Error('Nenhum registro válido encontrado.');
-  carregaDados(lista);
-  if (!estado.registros.length) throw new Error('Nenhuma data pôde ser interpretada. Confira o formato (dd/mm/aaaa).');
-  salvar();
-  render();
-  return estado.registros.length;
+  return importarLinhas(lista);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1502,6 +1685,14 @@ function marca(txt){
   return txt.length + ':' + h;
 }
 
+/** Mesma ideia da marca(), para conteúdo binário (.xlsx). */
+function marcaBytes(buf){
+  const u8 = new Uint8Array(buf);
+  let h = 5381;
+  for (let i = 0; i < u8.length; i++) h = ((h << 5) + h + u8[i]) | 0;
+  return u8.length + ':' + h;
+}
+
 /** Aplica o texto vindo da fonte, só se mudou desde a última leitura. */
 function aplicaTexto(txt){
   const m = marca(txt);
@@ -1525,9 +1716,34 @@ async function buscaTexto(caminho){
   return r.text();
 }
 
+/** Aplica uma planilha .xlsx, só se mudou desde a última leitura. */
+async function aplicaXlsx(buffer){
+  const m = marcaBytes(buffer);
+  if (m === Fonte.carimbo){ Fonte.lidoEm = new Date(); Fonte.erro = null; return 0; }
+  const qtd = await importarXlsx(buffer);
+  Fonte.lidoEm = new Date();
+  Fonte.carimbo = m;
+  Fonte.erro = null;
+  return qtd;
+}
+
+/** Busca um caminho sem cache, em bytes (planilha). */
+async function buscaBinario(caminho){
+  const url = caminho + (caminho.includes('?') ? '&' : '?') + 't=' + Date.now();
+  const r = await fetch(url, { cache:'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.arrayBuffer();
+}
+
+/** Decide sozinho entre planilha e texto, pelo conteúdo. */
+async function aplicaConteudo(buffer){
+  if (ehZip(buffer)) return aplicaXlsx(buffer);
+  return aplicaTexto(new TextDecoder('utf-8').decode(buffer));
+}
+
 /* ---- modo http: busca o caminho configurado ---- */
 async function leHttp(){
-  return aplicaTexto(await buscaTexto(CONFIG.arquivoDados));
+  return aplicaConteudo(await buscaBinario(CONFIG.arquivoDados));
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1656,12 +1872,11 @@ async function salvaHistorico(n){
    ──────────────────────────────────────────────────────────────────────
    O leitor USB age como teclado: encostou a tag, ele digita o código
    aqui. Capturamos, gravamos no log pelo servidor e recarregamos a frota
-   NA HORA (sem esperar o ciclo de 20 s), mostrando um aviso grande.
-   Tudo numa tela só, sem mouse e sem trocar de janela.
+   NA HORA (sem esperar o ciclo), mostrando um aviso grande. Tudo numa
+   tela só, sem mouse e sem trocar de janela.
    ══════════════════════════════════════════════════════════════════════ */
 let _avisoTimer = null, _avisoConta = null;
 
-/** Mostra o aviso grande e some sozinho. */
 function mostraAviso({ cor, titulo, detalhe, codigo, ate }){
   const el = $('aviso');
   el.style.setProperty('--c', cor);
@@ -1673,8 +1888,7 @@ function mostraAviso({ cor, titulo, detalhe, codigo, ate }){
   setTimeout(() => el.classList.remove('pisca'), 500);
 
   clearTimeout(_avisoTimer); clearInterval(_avisoConta);
-  // contagem regressiva só faz sentido quando falta a segunda leitura
-  if (ate){
+  if (ate){                       // contagem só quando falta a 2ª leitura
     const passo = () => {
       const resta = Math.max(0, Math.ceil((ate - Date.now())/1000));
       $('avisoN').textContent = resta + 's';
@@ -1692,7 +1906,7 @@ function escondeAviso(){
   $('avisoN').textContent = '';
 }
 
-/** Traz o quadro de veículos para a vista de quem acabou de encostar a tag. */
+/** Traz o quadro de veículos para a vista de quem encostou a tag. */
 function mostraFrota(){
   const sec = $('listaFrota') && $('listaFrota').closest('section');
   if (sec) sec.scrollIntoView({ behavior:'smooth', block:'center' });
@@ -1704,7 +1918,6 @@ let _ultimaLeitura = { tag:null, quando:0 };
 async function registraLeitura(tag){
   // 'momento', não 'agora': agora() é a função do relógio usada adiante
   const momento = Date.now();
-  // o leitor costuma disparar duas vezes na mesma encostada
   if (tag === _ultimaLeitura.tag && (momento - _ultimaLeitura.quando) < CONFIG.repetirBloqSeg*1000) return;
   _ultimaLeitura = { tag, quando:momento };
 
@@ -1731,7 +1944,6 @@ async function registraLeitura(tag){
   render();
   mostraFrota();
 
-  // conta a história a partir do estado real, recém-calculado
   const n = agora();
   const { lista, cracha } = calculaFrota(n);
   const janelaAte = ts => ts + CONFIG.esperaCrachaSeg*1000;
@@ -1755,7 +1967,6 @@ async function registraLeitura(tag){
     return;
   }
 
-  // crachá
   const emUso = lista.find(x => x.status === 'uso' && x.condutor && chaveTag(x.condutor.cracha||'') === chaveTag(tag));
   if (emUso){
     mostraAviso({ cor:'#22c55e', titulo:{txt:'Saída registrada', ico:'ok'},
@@ -1823,7 +2034,8 @@ async function leArquivoApontado(pedirPermissao){
   if (p !== 'granted'){ Fonte.precisaPermissao = true; throw new Error('permissão pendente'); }
   Fonte.precisaPermissao = false;
   const f = await h.getFile();
-  return aplicaTexto(await f.text());
+  Fonte.caminho = f.name;
+  return aplicaConteudo(await f.arrayBuffer());
 }
 
 /** Uma passada de leitura, conforme o modo ativo. Nunca lança. */
@@ -1856,20 +2068,25 @@ async function cicloDeLeitura(){
   agendaLeitura(Fonte.erro ? CONFIG.tentarDeNovoSeg : CONFIG.recarregarSeg);
 }
 
-/** Descobre a fonte no arranque. */
+/** Descobre a fonte no arranque.
+    O arquivo APONTADO pelo usuário tem prioridade e continua valendo em
+    todas as aberturas seguintes — foi uma escolha explícita, e trocá-la
+    em silêncio pelo caminho padrão faria o painel mostrar dado errado. */
 async function iniciaFonte(){
-  // 1) servido por http? tenta o caminho configurado
+  // 1) arquivo apontado numa sessão anterior manda, mesmo servido por http
+  const h = await Cofre.get('arquivo');
+  if (h){
+    Fonte.handle = h; Fonte.modo = 'arquivo'; Fonte.caminho = h.name;
+    try{ await leArquivoApontado(false); }
+    catch(e){ Fonte.erro = e.message; }
+    desenhaFonte();
+    return;
+  }
+  // 2) servido por http: usa o caminho configurado
   if (/^https?:$/.test(location.protocol) && CONFIG.arquivoDados){
     Fonte.modo = 'http'; Fonte.caminho = CONFIG.arquivoDados;
     try{ await leHttp(); desenhaFonte(); return; }
     catch(e){ Fonte.erro = e.message; }
-  }
-  // 2) arquivo apontado numa sessão anterior?
-  const h = await Cofre.get('arquivo');
-  if (h){
-    Fonte.handle = h; Fonte.modo = 'arquivo'; Fonte.caminho = h.name;
-    try{ await leArquivoApontado(false); desenhaFonte(); return; }
-    catch(e){ Fonte.erro = e.message; desenhaFonte(); return; }
   }
   // 3) nada: segue com a última cópia salva ou com os dados de exemplo
   Fonte.modo = 'exemplo';
@@ -1883,7 +2100,9 @@ async function apontarArquivo(){
     throw new Error('Este navegador não permite apontar arquivo. Use o Iniciar-Painel.bat.');
   const [h] = await window.showOpenFilePicker({
     multiple:false,
-    types:[{ description:'Lista de saídas', accept:{ 'text/csv':['.csv','.txt'], 'application/json':['.json'] } }],
+    types:[{ description:'Registros de saídas', accept:{
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx'],
+      'text/csv':['.csv','.txt'], 'application/json':['.json'] } }],
   });
   Fonte.handle = h; Fonte.modo = 'arquivo'; Fonte.caminho = h.name;
   await Cofre.set('arquivo', h);

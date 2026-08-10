@@ -21,8 +21,9 @@ $ErrorActionPreference = "Stop"
 
 $DataDir  = Join-Path $Root "dados"
 $DataFile = Join-Path $DataDir "saidas.csv"
-$HistFile = Join-Path $DataDir "historico.json"
+$HistFile  = Join-Path $DataDir "historico.json"
 $FrotaFile = Join-Path $DataDir "frota.csv"
+$FontePtr  = Join-Path $DataDir "fonte.txt"   # caminho do arquivo de saidas
 if (-not (Test-Path $DataDir)) { New-Item -ItemType Directory -Path $DataDir -Force | Out-Null }
 
 $mime = @{
@@ -67,7 +68,14 @@ Write-Host $sep -ForegroundColor Cyan
 Write-Host "  Powertrain - Monitor de Ausencias" -ForegroundColor Cyan
 Write-Host $sep -ForegroundColor Cyan
 Write-Host "  Painel : $Root"
-Write-Host "  Dados  : $DataFile"
+$mostraFonte = $DataFile
+if (Test-Path $FontePtr) {
+  $pt = (Get-Content -LiteralPath $FontePtr -ErrorAction SilentlyContinue |
+         Where-Object { $_.Trim() -ne "" -and -not $_.Trim().StartsWith("#") } |
+         Select-Object -First 1)
+  if ($pt) { $mostraFonte = $pt.Trim() }
+}
+Write-Host "  Saidas : $mostraFonte"
 Write-Host "  Frota  : $(Join-Path $DataDir 'frota.csv')"
 Write-Host "  Histor.: $HistFile"
 if (-not (Test-Path $DataFile)) {
@@ -94,10 +102,56 @@ while ($listener.IsListening) {
     $path = [System.Uri]::UnescapeDataString($req.Url.AbsolutePath)
     $now  = (Get-Date).ToString("HH:mm:ss")
 
+    # ---------- API: entrega o arquivo de saidas ----------
+    # O caminho vem do dados\fonte.txt (aponta uma vez, vale para sempre).
+    # Sem ele, cai para dados\saidas.xlsx e depois dados\saidas.csv.
+    # Le com FileShare::ReadWrite para funcionar mesmo com a planilha
+    # aberta no Excel por alguem da equipe.
+    if ($path -eq "/api/saidas" -and ($req.HttpMethod -eq "GET" -or $req.HttpMethod -eq "HEAD")) {
+      $alvo = ""
+      if (Test-Path $FontePtr) {
+        foreach ($l in (Get-Content -LiteralPath $FontePtr -ErrorAction SilentlyContinue)) {
+          $t = $l.Trim()
+          if ($t -ne "" -and -not $t.StartsWith("#")) { $alvo = $t; break }
+        }
+      }
+      if ($alvo -eq "" -or -not (Test-Path -LiteralPath $alvo -PathType Leaf)) {
+        $alvo = ""
+        foreach ($cand in @((Join-Path $DataDir "saidas.xlsx"), (Join-Path $DataDir "saidas.csv"))) {
+          if (Test-Path -LiteralPath $cand -PathType Leaf) { $alvo = $cand; break }
+        }
+      }
+      if ($alvo -eq "") {
+        $ctx.Response.StatusCode = 404
+        $m = [System.Text.Encoding]::UTF8.GetBytes("nenhum arquivo de saidas encontrado")
+        $ctx.Response.OutputStream.Write($m, 0, $m.Length)
+        Write-Host "[$now] saidas: nenhum arquivo encontrado" -ForegroundColor Yellow
+      } else {
+        try {
+          $fsr = [System.IO.File]::Open($alvo, [System.IO.FileMode]::Open,
+                   [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+          $bytes = New-Object byte[] $fsr.Length
+          [void]$fsr.Read($bytes, 0, $bytes.Length)
+          $fsr.Close()
+          $ctx.Response.StatusCode = 200
+          $ctx.Response.ContentType = "application/octet-stream"
+          $ctx.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+          $ctx.Response.ContentLength64 = $bytes.Length
+          $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
+        } catch {
+          # planilha travada no meio de uma gravacao: o painel mantem a ultima leitura
+          $ctx.Response.StatusCode = 503
+          Write-Host "[$now] saidas ocupado, tenta de novo no proximo ciclo" -ForegroundColor Yellow
+        }
+      }
+      $ctx.Response.OutputStream.Close()
+      continue
+    }
+
     # ---------- API: registra uma leitura do RFID ----------
-    # O painel captura o que o leitor "digita" e manda a tag
-    # aqui. O carimbo de hora e do servidor, para nao depender do relogio
-    # do PC do leitor. So acrescenta linha: nunca reescreve o log.
+    # O painel captura o que o leitor "digita" e manda a tag aqui. O
+    # carimbo de hora e do servidor, para nao depender do relogio de
+    # quem le. So acrescenta linha: nunca reescreve o log.
     if ($path -eq "/api/leitura" -and $req.HttpMethod -eq "POST") {
       $sr = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
       $tag = $sr.ReadToEnd(); $sr.Close()

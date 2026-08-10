@@ -13,7 +13,8 @@ powertrain-ausencias\
 ├── Iniciar-Painel.bat  duplo clique no PC do monitor
 ├── servir.ps1          servidor local (chamado pelo .bat)
 └── dados\
-    ├── saidas.csv      ← ausências (export do SharePoint)
+    ├── fonte.txt       ← caminho do arquivo de saídas (aponte aqui, uma vez)
+    ├── saidas.csv      ← ausências, se não usar o fonte.txt
     ├── frota.csv       ← log do leitor RFID (uma linha por tag lida)
     ├── pessoas.csv     ← cadastro crachá -> nome
     ├── veiculos.json   ← cadastro dos carros (tag, placa, modelo)
@@ -60,10 +61,43 @@ compartilhar, tudo bem — só mantenha **um** PC rodando o `.bat`.
 O layout é dimensionado para **1440 × 2560**. Quando o conteúdo passa da altura da tela, o
 painel rola sozinho devagar (ida e volta) e pausa 45 s se alguém mexer no mouse.
 
-## Atualizar os dados
+## De onde vêm os registros de saída
 
-**No SharePoint:** *Exportar → Exportar para CSV*. Salve por cima de `dados\saidas.csv`.
-Em até 1 hora o painel se atualiza sozinho. Só isso.
+Aceita **.xlsx (Excel)** e **.csv** — o painel reconhece o formato pelo conteúdo do arquivo, não
+pela extensão. Datas do Excel viram data de verdade, e célula deixada em branco não desloca as
+colunas.
+
+### Apontar o arquivo uma vez
+
+Abra **`dados\fonte.txt`** no Bloco de Notas e cole numa linha o caminho completo do arquivo
+onde a equipe registra as saídas:
+
+```
+C:\Users\sb026431\OneDrive - Honda\05 - ETG\Registros de saidas.xlsx
+```
+
+> Para pegar o caminho sem digitar: no Explorer, **Shift + botão direito** no arquivo →
+> *"Copiar como caminho"*, cole e **tire as aspas**.
+
+Pronto — o painel busca **sempre nesse mesmo lugar**, inclusive depois de reiniciar o PC, e sem
+pedir clique nenhum (o monitor não tem mouse). Vale para caminho local ou de rede (`\\servidor\...`).
+
+Sem preencher o `fonte.txt`, o painel usa `dados\saidas.xlsx` ou `dados\saidas.csv` da própria
+pasta.
+
+**A planilha pode ficar aberta no Excel** enquanto alguém edita: o servidor lê em modo
+compartilhado. Se pegar o arquivo travado no meio de uma gravação, mantém a última leitura boa
+na tela e tenta de novo no ciclo seguinte.
+
+O painel relê de hora em hora. Precisa ver na hora? ⚙ → **Reler agora**. Para mudar o ritmo,
+`recarregarSeg` no `CONFIG` (3600 = 1 h, 1800 = 30 min, 300 = 5 min).
+
+### Alternativa: escolher pelo ⚙
+
+⚙ → **Apontar arquivo…** abre o seletor do Windows. O painel guarda a escolha e ela passa a
+**ter prioridade** sobre o `fonte.txt` em todas as aberturas seguintes. A ressalva: ao reabrir o
+navegador, o Chrome pede um clique para devolver a permissão — por isso, **no monitor da parede
+prefira o `fonte.txt`**, que nunca pede nada.
 
 Precisa ver a mudança na hora, sem esperar o ciclo? ⚙ → **Reler agora**. E para mudar o ritmo,
 `recarregarSeg` no `CONFIG` (em segundos: 3600 = 1 h, 1800 = 30 min, 300 = 5 min).
@@ -72,7 +106,7 @@ O cabeçalho mostra o tempo todo de onde os dados vieram e a que horas foram lid
 
 | Cor | Significa |
 |---|---|
-| 🟢 `dados/saidas.csv · lido às 14:32` | lendo normalmente |
+| 🟢 `api/saidas · lido às 14:32` | lendo normalmente |
 | 🔴 `FALHA AO LER — …` | não conseguiu ler; a tela segue com a **última leitura boa** |
 | 🟡 `DADOS DE EXEMPLO` | nenhuma fonte definida ainda |
 
@@ -265,7 +299,7 @@ No bloco `CONFIG`, no início do `index.html`:
 
 | Campo | O que faz |
 |---|---|
-| `arquivoDados` | Caminho das ausências, lido continuamente. Aceita subpasta ou URL completa. |
+| `arquivoDados` | Onde buscar as saídas. `api/saidas` deixa o servidor resolver pelo `fonte.txt`. |
 | `arquivoFrota` / `arquivoPessoas` | Log do leitor RFID e cadastro de crachás. |
 | `apiHistorico` | Rota do servidor que grava `dados/historico.json`. |
 | `frotaRecarregarSeg` | Ciclo do quadro de veículos (padrão 20 s). |

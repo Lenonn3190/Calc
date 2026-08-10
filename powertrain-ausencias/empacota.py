@@ -20,6 +20,8 @@ ARQUIVOS = [
     'dados/frota.csv',
     'dados/pessoas.csv',
     'dados/veiculos.json',
+    'dados/fonte.txt',
+    'dados/veiculos.json',
     'dados/historico.json',
 ]
 COM_BOM = {'dados/saidas.csv', 'dados/frota.csv', 'dados/pessoas.csv'}
