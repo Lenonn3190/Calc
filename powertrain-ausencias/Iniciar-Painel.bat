@@ -10,6 +10,9 @@ REM  O painel le a planilha dados\saidas.csv sozinho, de tempos em
 REM  tempos: e so salvar o CSV atualizado por cima naquela pasta
 REM  que a tela muda sozinha. Nao precisa importar nada.
 REM
+REM  O painel abre em MODO QUIOSQUE do Edge, na SEGUNDA tela.
+REM  Para sair do quiosque: Ctrl+W ou Alt+F4.
+REM
 REM  Nao precisa de administrador. Se quiser que OUTROS PCs da rede
 REM  tambem abram o painel, rode este arquivo como administrador
 REM  (botao direito > Executar como administrador).
@@ -33,15 +36,9 @@ if %errorlevel% equ 0 (
   )
 )
 
-REM --- Abre o navegador em quiosque (tela cheia) apos o servidor subir ---
-start "" powershell -NoProfile -Command ^
-  "Start-Sleep -Seconds 2; " ^
-  "$u='http://localhost:8090/'; " ^
-  "$edge=\"$env:ProgramFiles(x86)\Microsoft\Edge\Application\msedge.exe\"; " ^
-  "if (Test-Path $edge) { Start-Process $edge -ArgumentList \"--kiosk $u --edge-kiosk-type=fullscreen --no-first-run\" } else { Start-Process $u }"
-
-REM --- Sobe o servidor (esta janela fica aberta enquanto o painel roda) ---
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0servir.ps1" -Port 8090
+REM --- Sobe o servidor; ele abre o painel em quiosque na 2a tela ---
+REM  Se abrir na tela errada, troque -Monitor 2 por 1 ou 3 abaixo.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0servir.ps1" -Port 8090 -OpenBrowser -Monitor 2
 
 echo.
 echo Painel encerrado.

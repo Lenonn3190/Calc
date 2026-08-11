@@ -10,6 +10,8 @@ node testes/e2e-frota.js    leitor gravando no log, painel reagindo
 node testes/historico.js    geração do historico.json
 node testes/fonte.js        releitura do arquivo, falha e recuperação
 node testes/ciclo.js        ritmo de 1 h e retentativa em 1 min
+node testes/qr.js           QR do condutor, decodificado da tela com jsQR
+node testes/blocos.js       recolher/esconder blocos e a memória da escolha
 node testes/pacote.js       o .zip extraído, como o usuário recebe
 python3 testes/servidor.py  estrutura do servir.ps1 (não há PowerShell aqui)
 ```
@@ -19,4 +21,6 @@ ambiente: ele confere que as rotas que o painel chama continuam no script.
 Uma rota inteira já se perdeu numa edição sem ninguém notar, porque os
 testes de navegador usam um servidor Node equivalente e não tocam no `.ps1`.
 
-Precisam de `playwright-core` e do Chromium do ambiente.
+Precisam de `playwright-core` e do Chromium do ambiente. O `qr.js` também usa `jsqr`
+(`npm i jsqr`): ele **decodifica** o QR desenhado na tela, provando que um celular consegue ler
+— gerar um QR sem conferir a leitura seria entregar às cegas.

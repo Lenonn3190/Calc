@@ -13,7 +13,8 @@ param(
   [int]$Port = 8090,
   [string]$Root = $PSScriptRoot,
   [switch]$LocalOnly,
-  [switch]$OpenBrowser
+  [switch]$OpenBrowser,
+  [int]$Monitor = 2       # em qual tela abrir o painel (1 = principal)
 )
 
 $ErrorActionPreference = "Stop"
@@ -91,7 +92,51 @@ Write-Host "  Para parar: feche esta janela." -ForegroundColor DarkGray
 Write-Host $sep -ForegroundColor Cyan
 Write-Host ""
 
-if ($OpenBrowser) { try { Start-Process "http://localhost:$Port/" } catch {} }
+# ============================================================
+#  Abre o painel em quiosque no Edge, na tela escolhida.
+#  A ordem de AllScreens nem sempre bate com a numeracao que o
+#  Windows mostra em Configuracoes > Video: se abrir na tela
+#  errada, troque -Monitor 2 por 1 ou 3 no Iniciar-Painel.bat.
+# ============================================================
+function Get-TelaBounds([int]$n) {
+  try {
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+    $telas = @([System.Windows.Forms.Screen]::AllScreens)
+    if ($n -ge 1 -and $n -le $telas.Count) { return $telas[$n - 1].Bounds }
+    Write-Host "  So existe(m) $($telas.Count) tela(s): abrindo na principal." -ForegroundColor Yellow
+    return $telas[0].Bounds
+  } catch { return $null }
+}
+
+function Abrir-Painel([string]$url, [int]$n) {
+  $edge = $null
+  foreach ($c in @("$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
+                   "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe")) {
+    if (Test-Path $c) { $edge = $c; break }
+  }
+  if (-not $edge) {
+    Write-Host "  Edge nao encontrado: abrindo no navegador padrao." -ForegroundColor Yellow
+    try { Start-Process $url } catch {}
+    return
+  }
+  # perfil proprio: sem ele o Edge reaproveita a janela ja aberta e
+  # ignora a posicao, caindo na tela errada
+  $perfil = Join-Path $env:LOCALAPPDATA "PowertrainMonitor"
+  $lista = @("--kiosk", $url, "--edge-kiosk-type=fullscreen", "--no-first-run",
+             "--disable-session-crashed-bubble", "--noerrdialogs",
+             "--user-data-dir=$perfil")
+  $b = Get-TelaBounds $n
+  if ($b) {
+    $lista += "--window-position=$($b.X),$($b.Y)"
+    $lista += "--window-size=$($b.Width),$($b.Height)"
+    Write-Host "  Abrindo na tela $n  ($($b.Width)x$($b.Height) em $($b.X),$($b.Y))" -ForegroundColor Green
+  }
+  try { Start-Process $edge -ArgumentList $lista } catch {
+    Write-Host "  Falha ao abrir o Edge: $($_.Exception.Message)" -ForegroundColor Yellow
+  }
+}
+
+if ($OpenBrowser) { Abrir-Painel "http://localhost:$Port/" $Monitor }
 
 $rootFull = [System.IO.Path]::GetFullPath($Root)
 

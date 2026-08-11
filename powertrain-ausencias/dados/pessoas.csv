@@ -1,11 +1,11 @@
-ID;Nome;Departamento
-CR-0421;Thiego Ferreira;NMG
-CR-0107;Jefferson Vilela;OUTSOURCE
-CR-0233;Nelton M Borges;I/H
-CR-0318;Lenonn;I/H
-CR-0092;Marco Túlio;I/H
-CR-0455;Carlos Eduardo;NMG
-CR-0501;William Nakahara;I/H
-CR-0144;Erick;I/H
-CR-0276;Douglas Marciano;OUTSOURCE
-CR-0388;Agenor Rodrigo;I/H
+ID;Nome;Departamento;Telefone
+CR-0421;Thiego Ferreira;NMG;19 99123-4567
+CR-0107;Jefferson Vilela;OUTSOURCE;19 99234-5678
+CR-0233;Nelton M Borges;I/H;19 99345-6789
+CR-0318;Lenonn;I/H;19 99456-7890
+CR-0092;Marco Túlio;I/H;19 99567-8901
+CR-0455;Carlos Eduardo;NMG;19 99678-9012
+CR-0501;William Nakahara;I/H;19 99789-0123
+CR-0144;Erick;I/H;19 99890-1234
+CR-0276;Douglas Marciano;OUTSOURCE;19 99901-2345
+CR-0388;Agenor Rodrigo;I/H;19 99012-3456

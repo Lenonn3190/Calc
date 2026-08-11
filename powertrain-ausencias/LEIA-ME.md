@@ -25,10 +25,20 @@ powertrain-ausencias\
 
 1. Copie a pasta inteira para o PC ligado ao monitor (ou para uma pasta de rede).
 2. Gire o monitor: **Configurações → Sistema → Vídeo → Orientação da tela → Retrato**.
-3. Duplo clique em **`Iniciar-Painel.bat`**. Ele sobe o servidor e abre o painel em tela cheia.
+3. Duplo clique em **`Iniciar-Painel.bat`**. Ele sobe o servidor e abre o painel em **modo
+   quiosque do Edge, na segunda tela**. Para sair do quiosque: **Ctrl+W** ou **Alt+F4**.
 4. Para subir junto com o Windows: atalho do `.bat` dentro de `shell:startup`.
 
 Deixe a janela preta do servidor aberta — é ela que mantém o painel no ar.
+
+**Abriu na tela errada?** A numeração que o Windows usa nem sempre bate com a ordem que o
+sistema entrega para os programas. Abra o `Iniciar-Painel.bat` no Bloco de Notas e troque o
+`-Monitor 2` por `1` ou `3`, na última linha. A janela preta informa em qual tela abriu e com
+que tamanho, o que ajuda a acertar.
+
+O painel usa um **perfil próprio do Edge** (em `%LOCALAPPDATA%\PowertrainMonitor`). Sem isso o
+Edge reaproveitaria uma janela já aberta e ignoraria a tela escolhida — e o painel ainda mexeria
+nas abas de quem usa o PC.
 
 ### "O fornecedor não pôde ser verificado" ao abrir o .bat
 
@@ -269,6 +279,31 @@ no aviso (*"código lido: ..."*). Depois é só preencher o `dados/pessoas.csv`.
 não estiver cadastrado, o painel mostra o próprio número e marca *"crachá fora do cadastro"* —
 não trava nada.
 
+### QR do condutor — falar por WhatsApp
+
+Quando um carro está **em uso**, o card mostra um **QR code**. Quem apontar a câmera do celular
+cai direto na **conversa do WhatsApp com o condutor**, já com uma mensagem escrita:
+
+> Olá Thiego Ferreira, sobre o Honda Civic (GDT-9J40)
+
+O telefone vem da coluna **Telefone** do `dados/pessoas.csv`:
+
+```
+ID;Nome;Departamento;Telefone
+CR-0421;Thiego Ferreira;NMG;19 99123-4567
+```
+
+Pode digitar como preferir — `19991234567`, `(19) 99123-4567`, `+55 19 99123-4567` — o painel
+normaliza. Números de 10 ou 11 dígitos ganham o **55** do Brasil automaticamente; para outro
+país, escreva o DDI.
+
+Sem telefone cadastrado, o card avisa *"sem telefone no cadastro"* em vez de mostrar um QR que
+não levaria a lugar nenhum.
+
+Para desligar o QR, `qrCondutor: false` no `CONFIG`. Para mudar a mensagem, `mensagemWhats` —
+`{nome}`, `{modelo}` e `{placa}` são trocados na hora; deixe vazio para abrir a conversa sem
+texto nenhum.
+
 ### Histórico de uso — `dados/historico.json`
 
 O painel grava sozinho o histórico das viagens nesse arquivo, na mesma pasta, sempre que algo
@@ -323,6 +358,8 @@ No bloco `CONFIG`, no início do `index.html`:
 | `usoReferenciaHoras` | Escala da barra de tempo; acima disso o card fica vermelho (padrão 8 h). |
 | `semCrachaViraUso` | Sem crachá no prazo: `true` marca em uso sem condutor, `false` mantém disponível. |
 | `veiculos` | Cadastro dos carros: tag, modelo, ano, cor, placa, tipo (`suv`/`sedan`) e apelidos de tag. |
+| `qrCondutor` | `false` tira o QR de WhatsApp do card do carro. |
+| `mensagemWhats` | Texto já preenchido na conversa. Aceita `{nome}`, `{modelo}` e `{placa}`. |
 | `recarregarSeg` | De quanto em quanto tempo reler o arquivo (padrão 3600 s = 1 hora). |
 | `tentarDeNovoSeg` | Prazo curto para tentar de novo quando a leitura falha (padrão 60 s). |
 | `efetivoTotal` | Efetivo do Powertrain — base do indicador de **Presença (%)**. Ajuste para o número real. |

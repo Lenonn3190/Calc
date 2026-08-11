@@ -194,7 +194,21 @@ header.top::after{content:"";position:absolute;inset:0;pointer-events:none;
   padding:.28rem .75rem;border-radius:2rem;font-size:.78rem;font-weight:800;letter-spacing:.7px;
   background:var(--c);color:#08101f;box-shadow:0 6px 18px -8px var(--c)}
 .veic .selo svg{width:.9rem;height:.9rem}
-.veic .corpo{grid-column:1/-1;margin-top:.35rem;display:flex;flex-direction:column;gap:.5rem}
+/* corpo: texto à esquerda, QR do condutor à direita */
+.veic .corpo{grid-column:1/-1;margin-top:.35rem;display:flex;align-items:flex-start;gap:1rem}
+.veic .linhas{flex:1;min-width:0;display:flex;flex-direction:column;gap:.5rem}
+.veic .qr{flex:none;width:7.4rem;text-align:center}
+.veic .qr .cod{width:7.4rem;height:7.4rem;border-radius:.55rem;overflow:hidden;
+  background:#fff;padding:.25rem;box-shadow:0 6px 16px -8px #000}
+.veic .qr .cod svg{width:100%;height:100%;display:block}
+.veic .qr .rot{display:flex;align-items:center;justify-content:center;gap:.3rem;
+  font-size:.68rem;font-weight:800;color:#25d366;margin-top:.35rem;line-height:1.2}
+.veic .qr .rot svg{width:.85rem;height:.85rem;flex:none}
+.veic .qr .num{font-size:.72rem;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.veic .qr.vazio .semfone{display:flex;flex-direction:column;align-items:center;gap:.35rem;
+  font-size:.68rem;font-weight:700;color:var(--faint);text-align:center;line-height:1.25;
+  border:1px dashed var(--line-2);border-radius:.55rem;padding:.9rem .5rem}
+.veic .qr.vazio .semfone svg{width:1.3rem;height:1.3rem;opacity:.6}
 .veic .lin{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:700;flex-wrap:wrap}
 .veic .lin svg{width:1rem;height:1rem;color:var(--faint);flex:none}
 .veic .lin .fraco{color:var(--muted);font-weight:600}
@@ -446,6 +460,12 @@ const CONFIG = {
   esperaCrachaSeg: 120,    // prazo para o crachá chegar depois da tag do carro
   usoReferenciaHoras: 8,   // escala da barra de tempo decorrido (passou disso, fica vermelha)
 
+  /* QR do card do carro: ao ler, o WhatsApp abre já na conversa com o
+     condutor. {nome}, {modelo} e {placa} são trocados na hora. Deixe
+     mensagemWhats vazio para abrir a conversa sem texto nenhum. */
+  qrCondutor:    true,
+  mensagemWhats: 'Olá {nome}, sobre o {modelo} ({placa})',
+
   /* Sem crachá dentro do prazo, o que fazer com o carro?
      true  = considera EM USO com "condutor não identificado" (a tag do carro
              foi passada, então provavelmente ele saiu — mais seguro no quadro)
@@ -546,13 +566,6 @@ const DADOS = [
     <div class="scroller" id="scrAusentes"><div class="cards" id="listaAusentes"></div></div>
   </section>
 
-  <section class="panel" data-bloco="ocupacao" data-nome="Ocupação (14 dias)">
-    <h2>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
-      Ocupação — próximos <span id="tlDias">14</span> dias
-    </h2>
-    <div class="tl"><div class="tl-grid" id="timeline"></div></div>
-  </section>
 
   <section class="panel" data-bloco="proximas" data-nome="Próximas saídas">
     <h2>
@@ -560,6 +573,14 @@ const DADOS = [
       Próximas saídas <span class="n" id="nProximas">0</span>
     </h2>
     <div class="scroller" id="scrProximas"><div class="rows" id="listaProximas"></div></div>
+  </section>
+
+  <section class="panel" data-bloco="ocupacao" data-nome="Ocupação (14 dias)">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+      Ocupação — próximos <span id="tlDias">14</span> dias
+    </h2>
+    <div class="tl"><div class="tl-grid" id="timeline"></div></div>
   </section>
 
   <section class="panel" data-bloco="retornos" data-nome="Retornos previstos">
@@ -769,6 +790,7 @@ const ICO = {
   vazio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M9 15l2 2 4-4"/></svg>',
   cracha:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M9 2h6v4H9z"/><circle cx="9" cy="13" r="2"/><path d="M14 12h4M14 16h3M5.5 17.5c.7-1.4 2-2 3.5-2s2.8.6 3.5 2"/></svg>',
   key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.5 12.5 20 3l1.5 1.5-1.5 1.5 1.5 1.5-2 2-1.5-1.5-2 2"/></svg>',
+  whats:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 1.67c2.2 0 4.27.86 5.82 2.42a8.19 8.19 0 0 1 2.42 5.82c0 4.54-3.7 8.24-8.25 8.24a8.23 8.23 0 0 1-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.26-8.24M8.53 7.33c-.16 0-.43.06-.66.31-.22.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.46-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.07-.1-.22-.16-.47-.28-.25-.12-1.47-.72-1.69-.81-.23-.08-.4-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.07-.25-.13-1.06-.39-2.01-1.24-.74-.66-1.24-1.48-1.39-1.73-.14-.24-.01-.37.11-.49.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.84-.2-.48-.4-.42-.56-.43z"/></svg>',
 };
 const icoTransporte = t => norm(t).startsWith('avi') ? ICO.aviao : (norm(t).startsWith('car') ? ICO.carro : '');
 
@@ -1072,6 +1094,30 @@ function decorridoTxt(ms){
   return Math.floor(min/60) + ' h ' + p2(min%60);
 }
 
+/** QR que abre a conversa do WhatsApp com o condutor.
+    Sem telefone cadastrado, o card avisa em vez de mostrar um QR quebrado. */
+function qrDoCondutor(c, v){
+  if (!CONFIG.qrCondutor) return '';
+  const fone = foneWhats(c.telefone);
+  if (!fone){
+    const motivo = c.semCracha ? 'condutor não identificado'
+                 : c.naoCadastrado ? 'crachá fora do cadastro'
+                 : 'sem telefone no cadastro';
+    return `<div class="qr vazio"><div class="semfone">${ICO.cracha}${motivo}</div></div>`;
+  }
+  const msg = (CONFIG.mensagemWhats || '')
+    .replace('{nome}', c.nome || '').replace('{modelo}', v.modelo || '').replace('{placa}', v.placa || '');
+  const url = 'https://wa.me/' + fone + (msg ? '?text=' + encodeURIComponent(msg) : '');
+  let svg;
+  try{ svg = qrSVG(url, { cor:'#08101f', fundo:'#ffffff', margem:2 }); }
+  catch(e){ return ''; }
+  return `<div class="qr">
+      <div class="cod">${svg}</div>
+      <div class="rot">${ICO.whats}Falar com o condutor</div>
+      <div class="num">${esc(foneBonito(c.telefone))}</div>
+    </div>`;
+}
+
 function desenhaFrota(){
   const alvo = document.getElementById('listaFrota');
   const cont = document.getElementById('nFrota');
@@ -1113,9 +1159,10 @@ function desenhaFrota(){
     const estourou = e.status === 'uso' && pct >= 100;
     const cor = estourou ? '#ef4444' : st.cor;
 
-    let corpo;
+    let corpo, qr = '';
     if (e.status === 'uso'){
       const c = e.condutor || {};
+      qr = qrDoCondutor(c, v);
       const alerta = c.semCracha
         ? `<span class="tagm">crachá não passou</span>`
         : (c.naoCadastrado ? `<span class="tagm">crachá fora do cadastro</span>` : '');
@@ -1161,9 +1208,12 @@ function desenhaFrota(){
         <div class="selo">${st.ico} ${st.rot}</div>
       </div>
       <div class="corpo">
-        ${corpo}
-        <div class="bar2"><i style="width:${Math.max(2,pct)}%"></i></div>
-        <div class="pe">${rodape}</div>
+        <div class="linhas">
+          ${corpo}
+          <div class="bar2"><i style="width:${Math.max(2,pct)}%"></i></div>
+          <div class="pe">${rodape}</div>
+        </div>
+        ${qr}
       </div>
     </div>`;
   }).join('');
@@ -1493,6 +1543,209 @@ function importar(txt){
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   QR CODE — gerador mínimo, modo byte, correção M, versões 1 a 6
+   ──────────────────────────────────────────────────────────────────────
+   Cabe o suficiente para uma URL do WhatsApp (v6 = 106 caracteres) e
+   dispensa a tabela de "version info", que só existe da versão 7 em
+   diante. Sem biblioteca externa: o painel continua em um arquivo só.
+   ══════════════════════════════════════════════════════════════════════ */
+function geraQR(texto){
+  /* -- corpo finito GF(256) para o Reed-Solomon -- */
+  const EXP = new Array(512), LOG = new Array(256);
+  for (let i = 0, x = 1; i < 255; i++){ EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+  for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+  const mul = (a, b) => (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]];
+
+  const gerador = n => {
+    let p = [1];
+    for (let i = 0; i < n; i++){
+      const q = new Array(p.length + 1).fill(0);
+      for (let j = 0; j < p.length; j++){ q[j] ^= p[j]; q[j + 1] ^= mul(p[j], EXP[i]); }
+      p = q;
+    }
+    return p;
+  };
+  const resto = (dados, n) => {
+    const g = gerador(n), r = new Array(n).fill(0);
+    for (const b of dados){
+      const f = b ^ r[0];
+      r.shift(); r.push(0);
+      if (f) for (let i = 0; i < n; i++) r[i] ^= mul(g[i + 1], f);
+    }
+    return r;
+  };
+
+  /* -- tabelas: [codewords de correção por bloco, [qtd blocos, dados por bloco], ...] -- */
+  const VERSOES = {
+    1:{ ec:10, blocos:[[1,16]] },  2:{ ec:16, blocos:[[1,28]] },
+    3:{ ec:26, blocos:[[1,44]] },  4:{ ec:18, blocos:[[2,32]] },
+    5:{ ec:24, blocos:[[2,43]] },  6:{ ec:16, blocos:[[4,27]] },
+  };
+  const ALINHA = { 1:[], 2:[6,18], 3:[6,22], 4:[6,26], 5:[6,30], 6:[6,34] };
+  // formato (nível M) já com máscara aplicada, para cada uma das 8 máscaras
+  const FORMATO = ['101010000010010','101000100100101','101111001111100','101101101001011',
+                   '100010111111001','100000011001110','100111110010111','100101010100000'];
+
+  const bytes = [...new TextEncoder().encode(texto)];
+
+  let versao = 0, cfg = null, totalDados = 0;
+  for (let v = 1; v <= 6; v++){
+    const c = VERSOES[v];
+    const total = c.blocos.reduce((t, [q, d]) => t + q * d, 0);
+    if (bytes.length + 2 <= total){ versao = v; cfg = c; totalDados = total; break; }
+  }
+  if (!versao) throw new Error('texto longo demais para o QR (máx. 106 caracteres)');
+
+  /* -- fluxo de bits: modo 0100, tamanho em 8 bits, dados, terminador -- */
+  const bits = [];
+  const põe = (valor, n) => { for (let i = n - 1; i >= 0; i--) bits.push((valor >> i) & 1); };
+  põe(0b0100, 4);
+  põe(bytes.length, 8);
+  bytes.forEach(b => põe(b, 8));
+  for (let i = 0; i < 4 && bits.length < totalDados * 8; i++) bits.push(0);
+  while (bits.length % 8) bits.push(0);
+  const dados = [];
+  for (let i = 0; i < bits.length; i += 8) dados.push(parseInt(bits.slice(i, i + 8).join(''), 2));
+  const ENCHE = [0xEC, 0x11];
+  for (let i = 0; dados.length < totalDados; i++) dados.push(ENCHE[i % 2]);
+
+  /* -- divide em blocos, calcula correção e intercala -- */
+  const blocosDados = [], blocosEc = [];
+  let p = 0;
+  cfg.blocos.forEach(([qtd, porBloco]) => {
+    for (let i = 0; i < qtd; i++){
+      const d = dados.slice(p, p + porBloco); p += porBloco;
+      blocosDados.push(d);
+      blocosEc.push(resto(d, cfg.ec));
+    }
+  });
+  const fluxo = [];
+  const maxD = Math.max(...blocosDados.map(b => b.length));
+  for (let i = 0; i < maxD; i++) blocosDados.forEach(b => { if (i < b.length) fluxo.push(b[i]); });
+  for (let i = 0; i < cfg.ec; i++) blocosEc.forEach(b => fluxo.push(b[i]));
+
+  /* -- monta a matriz -- */
+  const N = 17 + versao * 4;
+  const m = Array.from({length:N}, () => new Array(N).fill(null));   // null = livre
+  const põeMod = (r, c, v) => { if (r >= 0 && r < N && c >= 0 && c < N) m[r][c] = v; };
+
+  const localizador = (lr, lc) => {
+    for (let r = -1; r <= 7; r++) for (let c = -1; c <= 7; c++){
+      const dentro = r >= 0 && r <= 6 && c >= 0 && c <= 6;
+      const preto = dentro && (r === 0 || r === 6 || c === 0 || c === 6 ||
+                               (r >= 2 && r <= 4 && c >= 2 && c <= 4));
+      põeMod(lr + r, lc + c, preto ? 1 : 0);
+    }
+  };
+  localizador(0, 0); localizador(0, N - 7); localizador(N - 7, 0);
+
+  for (let i = 8; i < N - 8; i++){                     // linhas de tempo
+    m[6][i] = i % 2 === 0 ? 1 : 0;
+    m[i][6] = i % 2 === 0 ? 1 : 0;
+  }
+  ALINHA[versao].forEach(r => ALINHA[versao].forEach(c => {
+    if (m[r][c] !== null) return;                      // não pisa nos localizadores
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++)
+      m[r + dr][c + dc] = (Math.abs(dr) === 2 || Math.abs(dc) === 2 || (dr === 0 && dc === 0)) ? 1 : 0;
+  }));
+  m[N - 8][8] = 1;                                     // módulo sempre preto
+
+  // reserva a área do formato
+  const reserva = [];
+  for (let i = 0; i < 9; i++){
+    if (m[8][i] === null){ m[8][i] = 0; reserva.push([8, i]); }
+    if (m[i][8] === null){ m[i][8] = 0; reserva.push([i, 8]); }
+  }
+  for (let i = N - 8; i < N; i++){
+    if (m[8][i] === null){ m[8][i] = 0; reserva.push([8, i]); }
+    if (m[i][8] === null){ m[i][8] = 0; reserva.push([i, 8]); }
+  }
+  const reservado = new Set(reserva.map(([r, c]) => r + ',' + c));
+  const eFormato = (r, c) => reservado.has(r + ',' + c);
+
+  /* -- percurso em ziguezague, de baixo para cima -- */
+  const livre = [];
+  let subindo = true;
+  for (let col = N - 1; col > 0; col -= 2){
+    if (col === 6) col--;                              // pula a coluna de tempo
+    for (let i = 0; i < N; i++){
+      const r = subindo ? N - 1 - i : i;
+      for (const c of [col, col - 1]) if (m[r][c] === null && !eFormato(r, c)) livre.push([r, c]);
+    }
+    subindo = !subindo;
+  }
+  const bitsFluxo = [];
+  fluxo.forEach(b => { for (let i = 7; i >= 0; i--) bitsFluxo.push((b >> i) & 1); });
+  livre.forEach(([r, c], i) => { m[r][c] = i < bitsFluxo.length ? bitsFluxo[i] : 0; });
+
+  /* -- máscaras e escolha pela menor penalidade -- */
+  const MASCARAS = [
+    (r,c)=>(r+c)%2===0, (r,c)=>r%2===0, (r,c)=>c%3===0, (r,c)=>(r+c)%3===0,
+    (r,c)=>(Math.floor(r/2)+Math.floor(c/3))%2===0, (r,c)=>((r*c)%2+(r*c)%3)===0,
+    (r,c)=>(((r*c)%2+(r*c)%3)%2)===0, (r,c)=>(((r+c)%2+(r*c)%3)%2)===0,
+  ];
+  const dadosLivres = new Set(livre.map(([r,c])=>r+','+c));
+
+  function penalidade(g){
+    let p = 0;
+    const seq = linha => {                              // regra 1: 5+ iguais seguidos
+      let t = 0, ant = -1;
+      for (const v of linha){
+        if (v === ant) { t++; if (t === 5) p += 3; else if (t > 5) p++; }
+        else { ant = v; t = 1; }
+      }
+    };
+    for (let i = 0; i < N; i++){ seq(g[i]); seq(g.map(l => l[i])); }
+    for (let r = 0; r < N-1; r++) for (let c = 0; c < N-1; c++)   // regra 2: blocos 2x2
+      if (g[r][c] === g[r][c+1] && g[r][c] === g[r+1][c] && g[r][c] === g[r+1][c+1]) p += 3;
+    const alvo = [1,0,1,1,1,0,1,0,0,0,0], alvo2 = [0,0,0,0,1,0,1,1,1,0,1];
+    const bate = (arr, i, pad) => pad.every((v, k) => arr[i+k] === v);
+    for (let i = 0; i < N; i++){                        // regra 3: padrão 1011101 + folga
+      const lin = g[i], col = g.map(l => l[i]);
+      for (let j = 0; j + 11 <= N; j++){
+        if (bate(lin, j, alvo) || bate(lin, j, alvo2)) p += 40;
+        if (bate(col, j, alvo) || bate(col, j, alvo2)) p += 40;
+      }
+    }
+    let pretos = 0;
+    g.forEach(l => l.forEach(v => pretos += v));        // regra 4: desequilíbrio
+    const pct = pretos * 100 / (N * N);
+    p += Math.floor(Math.abs(pct - 50) / 5) * 10;
+    return p;
+  }
+
+  let melhor = null, melhorP = Infinity, melhorMask = 0;
+  for (let k = 0; k < 8; k++){
+    const g = m.map((l, r) => l.map((v, c) => dadosLivres.has(r+','+c) && MASCARAS[k](r, c) ? v ^ 1 : v));
+    // grava o formato desta máscara antes de avaliar
+    const f = FORMATO[k].split('').map(Number);
+    for (let i = 0; i <= 5; i++) g[8][i] = f[14 - i];
+    g[8][7] = f[8]; g[8][8] = f[7]; g[7][8] = f[6];
+    for (let i = 9; i < 15; i++) g[14 - i][8] = f[i];
+    for (let i = 0; i < 7; i++) g[N-1-i][8] = f[i];
+    for (let i = 7; i < 15; i++) g[8][N-15+i] = f[i];
+    g[N-8][8] = 1;
+    const p = penalidade(g);
+    if (p < melhorP){ melhorP = p; melhor = g; melhorMask = k; }
+  }
+  return { matriz: melhor, tamanho: N, versao, mascara: melhorMask };
+}
+
+/** Matriz -> SVG quadrado, com a margem que o padrão exige (4 módulos). */
+function qrSVG(texto, opc = {}){
+  const { matriz, tamanho } = geraQR(texto);
+  const margem = opc.margem == null ? 4 : opc.margem;
+  const lado = tamanho + margem * 2;
+  let d = '';
+  for (let r = 0; r < tamanho; r++)
+    for (let c = 0; c < tamanho; c++)
+      if (matriz[r][c]) d += `M${c + margem} ${r + margem}h1v1h-1z`;
+  return `<svg viewBox="0 0 ${lado} ${lado}" shape-rendering="crispEdges" role="img" aria-label="QR code">`
+       + `<rect width="${lado}" height="${lado}" fill="${opc.fundo || '#fff'}"/>`
+       + `<path d="${d}" fill="${opc.cor || '#000'}"/></svg>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    8a. FROTA — estado dos veículos a partir das leituras de RFID
    ──────────────────────────────────────────────────────────────────────
    O arquivo do leitor é um LOG: cada linha é uma passagem de tag. O painel
@@ -1512,10 +1765,31 @@ const ALIAS_RFID = {
   tag:   ['tag','id','codigo','cartao','cracha','leitura','epc','uid'],
 };
 const ALIAS_PESSOAS = {
-  id:   ['id','cracha','matricula','codigo','tag','cartao'],
-  nome: ['nome','colaborador','nome colaborador','funcionario'],
-  depto:['departamento','depto','setor','area'],
+  id:      ['id','cracha','matricula','codigo','tag','cartao'],
+  nome:    ['nome','colaborador','nome colaborador','funcionario'],
+  depto:   ['departamento','depto','setor','area'],
+  telefone:['telefone','celular','whatsapp','fone','contato','numero'],
 };
+
+/** Telefone -> formato do WhatsApp (só dígitos, com DDI).
+    Aceita como a pessoa digitar: (19) 99123-4567, 19991234567, +55 19… */
+function foneWhats(bruto){
+  let d = (bruto || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('00')) d = d.slice(2);
+  // 10 ou 11 dígitos = número nacional sem DDI: acrescenta o 55 do Brasil
+  if (d.length === 10 || d.length === 11) d = '55' + d;
+  return d.length >= 12 && d.length <= 15 ? d : '';
+}
+/** "19 99123-4567" para mostrar na tela. */
+function foneBonito(bruto){
+  const d = foneWhats(bruto);
+  if (!d) return '';
+  const nac = d.startsWith('55') ? d.slice(2) : d;
+  if (nac.length === 11) return `(${nac.slice(0,2)}) ${nac.slice(2,7)}-${nac.slice(7)}`;
+  if (nac.length === 10) return `(${nac.slice(0,2)}) ${nac.slice(2,6)}-${nac.slice(6)}`;
+  return bruto;
+}
 
 let leiturasRfid = [];        // [{quando:Date, tag:String}] em ordem cronológica
 let pessoas = new Map();      // id normalizado -> {nome, depto}
@@ -1524,7 +1798,9 @@ function carregaPessoas(txt){
   const m = new Map();
   parseTabela(txt, ALIAS_PESSOAS, ['id'], true).forEach(p => {
     const k = norm(p.id);
-    if (k) m.set(k, { nome:(p.nome||'').trim() || p.id, depto:(p.depto||'').trim().toUpperCase() });
+    if (k) m.set(k, { nome:(p.nome||'').trim() || p.id,
+                     depto:(p.depto||'').trim().toUpperCase(),
+                     telefone:(p.telefone||'').trim() });
   });
   pessoas = m;
   return m.size;
@@ -1569,7 +1845,7 @@ function achaVeiculo(tag){
 /** Resolve um crachá em pessoa. Fora do cadastro, usa o próprio número. */
 function resolveCracha(tag){
   const p = pessoas.get(norm(tag));
-  return p ? { ...p, cracha:tag } : { nome:tag, depto:'', cracha:tag, naoCadastrado:true };
+  return p ? { ...p, cracha:tag } : { nome:tag, depto:'', telefone:'', cracha:tag, naoCadastrado:true };
 }
 
 /** Reprocessa o log e devolve o estado atual da frota.
