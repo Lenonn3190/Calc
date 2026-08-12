@@ -5,6 +5,9 @@ const RAIZ='/home/user/Calc/powertrain-ausencias';
 const LOG=path.join(RAIZ,'dados/frota.csv'), HIST=path.join(RAIZ,'dados/historico.json');
 const logOrig=fs.readFileSync(LOG,'utf8');
 const histOrig=fs.existsSync(HIST)?fs.readFileSync(HIST,'utf8'):null;
+process.on('exit',()=>{ try{ fs.writeFileSync(LOG,logOrig);
+  if(histOrig!==null) fs.writeFileSync(HIST,histOrig); }catch(e){} });
+['uncaughtException','unhandledRejection'].forEach(ev=>process.on(ev,e=>{console.error(e);process.exit(1);}));
 
 let gravacoes=0, falharPost=false;
 const tipos={'.html':'text/html; charset=utf-8','.csv':'text/csv; charset=utf-8','.json':'application/json; charset=utf-8'};

@@ -273,16 +273,27 @@ ou incluir um carro, edite ele e pronto — nada para sincronizar:
 valer para o mesmo veículo. Se o arquivo faltar ou estiver com erro de digitação, as telas caem
 na lista de reserva embutida e continuam funcionando.
 
-## Cadastrando os crachás — `Cadastrar-Crachas.bat`
+## Cadastrando os crachás
 
 O `pessoas.csv` que veio no pacote tem códigos de exemplo (`CR-0421`…). Para trocar pelos números
-reais **sem editar CSV na mão**, use a tela de cadastro: duplo clique em
-**`Cadastrar-Crachas.bat`** (com o `Iniciar-Painel.bat` já aberto — é ele que grava o arquivo).
+reais **sem editar CSV na mão**, use a tela de cadastro. Dois caminhos para chegar nela:
 
-**Uma vez só, no começo: carregue a lista de nomes.** Arraste para a área tracejada uma planilha
-**.xlsx** ou **.csv** com a equipe. O nome sai da coluna `Nome` (ou `Colaborador`); se a planilha
-tiver uma coluna só, ela vira o nome. Colunas `Departamento` e `Telefone`, se existirem, são
-aproveitadas.
+- **Pelo próprio painel:** botão do **crachá**, no canto superior direito (ao lado do ⚙). Abre na
+  mesma janela — em quiosque não existe aba nem barra de endereço — e o botão **← Voltar ao
+  painel** traz de volta. Voltar **grava o cadastro sozinho** se tiver algo pendente, e o painel
+  remonta tudo do zero ao reabrir: nenhuma viagem em curso se perde, porque o estado da frota vive
+  no `frota.csv`, não na página.
+- **Direto, sem passar pelo painel:** duplo clique em **`Cadastrar-Crachas.bat`** (com o
+  `Iniciar-Painel.bat` já aberto — é ele que grava o arquivo).
+
+**Uma vez só, no começo: traga a lista de nomes.** Duas opções:
+
+- **"Trazer nomes das saídas"** — puxa a equipe do **mesmo arquivo de saídas que o painel já lê**,
+  então não é preciso montar uma segunda planilha. Saída lançada para mais de uma pessoa
+  (`Tanaka; Nakahara`) entra como **duas** pessoas, que é o certo aqui: crachá é individual.
+- **Arrastar uma planilha** para a área tracejada — **.xlsx** ou **.csv**. O nome sai da coluna
+  `Nome` (ou `Colaborador`); se a planilha tiver uma coluna só, ela vira o nome. Colunas
+  `Departamento` e `Telefone`, se existirem, são aproveitadas.
 
 **Depois, para cada pessoa** — o roteiro é todo pelo teclado, sem tirar a mão do leitor:
 
@@ -300,12 +311,18 @@ aproveitadas.
 No fim, **"Salvar cadastro"** grava o `dados\pessoas.csv` (o arquivo anterior fica guardado como
 `pessoas.csv.bak`). Enquanto houver mudança pendente, o rodapé avisa e o botão fica aceso.
 
+**É o mesmo arquivo que o painel usa** — não existe importação nem sincronização. Salvou, o painel
+relê no ciclo seguinte da frota (20 s) e passa a reconhecer o crachá **sem reiniciar nada**: um
+carro que estava em uso marcado como *"crachá fora do cadastro"* passa a mostrar o nome da pessoa,
+com o QR de WhatsApp, na mesma viagem que já estava em curso.
+
 Detalhes que evitam dor de cabeça:
 
 - **Crachá repetido é recusado**, dizendo de quem ele já é. Para transferir, abra a outra pessoa,
   clique em **Tirar crachá**, salve — aí o código fica livre.
 - **Carregar a lista de novo não apaga nada**: quem já estava cadastrado mantém crachá e telefone,
-  e só os nomes novos entram.
+  e só os nomes novos entram. Vale tanto para a planilha quanto para "Trazer nomes das saídas" —
+  dá para repetir quando entrar alguém na equipe.
 - **Telefone pela metade** não passa: ou completo com DDD, ou em branco.
 - Sem o servidor no ar, o botão **Baixar CSV** salva o arquivo em Downloads para você copiar por
   cima do `dados\pessoas.csv`.

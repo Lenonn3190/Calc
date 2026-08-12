@@ -58,7 +58,9 @@ svg{flex:none}
 
 /* ═══════════════ CABEÇALHO ═══════════════ */
 header.top{
-  display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;
+  /* nowrap de propósito: com wrap, o terceiro botão jogava o ⚙ para uma
+     segunda linha e abria uma faixa vazia no meio do cabeçalho */
+  display:flex;align-items:center;gap:.9rem;flex-wrap:nowrap;
   padding:1.05rem 1.4rem;border-radius:var(--radius);
   background:linear-gradient(120deg,rgba(21,35,65,.95),rgba(15,24,48,.88));
   border:1px solid var(--line);box-shadow:var(--shadow);position:relative;overflow:hidden;
@@ -66,15 +68,20 @@ header.top{
 header.top::after{content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(90deg,var(--brand),var(--accent));opacity:.9;height:3px}
 .brand{display:flex;align-items:center;gap:.85rem;min-width:0}
+.brand>div{min-width:0}
 .brand .logo{
   width:3.1rem;height:3.1rem;border-radius:.9rem;display:grid;place-items:center;flex:none;
   background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;
   font-weight:800;font-size:.95rem;letter-spacing:.5px;box-shadow:0 8px 22px -8px var(--brand);
 }
-.brand h1{font-size:1.55rem;font-weight:800;letter-spacing:.2px;line-height:1.15;white-space:nowrap}
-.brand p{font-size:.78rem;color:var(--muted);font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+.brand h1{font-size:1.55rem;font-weight:800;letter-spacing:.2px;line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand p{font-size:.78rem;color:var(--muted);font-weight:600;letter-spacing:1.2px;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top .spacer{flex:1 1 auto}
-.clock{text-align:right;line-height:1}
+/* os botões andam juntos: soltos, a quebra de linha separava o ⚙ dos outros */
+.top .acoes{display:flex;align-items:center;gap:.45rem;flex:none}
+.clock{text-align:right;line-height:1;white-space:nowrap}
 .clock .hh{font-size:2.9rem;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums}
 .clock .dd{font-size:.85rem;color:var(--muted);font-weight:600;margin-top:.35rem}
 .live{display:flex;align-items:center;gap:.45rem;font-size:.72rem;color:var(--faint);font-weight:700;
@@ -85,7 +92,7 @@ header.top::after{content:"";position:absolute;inset:0;pointer-events:none;
   font-weight:800;letter-spacing:.4px;background:var(--bad);color:#fff}
 .live .reconn:hover{filter:brightness(1.15)}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 .55rem rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
-.gear{width:2.5rem;height:2.5rem;border-radius:.7rem;display:grid;place-items:center;
+.gear{width:2.25rem;height:2.25rem;border-radius:.7rem;display:grid;place-items:center;
   background:var(--panel-2);border:1px solid var(--line);color:var(--muted);transition:.15s}
 .gear:hover{color:var(--txt);border-color:var(--line-2);background:var(--panel-3)}
 
@@ -537,15 +544,20 @@ const DADOS = [
         </div>
       </div>
     </div>
-    <div class="menu" id="menuBlocos">
-      <button class="gear" id="btnBlocos" title="Mostrar ou esconder blocos" aria-label="Blocos">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="13" width="18" height="7" rx="1"/></svg>
+    <div class="acoes">
+      <button class="gear" id="btnCadastro" title="Cadastrar crachás da equipe" aria-label="Cadastro de crachás">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M8 2h8v3H8z"/><circle cx="8.5" cy="12" r="2.2"/><path d="M5 17c.5-1.6 1.9-2.4 3.5-2.4S11.5 15.4 12 17"/><path d="M15 10.5h5M15 14h3.5"/></svg>
       </button>
-      <div class="lista" id="listaBlocos"></div>
-    </div>
-    <button class="gear" id="btnCfg" title="Configurações e importação de dados" aria-label="Configurações">
+      <div class="menu" id="menuBlocos">
+        <button class="gear" id="btnBlocos" title="Mostrar ou esconder blocos" aria-label="Blocos">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="13" width="18" height="7" rx="1"/></svg>
+        </button>
+        <div class="lista" id="listaBlocos"></div>
+      </div>
+      <button class="gear" id="btnCfg" title="Configurações e importação de dados" aria-label="Configurações">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    </button>
+      </button>
+    </div>
   </header>
 
   <section class="kpis" id="kpis" data-bloco="indicadores" data-nome="Indicadores"></section>
@@ -2630,6 +2642,13 @@ const fechaCfg = () => $('cfgModal').classList.remove('on');
 
 $('btnCfg').onclick = abreCfg;
 $('btnFechar').onclick = fechaCfg;
+
+/* Cadastro de crachás: mesma janela, porque no quiosque não existe aba nem
+   barra de endereço. Voltando de lá, o painel remonta tudo do zero a partir
+   dos arquivos — o estado da frota vive no frota.csv, não na página.
+   Sem servidor a tela não teria como ler nem gravar o cadastro: some. */
+if (/^https?:$/.test(location.protocol)) $('btnCadastro').onclick = () => location.href = 'cadastro.html';
+else $('btnCadastro').style.display = 'none';
 $('cfgModal').addEventListener('click', e => { if (e.target === $('cfgModal')) fechaCfg(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fechaCfg(); });
 

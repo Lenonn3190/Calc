@@ -4,8 +4,12 @@ const http=require('http'), fs=require('fs'), path=require('path'), os=require('
 const { execFileSync }=require('child_process');
 const { chromium }=require('playwright-core');
 const RAIZ='/home/user/Calc/powertrain-ausencias';
-const PESSOAS=path.join(RAIZ,'dados/pessoas.csv');
-const pesOrig=fs.readFileSync(PESSOAS,'utf8');
+const PESSOAS=path.join(RAIZ,'dados/pessoas.csv'), LOG=path.join(RAIZ,'dados/frota.csv');
+const pesOrig=fs.readFileSync(PESSOAS,'utf8'), logOrig=fs.readFileSync(LOG,'utf8');
+// devolve os arquivos do repositório mesmo se o teste morrer no meio:
+// um teste interrompido já deixou o dados/ estragado para os outros
+process.on('exit',()=>{ try{ fs.writeFileSync(PESSOAS,pesOrig); fs.writeFileSync(LOG,logOrig); }catch(e){} });
+['uncaughtException','unhandledRejection'].forEach(ev=>process.on(ev,e=>{console.error(e);process.exit(1);}));
 const TMP=fs.mkdtempSync(path.join(os.tmpdir(),'cad-'));
 
 const tipos={'.html':'text/html; charset=utf-8','.csv':'text/csv; charset=utf-8','.json':'application/json; charset=utf-8'};
@@ -20,6 +24,10 @@ const srv=http.createServer((q,s)=>{
       fs.writeFileSync(PESSOAS,gravado);
       s.writeHead(200); s.end('{"ok":true}'); });
     return;
+  }
+  if (rel==='api/saidas'){
+    s.writeHead(200,{'Content-Type':'application/octet-stream','Cache-Control':'no-store'});
+    return s.end(fs.readFileSync(path.join(RAIZ,'dados/saidas.csv')));
   }
   if (rel.startsWith('api/')){ q.resume(); q.on('end',()=>{s.writeHead(200);s.end('{"ok":true}')}); return; }
   const fp=path.join(RAIZ,rel);
@@ -51,6 +59,9 @@ async function passaCracha(pg, codigo){
   await pg.keyboard.type(codigo,{delay:12});
   await pg.keyboard.press('Enter');
 }
+const p2=n=>String(n).padStart(2,'0');
+const fmt=d=>`${p2(d.getDate())}/${p2(d.getMonth()+1)}/${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+const atras=min=>new Date(Date.now()-min*60000);
 const linhasCSV = t => t.replace(/^﻿/,'').trim().split(/\r?\n/);
 const campo = (t,nome) => {                       // valor de uma coluna, por pessoa
   const l=linhasCSV(t), cab=l[0].split(';');
@@ -249,6 +260,114 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   ok(visto===13,'o arquivo gravado é lido de volta inteiro (cabeçalho + 12)','linhas: '+visto);
   await pg2.close();
 
+  console.log('\n— trazer os nomes direto do arquivo de saídas —');
+  fs.writeFileSync(PESSOAS,'ID;Nome;Departamento;Telefone\r\nCR-0421;Thiego Ferreira;NMG;(19) 99123-4567\r\n');
+  await pg.reload({waitUntil:'load'}); await pg.waitForTimeout(400);
+  ok((await nomesNaTela()).length===1,'começa só com quem já estava cadastrado');
+  await pg.click('#btnDasSaidas'); await pg.waitForTimeout(700);
+  nomes=await nomesNaTela();
+  console.log('   ',JSON.stringify(nomes));
+  ok(nomes.length>=15,'a equipe inteira das saídas entrou','vieram '+nomes.length);
+  ok(nomes.includes('Tanaka') && nomes.includes('Nakahara'),
+     'saída lançada para dois ("Tanaka; Nakahara") virou duas pessoas',JSON.stringify(nomes.slice(0,4)));
+  ok(!nomes.some(n=>/;/.test(n)),'nenhum nome ficou com o ponto e vírgula colado');
+  ok(nomes.filter(n=>n==='Thiego Ferreira').length===1,'quem já existia não duplicou');
+  linha=await pg.evaluate(()=>{const b=[...document.querySelectorAll('.pessoa')]
+    .find(x=>x.querySelector('.nm').textContent==='Thiego Ferreira'); return b.innerText.replace(/\n/g,' | ');});
+  ok(/CR-0421/.test(linha),'e manteve o crachá que já tinha',linha);
+  await pg.fill('#busca','jefferson vilela'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  const dep=await pg.innerText('#edSub');
+  ok(/OUTSOURCE/.test(dep),'departamento veio junto das saídas',dep);
+  await pg.click('#edFechar'); await pg.waitForTimeout(150);
+  ok(/nome\(s\) novo\(s\)/.test(await pg.innerText('#recado')),'recado confirma',await pg.innerText('#recado'));
+
+  console.log('\n— cadastrar aqui alimenta o painel que já está aberto —');
+  // painel aberto ANTES do cadastro, com a HR-V em uso por um crachá desconhecido
+  fs.writeFileSync(LOG,'Data/Hora;Tag\r\n'+
+    `${fmt(atras(30))};C3FE4090\r\n${fmt(atras(30))};CR-9001\r\n`);
+  const painel=await b.newPage({viewport:{width:1440,height:2560}});
+  const errosP=[]; painel.on('pageerror',e=>errosP.push(e.message));
+  await painel.goto('http://localhost:8083/',{waitUntil:'load'});
+  await painel.waitForTimeout(1200);
+  const antes=await painel.evaluate(()=>{const e=calculaFrota(new Date()).lista
+    .find(x=>x.veiculo.tag==='C3FE4090'); return {status:e.status, condutor:e.condutor&&e.condutor.nome,
+    conhecido:!!(e.condutor&&!e.condutor.naoCadastrado)};});
+  console.log('   antes:',JSON.stringify(antes));
+  ok(antes.status==='uso' && !antes.conhecido,'o painel mostra o crachá cru, fora do cadastro',JSON.stringify(antes));
+
+  // sem tocar no painel, cadastra esse crachá na outra tela e salva
+  await pg.fill('#busca','erick'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  const escolhido=await pg.innerText('#edNome');   // o nome como está na lista de saídas
+  await passaCracha(pg,'CR-9001'); await pg.keyboard.press('Enter');
+  await pg.waitForTimeout(250);
+  await pg.click('#btnSalvar'); await pg.waitForTimeout(500);
+  ok(/próximo ciclo/.test(await pg.innerText('#recado')),'a tela diz que o painel vai pegar sozinho',
+     await pg.innerText('#recado'));
+
+  // o painel relê o pessoas.csv no ciclo da frota, sem recarregar a página
+  await painel.evaluate(()=>atualizaFrota()); await painel.waitForTimeout(600);
+  const depois=await painel.evaluate(()=>{const e=calculaFrota(new Date()).lista
+    .find(x=>x.veiculo.tag==='C3FE4090'); return {status:e.status, condutor:e.condutor&&e.condutor.nome,
+    conhecido:!!(e.condutor&&!e.condutor.naoCadastrado)};});
+  console.log('   depois:',JSON.stringify(depois));
+  ok(depois.conhecido,'o crachá passou a ser reconhecido',JSON.stringify(depois));
+  ok(depois.condutor===escolhido,'o nome cadastrado aparece na viagem em curso',
+     `${depois.condutor} != ${escolhido}`);
+  ok(await painel.evaluate(n=>{const c=document.querySelector('.veic.uso');
+     return !!c && c.innerText.includes(n);},escolhido),'e o card do carro na tela mostra o nome');
+  ok(errosP.length===0,'nenhum erro de JS no painel',errosP.join(' | '));
+
+  console.log('\n— o botão do painel leva ao cadastro, e o de lá volta —');
+  ok(await painel.evaluate(()=>{const b=document.getElementById('btnCadastro');
+    return !!b && b.offsetWidth>0;}),'botão visível no cabeçalho do painel');
+  // o terceiro botão já empurrou o ⚙ para uma segunda linha uma vez,
+  // abrindo uma faixa vazia no meio do cabeçalho
+  const cabec=await painel.evaluate(()=>{
+    const h=document.querySelector('header.top');
+    const y=e=>{const r=e.getBoundingClientRect();return Math.round(r.top+r.height/2);};
+    const bs=['btnCadastro','btnBlocos','btnCfg'].map(i=>y(document.getElementById(i)));
+    const t=document.querySelector('.brand h1');
+    return {bs, meio:y(h), alt:Math.round(h.getBoundingClientRect().height),
+            cortado:t.scrollWidth>t.clientWidth+1, titulo:t.textContent};
+  });
+  console.log('   ',JSON.stringify(cabec));
+  ok(new Set(cabec.bs).size===1,'os três botões na mesma linha',JSON.stringify(cabec.bs));
+  ok(cabec.bs.every(v=>Math.abs(v-cabec.meio)<=2),'na mesma linha do relógio, sem faixa vazia',
+     `${JSON.stringify(cabec.bs)} vs meio ${cabec.meio}`);
+  ok(!cabec.cortado,'o título continua inteiro',cabec.titulo);
+  await painel.click('#btnCadastro');
+  await painel.waitForURL(/cadastro\.html$/,{timeout:5000});
+  ok(/cadastro\.html/.test(painel.url()),'abriu o cadastro na mesma janela (quiosque não tem aba)',painel.url());
+  await painel.waitForTimeout(500);
+  ok((await painel.evaluate(()=>document.querySelectorAll('.pessoa').length))>=15,
+     'o cadastro abriu já com a equipe gravada');
+  await painel.click('#btnVoltar');
+  await painel.waitForURL(u=>!/cadastro/.test(u.toString()),{timeout:5000});
+  await painel.waitForTimeout(1200);
+  ok(await painel.evaluate(()=>!!document.getElementById('kpis')),'voltou para o painel',painel.url());
+  await painel.waitForSelector('.veic.uso',{timeout:8000}).catch(()=>{});
+  ok(await painel.evaluate(n=>{const c=document.querySelector('.veic.uso');
+     return !!c && c.innerText.includes(n);},escolhido),
+     'a viagem em curso continua lá — o estado vive no frota.csv',
+     await painel.evaluate(()=>{const c=document.querySelector('[data-bloco=\"frota\"]');
+       return c ? c.innerText.replace(/\n/g,' | ').slice(0,160) : 'bloco de frota ausente';}));
+
+  console.log('\n— voltar com cadastro pendente grava antes de sair —');
+  await painel.click('#btnCadastro'); await painel.waitForURL(/cadastro\.html$/,{timeout:5000});
+  await painel.waitForTimeout(500);
+  await painel.fill('#busca','douglas'); await painel.waitForTimeout(200);
+  await painel.click('.pessoa'); await painel.waitForTimeout(200);
+  await painel.fill('#edId','CR-0644'); await painel.waitForTimeout(100);
+  gravado=null;
+  await painel.click('#edSalvar'); await painel.waitForTimeout(250);
+  await painel.click('#btnVoltar');
+  await painel.waitForURL(u=>!/cadastro/.test(u.toString()),{timeout:5000});
+  ok(!!gravado && /CR-0644/.test(gravado),'gravou sozinho ao voltar, sem perder o que foi digitado',
+     String(gravado).slice(0,80));
+  await painel.close();
+
   ok(erros.length===0,'nenhum erro de JS',erros.join(' | '));
   await pg.fill('#busca',''); await pg.waitForTimeout(200);
   await pg.click('.pessoa'); await pg.waitForTimeout(300);
@@ -256,7 +375,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
     clip:{x:0,y:0,width:1500,height:820}});
 
   await b.close(); srv.close();
-  fs.writeFileSync(PESSOAS,pesOrig);
+  fs.writeFileSync(PESSOAS,pesOrig); fs.writeFileSync(LOG,logOrig);
   fs.rmSync(TMP,{recursive:true,force:true});
   console.log('\n'+(falhas?falhas+' FALHA(S)':'CADASTRO DE CRACHÁS FUNCIONANDO'));
   process.exit(falhas?1:0);

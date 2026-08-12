@@ -127,6 +127,7 @@ input{font:inherit}
   </div>
   <div class="dir">
     <div class="placar" id="placar"></div>
+    <button class="btn" id="btnVoltar">← Voltar ao painel</button>
     <button class="btn" id="btnLista">Carregar lista de nomes</button>
     <button class="btn" id="btnBaixar">Baixar CSV</button>
     <button class="btn primario" id="btnSalvar">Salvar cadastro</button>
@@ -202,10 +203,16 @@ input{font:inherit}
         Arraste aqui uma planilha <b>.xlsx</b> ou <b>.csv</b> com os nomes — ou clique para escolher
         <input type="file" id="arq" accept=".xlsx,.csv,.txt" hidden />
       </div>
+      <div style="margin-top:.7rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="btnDasSaidas">Trazer nomes das saídas</button>
+        <span class="dica" style="font-size:.78rem;color:var(--faint);font-weight:600">
+          Puxa a equipe direto do arquivo de saídas que o painel já lê — sem precisar de outra planilha.
+        </span>
+      </div>
       <div class="dica" style="font-size:.78rem;color:var(--faint);font-weight:600;margin-top:.6rem">
-        O painel procura uma coluna chamada <b>Nome</b> (ou <b>Colaborador</b>). Se a planilha tiver
-        uma coluna só, ela é usada como nome. Quem já estiver cadastrado <b>mantém</b> o crachá e o
-        telefone — nada é apagado.
+        Nas planilhas, procura uma coluna chamada <b>Nome</b> (ou <b>Colaborador</b>). Se a planilha
+        tiver uma coluna só, ela é usada como nome. Quem já estiver cadastrado <b>mantém</b> o crachá
+        e o telefone — nada é apagado.
       </div>
     </div>
   </section>
@@ -220,6 +227,8 @@ input{font:inherit}
 const CFG = {
   arquivoPessoas: 'dados/pessoas.csv',
   apiPessoas:     'api/pessoas',
+  arquivoSaidas:  'api/saidas',      // mesma rota do painel: .xlsx ou .csv
+  painel:         'index.html',
 };
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -391,13 +400,14 @@ function juntaNomes(matriz){
   if (iNo < 0){                       // sem cabeçalho reconhecível: 1ª coluna é o nome
     iNo = 0; corpo = matriz;
   }
-  let novos = 0, jaTinha = 0;
+  // conta PESSOAS, não linhas: nas saídas a mesma pessoa aparece várias vezes
+  let novos = 0; const repetidas = new Set();
   corpo.forEach(l => {
     const nome = (l[iNo] || '').trim();
     if (!nome) return;
     const existe = pessoas.find(p => chave(p.nome) === chave(nome));
     if (existe){
-      jaTinha++;
+      repetidas.add(chave(nome));
       if (iDe >= 0 && !existe.depto)    existe.depto = (l[iDe]||'').trim();
       if (iFo >= 0 && !existe.telefone) existe.telefone = (l[iFo]||'').trim();
       return;
@@ -406,10 +416,49 @@ function juntaNomes(matriz){
       depto:(iDe>=0?l[iDe]:'')||'', telefone:(iFo>=0?l[iFo]:'')||'' });
     novos++;
   });
+  const jaTinha = repetidas.size;
   if (!novos && !jaTinha) throw new Error('nenhum nome encontrado no arquivo');
   pessoas.sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR'));
   alterado = true;
   return { novos, jaTinha };
+}
+
+/** Puxa a equipe do MESMO arquivo de saídas que o painel lê. Evita ter de
+    montar uma segunda planilha só com nomes: quem aparece nas saídas já é
+    a base de pessoas do sistema. */
+async function nomesDasSaidas(){
+  const b = $('btnDasSaidas');
+  b.disabled = true; b.textContent = 'Lendo as saídas…';
+  try{
+    if (!/^https?:$/.test(location.protocol)) throw new Error('precisa do Iniciar-Painel.bat');
+    const r = await fetch(CFG.arquivoSaidas + '?t=' + Date.now(), { cache:'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const buf = await r.arrayBuffer();
+    const u = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
+    const zip = u[0]===0x50 && u[1]===0x4b && u[2]===0x03 && u[3]===0x04;
+    const matriz = zip ? await matrizDeXlsx(buf)
+                       : matrizDeCSV(new TextDecoder('utf-8').decode(buf));
+    if (!matriz.length) throw new Error('arquivo de saídas vazio');
+    const cab = matriz[0];
+    const iNo = achaCol(cab,['nome colaborador','colaborador','nome']);
+    const iDe = achaCol(cab,['departamento','depto','setor']);
+    if (iNo < 0) throw new Error('não achei a coluna de nome');
+    // uma saída pode estar lançada para mais de uma pessoa ("Tanaka; Nakahara")
+    const linhas = [];
+    matriz.slice(1).forEach(l => (l[iNo]||'').split(/[;/]/).forEach(n => {
+      n = n.trim();
+      if (n) linhas.push(iDe >= 0 ? [n, (l[iDe]||'').trim()] : [n]);
+    }));
+    const cabNovo = iDe >= 0 ? ['Nome','Departamento'] : ['Nome'];
+    const { novos, jaTinha } = juntaNomes([cabNovo, ...linhas]);
+    pinta();
+    recado(`Saídas: ${novos} nome(s) novo(s)` +
+           (jaTinha ? `, ${jaTinha} já estava(m) na lista` : '') + '. Não esqueça de salvar.');
+  }catch(e){
+    recado('Não consegui ler as saídas: ' + e.message, false);
+  }finally{
+    b.disabled = false; b.textContent = 'Trazer nomes das saídas';
+  }
 }
 
 async function leArquivoNomes(file){
@@ -539,10 +588,20 @@ async function salvaTudo(){
       method:'POST', headers:{'content-type':'text/csv; charset=utf-8'}, body:'\uFEFF' + csv });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     alterado = false; pinta();
-    recado(`Cadastro gravado em dados/pessoas.csv — ${pessoas.length} pessoa(s).`);
+    recado(`Cadastro gravado em dados/pessoas.csv — ${pessoas.length} pessoa(s). ` +
+           'O painel passa a usar esses nomes no próximo ciclo, sem reiniciar nada.');
+    return true;
   }catch(e){
     recado('Não consegui gravar (' + e.message + '). O Iniciar-Painel.bat está aberto?', false);
+    return false;
   }
+}
+
+/** Volta para o painel — salvando antes, para não deixar cadastro pela metade. */
+async function voltaAoPainel(){
+  if (alterado && !(await salvaTudo())) return;   // não gravou: fica aqui e avisa
+  alterado = false;                               // já gravado: sem o aviso do navegador
+  location.href = CFG.painel;
 }
 
 function baixaCSV(){
@@ -583,6 +642,8 @@ $('edFechar').onclick = fechaEditor;
 $('edLimpar').onclick = () => { $('edId').value = ''; $('edId').focus(); };
 
 $('btnSalvar').onclick = salvaTudo;
+$('btnVoltar').onclick = voltaAoPainel;
+$('btnDasSaidas').onclick = nomesDasSaidas;
 $('btnBaixar').onclick = baixaCSV;
 $('btnLista').onclick = () => $('arq').click();
 $('solta').onclick = () => $('arq').click();

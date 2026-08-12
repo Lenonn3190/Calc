@@ -3,6 +3,8 @@ const http=require('http'), fs=require('fs'), path=require('path'), { chromium }
 const RAIZ='/home/user/Calc/powertrain-ausencias';
 const LOG=path.join(RAIZ,'dados/frota.csv');
 const logOrig=fs.readFileSync(LOG,'utf8');
+process.on('exit',()=>{ try{ fs.writeFileSync(LOG,logOrig); }catch(e){} });
+['uncaughtException','unhandledRejection'].forEach(ev=>process.on(ev,e=>{console.error(e);process.exit(1);}));
 
 const tipos={'.html':'text/html; charset=utf-8','.csv':'text/csv; charset=utf-8','.json':'application/json; charset=utf-8'};
 let leituras=[];

@@ -5,6 +5,8 @@ const jsQR=require('jsqr');
 const RAIZ='/home/user/Calc/powertrain-ausencias';
 const LOG=path.join(RAIZ,'dados/frota.csv'), PESSOAS=path.join(RAIZ,'dados/pessoas.csv');
 const logOrig=fs.readFileSync(LOG,'utf8'), pesOrig=fs.readFileSync(PESSOAS,'utf8');
+process.on('exit',()=>{ try{ fs.writeFileSync(LOG,logOrig); fs.writeFileSync(PESSOAS,pesOrig); }catch(e){} });
+['uncaughtException','unhandledRejection'].forEach(ev=>process.on(ev,e=>{console.error(e);process.exit(1);}));
 
 const tipos={'.html':'text/html; charset=utf-8','.csv':'text/csv; charset=utf-8','.json':'application/json; charset=utf-8'};
 const srv=http.createServer((q,s)=>{
