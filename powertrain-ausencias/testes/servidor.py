@@ -15,11 +15,15 @@ def ok(cond, msg, extra=''):
     if not cond: falhas.append(msg)
 
 print('\n— rotas que o painel chama —')
-for rota, metodo in [('/api/saidas','GET'), ('/api/leitura','POST'), ('/api/historico','POST')]:
+for rota, metodo in [('/api/saidas','GET'), ('/api/leitura','POST'),
+                     ('/api/historico','POST'), ('/api/pessoas','POST')]:
     ok(f'$path -eq "{rota}"' in s, f'rota {rota} presente')
 
+print('\n— o cadastro antigo é preservado antes de ser trocado —')
+ok('"$PessoasFile.bak"' in s, 'grava .bak antes de sobrescrever o pessoas.csv')
+
 print('\n— variáveis usadas nas rotas estão declaradas —')
-for v in ['FontePtr','FrotaFile','HistFile','DataDir']:
+for v in ['FontePtr','FrotaFile','HistFile','PessoasFile','DataDir']:
     decl = re.search(r'^\$' + v + r'\s*=', s, re.M)
     ok(bool(decl), f'${v} declarada')
 

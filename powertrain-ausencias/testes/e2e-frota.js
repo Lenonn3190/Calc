@@ -109,7 +109,7 @@ const ok=(c,m,extra='')=>{console.log((c?'  ok  ':'FALHA ')+m+(c?'':'  << '+extr
   r = await ler();
   ok(r.est['C3FE4090'].s==='livre' && r.cont==='2 de 2 livres','voltou a ler e recalculou', r.cont);
 
-  await pg.screenshot({path:'e2e-frota.png'});
+  await pg.screenshot({path:'/tmp/claude-0/-home-user/c4ebad73-ed38-57bd-ad0e-0ec4f3b99b0c/scratchpad/e2e-frota.png'});
   ok(erros.length===0,'nenhum erro de JS', erros.join(' | '));
 
   await b.close(); srv.close();

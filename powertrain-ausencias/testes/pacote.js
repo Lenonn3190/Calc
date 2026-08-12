@@ -20,6 +20,11 @@ const srv=http.createServer((q,s)=>{
       s.writeHead(200,{'Content-Type':'application/json'}); s.end('{"ok":true}'); });
     return;
   }
+  if (rel==='api/pessoas' && q.method==='POST'){
+    const c=[]; q.on('data',d=>c.push(d));
+    q.on('end',()=>{ s.writeHead(200,{'Content-Type':'application/json'}); s.end('{"ok":true}'); });
+    return;
+  }
   const fp=path.join(RAIZ,rel);
   if(!fp.startsWith(RAIZ)||!fs.existsSync(fp)){s.writeHead(404);return s.end('404');}
   s.writeHead(200,{'Content-Type':tipos[path.extname(fp)]||'application/octet-stream','Cache-Control':'no-store'});
@@ -85,6 +90,28 @@ const ok=(c,m,e='')=>{console.log((c?'  ok  ':'FALHA ')+m+(c?'':'  << '+e));if(!
   ok(!lay.overflowX,'sem rolagem horizontal');
   ok(lay.blocos>=6,'todos os blocos presentes','veio '+lay.blocos);
   await pg.screenshot({path:'/tmp/claude-0/-home-user/c4ebad73-ed38-57bd-ad0e-0ec4f3b99b0c/scratchpad/pacote.png'});
+
+  console.log('\n— a tela de cadastro veio no pacote e enxerga o mesmo arquivo —');
+  const pgc=await b.newPage({viewport:{width:1500,height:1000}});
+  const errosC=[]; pgc.on('pageerror',e=>errosC.push(e.message));
+  const r=await pgc.goto('http://localhost:8088/cadastro.html',{waitUntil:'load'});
+  ok(r.status()===200,'cadastro.html está no zip','HTTP '+r.status());
+  await pgc.waitForTimeout(500);
+  const cad=await pgc.evaluate(()=>({
+    n:document.querySelectorAll('.pessoa').length,
+    primeiro:(document.querySelector('.pessoa .nm')||{}).textContent,
+  }));
+  console.log('   ',JSON.stringify(cad));
+  ok(cad.n===10,'as 10 pessoas do pessoas.csv aparecem para editar','vieram '+cad.n);
+  ok(errosC.length===0,'nenhum erro de JS na tela de cadastro',errosC.join(' | '));
+  await pgc.close();
+
+  console.log('\n— os dois .bat foram para o pacote —');
+  ['Iniciar-Painel.bat','Cadastrar-Crachas.bat'].forEach(f=>{
+    const t=fs.existsSync(path.join(RAIZ,f)) && fs.readFileSync(path.join(RAIZ,f));
+    ok(!!t,f+' presente');
+    if (t) ok(!/[^\r]\n/.test(t.toString('latin1')),f+' com quebra de linha do Windows (CRLF)');
+  });
 
   ok(erros.length===0,'nenhum erro de JS', erros.join(' | '));
   await b.close(); srv.close();

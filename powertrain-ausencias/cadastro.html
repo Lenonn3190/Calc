@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cadastro de crachás — Powertrain</title>
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%2314b8a6'/%3E%3Ctext x='50' y='68' font-family='Arial,sans-serif' font-size='44' font-weight='bold' fill='white' text-anchor='middle'%3EID%3C/text%3E%3C/svg%3E" />
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   CADASTRO DE CRACHÁS — associa o ID do crachá a cada pessoa da lista.
+   Feito para ser tocado com o teclado: o leitor RFID é um teclado.
+   ══════════════════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080e1b; --panel:#0f1830; --panel-2:#152341; --line:#22304f; --line-2:#2c3d63;
+  --txt:#eaf0fb; --muted:#9fb0cc; --faint:#6f83a5;
+  --brand:#3b82f6; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --accent:#14b8a6;
+  --radius:14px; --font:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+html{font-size:16px} @media (min-width:1200px){html{font-size:17px}}
+html,body{height:100%}
+body{font-family:var(--font);color:var(--txt);line-height:1.45;
+  background:radial-gradient(1100px 700px at 85% -10%,rgba(20,184,166,.14),transparent 60%),
+             radial-gradient(900px 600px at -10% 110%,rgba(59,130,246,.12),transparent 55%),var(--bg);
+  background-attachment:fixed;padding:1.4rem;display:flex;flex-direction:column;gap:1.1rem;align-items:center}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input{font:inherit}
+::-webkit-scrollbar{width:9px} ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:20px}
+
+.topo{width:100%;max-width:74rem;display:flex;align-items:center;gap:.9rem;flex-wrap:wrap;
+  padding:1rem 1.2rem;border-radius:var(--radius);background:linear-gradient(120deg,rgba(21,35,65,.95),rgba(15,24,48,.9));
+  border:1px solid var(--line)}
+.logo{width:2.9rem;height:2.9rem;border-radius:.85rem;display:grid;place-items:center;flex:none;
+  background:linear-gradient(135deg,var(--accent),var(--brand));color:#fff;font-weight:800;font-size:.85rem}
+.topo h1{font-size:1.4rem;font-weight:800;line-height:1.1}
+.topo p{font-size:.78rem;color:var(--muted);font-weight:600;letter-spacing:.9px;text-transform:uppercase}
+.topo .dir{margin-left:auto;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+
+.btn{padding:.55rem 1rem;border-radius:.6rem;font-weight:800;font-size:.85rem;
+  background:var(--panel-2);border:1px solid var(--line-2);transition:.15s}
+.btn:hover{background:var(--line)}
+.btn.primario{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primario:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.placar{display:flex;gap:.5rem;flex-wrap:wrap}
+.placar span{font-size:.8rem;font-weight:800;padding:.3rem .7rem;border-radius:2rem;
+  background:var(--panel-2);border:1px solid var(--line)}
+.placar .falta{background:rgba(245,158,11,.16);border-color:rgba(245,158,11,.35);color:#fcd34d}
+.placar .pronto{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.35);color:#86efac}
+
+.corpo{width:100%;max-width:74rem;display:grid;grid-template-columns:1fr;gap:1.1rem}
+.cartao{border-radius:var(--radius);background:rgba(15,24,48,.85);border:1px solid var(--line);overflow:hidden}
+.cartao h2{display:flex;align-items:center;gap:.55rem;padding:.85rem 1.1rem;font-size:.9rem;font-weight:800;
+  letter-spacing:1.2px;text-transform:uppercase;border-bottom:1px solid var(--line);
+  background:linear-gradient(90deg,rgba(59,130,246,.12),transparent 65%)}
+.cartao h2 svg{width:1.05rem;height:1.05rem;color:var(--brand)}
+.cartao h2 .n{margin-left:auto;font-size:.8rem;letter-spacing:0;color:var(--muted)}
+.cartao .dentro{padding:1rem 1.1rem}
+
+/* busca + lista */
+.busca{position:relative;margin-bottom:.7rem}
+.busca input{width:100%;padding:.85rem 1rem .85rem 2.6rem;border-radius:.7rem;font-size:1.05rem;
+  background:var(--bg);border:1px solid var(--line-2);color:var(--txt)}
+.busca input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
+.busca svg{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);width:1.1rem;height:1.1rem;color:var(--faint)}
+
+.lista{max-height:26rem;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem}
+.pessoa{display:grid;grid-template-columns:1fr auto auto;gap:.8rem;align-items:center;
+  padding:.6rem .8rem;border-radius:.6rem;background:var(--panel-2);border:1px solid transparent;
+  cursor:pointer;transition:.12s;text-align:left;width:100%}
+.pessoa:hover{border-color:var(--line-2)}
+.pessoa.marcada{border-color:var(--brand);background:rgba(59,130,246,.14)}
+.pessoa .nm{font-weight:700;font-size:.98rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pessoa .id{font-family:ui-monospace,Consolas,monospace;font-size:.78rem;font-weight:700;
+  padding:.12rem .55rem;border-radius:.35rem;background:rgba(34,197,94,.15);color:#86efac;white-space:nowrap}
+.pessoa .id.sem{background:rgba(245,158,11,.15);color:#fcd34d}
+.pessoa .fone{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nada{padding:1.6rem;text-align:center;color:var(--faint);font-weight:600;font-size:.9rem}
+
+/* edição */
+.editor{display:none}
+.editor.on{display:block}
+.quem{display:flex;align-items:center;gap:.8rem;margin-bottom:1rem}
+.quem .av{width:3rem;height:3rem;border-radius:.8rem;display:grid;place-items:center;flex:none;
+  font-weight:800;color:#08101f;background:linear-gradient(135deg,var(--accent),var(--brand))}
+.quem .nome{font-size:1.35rem;font-weight:800;line-height:1.15}
+.quem .sub{font-size:.8rem;color:var(--muted);font-weight:600}
+.campo{margin-bottom:.9rem}
+.campo label{display:block;font-size:.75rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:.35rem}
+.campo input{width:100%;padding:.8rem .9rem;border-radius:.65rem;font-size:1.05rem;
+  background:var(--bg);border:1px solid var(--line-2);color:var(--txt)}
+.campo input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(20,184,166,.18)}
+.campo input.esperando{border-color:var(--accent);animation:pisca 1.4s ease-in-out infinite}
+@keyframes pisca{50%{box-shadow:0 0 0 4px rgba(20,184,166,.22)}}
+.campo .dica{font-size:.76rem;color:var(--faint);font-weight:600;margin-top:.3rem}
+.campo .dica b{color:var(--accent)}
+.acoes{display:flex;gap:.6rem;margin-top:1.1rem}
+.aviso{padding:.6rem .8rem;border-radius:.55rem;font-size:.85rem;font-weight:700;margin-bottom:.8rem;display:none}
+.aviso.on{display:block}
+.aviso.erro{background:rgba(239,68,68,.15);color:#fca5a5}
+.aviso.alerta{background:rgba(245,158,11,.15);color:#fcd34d}
+
+.recado{width:100%;max-width:74rem;padding:.7rem 1rem;border-radius:.6rem;font-size:.85rem;
+  font-weight:700;display:none}
+.recado.on{display:block}
+.recado.ok{background:rgba(34,197,94,.14);color:#86efac;border:1px solid rgba(34,197,94,.3)}
+.recado.ruim{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+
+.solta{border:2px dashed var(--line-2);border-radius:.7rem;padding:1.2rem;text-align:center;
+  color:var(--muted);font-weight:700;font-size:.85rem;cursor:pointer;transition:.15s}
+.solta:hover,.solta.sobre{border-color:var(--accent);background:rgba(20,184,166,.08);color:var(--txt)}
+.rodape{width:100%;max-width:74rem;font-size:.78rem;color:var(--faint);font-weight:600;text-align:center}
+@media (min-width:1000px){ .corpo{grid-template-columns:1.15fr 1fr} }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="logo">ETG</div>
+  <div>
+    <h1>Cadastro de crachás</h1>
+    <p>Powertrain · associa o ID do crachá a cada pessoa</p>
+  </div>
+  <div class="dir">
+    <div class="placar" id="placar"></div>
+    <button class="btn" id="btnLista">Carregar lista de nomes</button>
+    <button class="btn" id="btnBaixar">Baixar CSV</button>
+    <button class="btn primario" id="btnSalvar">Salvar cadastro</button>
+  </div>
+</header>
+
+<div class="recado" id="recado"></div>
+
+<div class="corpo">
+  <section class="cartao">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+      Pessoas <span class="n" id="contaLista"></span>
+    </h2>
+    <div class="dentro">
+      <div class="busca">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="busca" placeholder="Digite o nome para filtrar…" autocomplete="off" autofocus />
+      </div>
+      <div class="lista" id="lista"></div>
+    </div>
+  </section>
+
+  <section class="cartao">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M9 2h6v4H9z"/><circle cx="9" cy="13" r="2"/><path d="M14 12h4M14 16h3"/></svg>
+      Crachá e telefone
+    </h2>
+    <div class="dentro">
+      <div id="semSelecao" class="nada">Escolha alguém na lista ao lado para cadastrar o crachá.</div>
+
+      <div class="editor" id="editor">
+        <div class="quem">
+          <div class="av" id="edAv">—</div>
+          <div>
+            <div class="nome" id="edNome">—</div>
+            <div class="sub" id="edSub"></div>
+          </div>
+        </div>
+
+        <div class="aviso" id="edAviso"></div>
+
+        <div class="campo">
+          <label for="edId">ID do crachá</label>
+          <input id="edId" class="esperando" placeholder="Encoste o crachá no leitor…" autocomplete="off" />
+          <div class="dica">O leitor digita sozinho. Sem leitor, dá para <b>digitar o número</b> e teclar Enter.</div>
+        </div>
+
+        <div class="campo">
+          <label for="edFone">Telefone <span style="color:var(--faint);font-weight:600">(opcional)</span></label>
+          <input id="edFone" placeholder="(19) 99123-4567" autocomplete="off" inputmode="tel" />
+          <div class="dica">Usado no QR de WhatsApp do painel. Pode deixar em branco.</div>
+        </div>
+
+        <div class="acoes">
+          <button class="btn primario" id="edSalvar">Salvar pessoa</button>
+          <button class="btn" id="edLimpar">Tirar crachá</button>
+          <button class="btn" id="edFechar">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="corpo" style="margin-top:-.2rem">
+  <section class="cartao" style="grid-column:1/-1">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+      Carregar lista de nomes
+    </h2>
+    <div class="dentro">
+      <div class="solta" id="solta">
+        Arraste aqui uma planilha <b>.xlsx</b> ou <b>.csv</b> com os nomes — ou clique para escolher
+        <input type="file" id="arq" accept=".xlsx,.csv,.txt" hidden />
+      </div>
+      <div class="dica" style="font-size:.78rem;color:var(--faint);font-weight:600;margin-top:.6rem">
+        O painel procura uma coluna chamada <b>Nome</b> (ou <b>Colaborador</b>). Se a planilha tiver
+        uma coluna só, ela é usada como nome. Quem já estiver cadastrado <b>mantém</b> o crachá e o
+        telefone — nada é apagado.
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="rodape" id="rodape"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   CONFIGURAÇÃO
+   ══════════════════════════════════════════════════════════════════════ */
+const CFG = {
+  arquivoPessoas: 'dados/pessoas.csv',
+  apiPessoas:     'api/pessoas',
+};
+
+/* ══════════════════════════════════════════════════════════════════════
+   APOIO
+   ══════════════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const esc = s => (s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const chave = s => (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                    .toLowerCase().replace(/\s+/g,' ').trim();
+const iniciais = n => (n||'?').split(/[\s;]+/).filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase()||'?';
+
+function foneWhats(bruto){
+  let d = (bruto||'').replace(/\D/g,'');
+  if (!d) return '';
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.length === 10 || d.length === 11) d = '55' + d;
+  return d.length >= 12 && d.length <= 15 ? d : '';
+}
+function foneBonito(bruto){
+  const d = foneWhats(bruto);
+  if (!d) return (bruto||'').trim();
+  const nac = d.startsWith('55') ? d.slice(2) : d;
+  if (nac.length === 11) return `(${nac.slice(0,2)}) ${nac.slice(2,7)}-${nac.slice(7)}`;
+  if (nac.length === 10) return `(${nac.slice(0,2)}) ${nac.slice(2,6)}-${nac.slice(6)}`;
+  return bruto;
+}
+
+/* -- CSV -- */
+function partirLinha(l, sep){
+  const out=[]; let at='', asp=false;
+  for (let i=0;i<l.length;i++){
+    const c=l[i];
+    if (c==='"'){ if (asp && l[i+1]==='"'){ at+='"'; i++; } else asp=!asp; }
+    else if (c===sep && !asp){ out.push(at); at=''; }
+    else at+=c;
+  }
+  out.push(at);
+  return out.map(x=>x.trim().replace(/^"|"$/g,''));
+}
+function matrizDeCSV(txt){
+  txt = txt.replace(/^\uFEFF/,'');
+  const p = txt.split(/\r?\n/).find(x=>x.trim()) || '';
+  const cont = c => (p.match(new RegExp('\\'+c,'g'))||[]).length;
+  const sep = cont(';')>=cont(',') ? (cont(';')>=cont('\t')?';':'\t') : (cont(',')>=cont('\t')?',':'\t');
+  return txt.split(/\r?\n/).filter(l=>l.trim()).map(l=>partirLinha(l,sep));
+}
+
+/* -- .xlsx: só o necessário para ler uma lista de nomes -- */
+async function inflaRaw(bytes){
+  const f = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(f).arrayBuffer());
+}
+async function matrizDeXlsx(buffer){
+  const dv=new DataView(buffer), u8=new Uint8Array(buffer);
+  let fim=-1;
+  for (let i=u8.length-22;i>=0 && i>u8.length-66000;i--) if (dv.getUint32(i,true)===0x06054b50){ fim=i; break; }
+  if (fim<0) throw new Error('não parece um .xlsx');
+  const total=dv.getUint16(fim+10,true); let p=dv.getUint32(fim+16,true);
+  const itens=new Map();
+  for (let i=0;i<total;i++){
+    if (dv.getUint32(p,true)!==0x02014b50) break;
+    const met=dv.getUint16(p+10,true), tam=dv.getUint32(p+20,true);
+    const nl=dv.getUint16(p+28,true), el=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true);
+    const off=dv.getUint32(p+42,true);
+    itens.set(new TextDecoder().decode(u8.subarray(p+46,p+46+nl)), {met,tam,off});
+    p += 46+nl+el+cl;
+  }
+  const ler = async nome => {
+    const it=itens.get(nome); if(!it) return null;
+    const nl=dv.getUint16(it.off+26,true), el=dv.getUint16(it.off+28,true);
+    const ini=it.off+30+nl+el, d=u8.subarray(ini,ini+it.tam);
+    return new TextDecoder('utf-8').decode(it.met===0 ? d : await inflaRaw(d));
+  };
+  const xml = t => new DOMParser().parseFromString(t,'application/xml');
+  const textos=[]; const ss=await ler('xl/sharedStrings.xml');
+  if (ss) xml(ss).querySelectorAll('si').forEach(si=>{
+    let t=''; si.querySelectorAll('t').forEach(x=>t+=x.textContent); textos.push(t);
+  });
+  let alvo='xl/worksheets/sheet1.xml';
+  const wb=await ler('xl/workbook.xml'), rels=await ler('xl/_rels/workbook.xml.rels');
+  if (wb && rels){
+    const sh=xml(wb).querySelector('sheets > sheet');
+    const rid=sh && (sh.getAttribute('r:id') || sh.getAttributeNS(
+      'http://schemas.openxmlformats.org/officeDocument/2006/relationships','id'));
+    const rel=rid && [...xml(rels).querySelectorAll('Relationship')].find(r=>r.getAttribute('Id')===rid);
+    const t=rel && rel.getAttribute('Target');
+    if (t) alvo='xl/'+t.replace(/^\/?(xl\/)?/,'');
+  }
+  const folha=(await ler(alvo)) || (await ler('xl/worksheets/sheet1.xml'));
+  if (!folha) throw new Error('planilha não encontrada dentro do .xlsx');
+  const col = ref => { let n=0; for (const ch of ref){ const c=ch.charCodeAt(0);
+    if (c<65||c>90) break; n=n*26+(c-64); } return n-1; };
+  const linhas=[];
+  xml(folha).querySelectorAll('sheetData > row').forEach(row=>{
+    const cels=[];
+    row.querySelectorAll('c').forEach(c=>{
+      const i = c.getAttribute('r') ? col(c.getAttribute('r')) : cels.length;
+      const tipo=c.getAttribute('t');
+      let v='';
+      if (tipo==='inlineStr'){ const is=c.querySelector('is'); v=is?is.textContent:''; }
+      else { const no=c.querySelector('v'); const b=no?no.textContent:'';
+             v = tipo==='s' ? (textos[+b]||'') : b; }
+      cels[i]=(v||'').trim();
+    });
+    for (let i=0;i<cels.length;i++) if (cels[i]===undefined) cels[i]='';
+    linhas.push(cels);
+  });
+  return linhas.filter(l=>l.some(x=>x!==''));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ESTADO
+   ══════════════════════════════════════════════════════════════════════ */
+let pessoas = [];          // [{nome, id, depto, telefone}]
+let selecionada = null;    // índice em pessoas
+let alterado = false;
+
+function recado(txt, bom = true){
+  const r = $('recado');
+  r.textContent = txt;
+  r.className = 'recado on ' + (bom ? 'ok' : 'ruim');
+  clearTimeout(recado._t);
+  recado._t = setTimeout(() => r.className = 'recado', 6000);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CADASTRO EXISTENTE
+   ══════════════════════════════════════════════════════════════════════ */
+function achaCol(cabs, nomes){
+  for (const n of nomes){
+    const i = cabs.findIndex(c => chave(c) === n);
+    if (i >= 0) return i;
+  }
+  for (const n of nomes){
+    const i = cabs.findIndex(c => chave(c).length >= 3 && chave(c).includes(n));
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+async function carregaCadastro(){
+  try{
+    const r = await fetch(CFG.arquivoPessoas + '?t=' + Date.now(), { cache:'no-store' });
+    if (!r.ok) return;
+    const m = matrizDeCSV(await r.text());
+    if (m.length < 1) return;
+    const cab = m[0];
+    const iId = achaCol(cab,['id','cracha','matricula']);
+    const iNo = achaCol(cab,['nome','colaborador','funcionario']);
+    const iDe = achaCol(cab,['departamento','depto','setor']);
+    const iFo = achaCol(cab,['telefone','celular','whatsapp','fone','contato']);
+    pessoas = m.slice(1).map(l => ({
+      nome:(iNo>=0?l[iNo]:'')||'', id:(iId>=0?l[iId]:'')||'',
+      depto:(iDe>=0?l[iDe]:'')||'', telefone:(iFo>=0?l[iFo]:'')||'',
+    })).filter(p => p.nome);
+  }catch(e){ /* sem cadastro ainda: começa vazio */ }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LISTA DE NOMES (carregada de planilha)
+   ══════════════════════════════════════════════════════════════════════ */
+function juntaNomes(matriz){
+  if (!matriz.length) throw new Error('arquivo sem linhas');
+  const cab = matriz[0];
+  let iNo = achaCol(cab,['nome','colaborador','funcionario','pessoa']);
+  let iDe = achaCol(cab,['departamento','depto','setor','area']);
+  let iFo = achaCol(cab,['telefone','celular','whatsapp','fone']);
+  let corpo = matriz.slice(1);
+  if (iNo < 0){                       // sem cabeçalho reconhecível: 1ª coluna é o nome
+    iNo = 0; corpo = matriz;
+  }
+  let novos = 0, jaTinha = 0;
+  corpo.forEach(l => {
+    const nome = (l[iNo] || '').trim();
+    if (!nome) return;
+    const existe = pessoas.find(p => chave(p.nome) === chave(nome));
+    if (existe){
+      jaTinha++;
+      if (iDe >= 0 && !existe.depto)    existe.depto = (l[iDe]||'').trim();
+      if (iFo >= 0 && !existe.telefone) existe.telefone = (l[iFo]||'').trim();
+      return;
+    }
+    pessoas.push({ nome, id:'',
+      depto:(iDe>=0?l[iDe]:'')||'', telefone:(iFo>=0?l[iFo]:'')||'' });
+    novos++;
+  });
+  if (!novos && !jaTinha) throw new Error('nenhum nome encontrado no arquivo');
+  pessoas.sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR'));
+  alterado = true;
+  return { novos, jaTinha };
+}
+
+async function leArquivoNomes(file){
+  try{
+    const buf = await file.arrayBuffer();
+    const u = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
+    const zip = u[0]===0x50 && u[1]===0x4b && u[2]===0x03 && u[3]===0x04;
+    const matriz = zip ? await matrizDeXlsx(buf)
+                       : matrizDeCSV(new TextDecoder('utf-8').decode(buf));
+    const { novos, jaTinha } = juntaNomes(matriz);
+    pinta();
+    recado(`${file.name}: ${novos} nome(s) novo(s)` +
+           (jaTinha ? `, ${jaTinha} já estava(m) na lista` : '') + '. Não esqueça de salvar.');
+  }catch(e){
+    recado('Não consegui ler o arquivo: ' + e.message, false);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TELA
+   ══════════════════════════════════════════════════════════════════════ */
+function filtradas(){
+  const t = chave($('busca').value);
+  if (!t) return pessoas.map((p,i) => ({p,i}));
+  return pessoas.map((p,i) => ({p,i})).filter(({p}) => chave(p.nome).includes(t));
+}
+
+function pinta(){
+  const itens = filtradas();
+  $('lista').innerHTML = itens.length ? itens.map(({p,i}) => `
+    <button class="pessoa ${i===selecionada?'marcada':''}" data-i="${i}">
+      <span class="nm">${esc(p.nome)}</span>
+      <span class="id ${p.id?'':'sem'}">${p.id ? esc(p.id) : 'sem crachá'}</span>
+      <span class="fone">${p.telefone ? esc(foneBonito(p.telefone)) : ''}</span>
+    </button>`).join('')
+    : `<div class="nada">${pessoas.length ? 'Nenhum nome com esse texto.'
+        : 'Nenhuma pessoa ainda — carregue uma lista de nomes abaixo.'}</div>`;
+
+  const com = pessoas.filter(p => p.id).length;
+  $('placar').innerHTML =
+    `<span class="pronto">${com} com crachá</span>` +
+    (pessoas.length - com ? `<span class="falta">${pessoas.length-com} sem crachá</span>` : '');
+  $('contaLista').textContent = itens.length === pessoas.length
+    ? `${pessoas.length} pessoa(s)` : `${itens.length} de ${pessoas.length}`;
+  $('rodape').textContent = alterado
+    ? 'Há mudanças não salvas — clique em "Salvar cadastro".'
+    : 'Cadastro sincronizado com dados/pessoas.csv';
+  $('btnSalvar').disabled = !alterado;
+}
+
+function seleciona(i){
+  selecionada = i;
+  const p = pessoas[i];
+  $('semSelecao').style.display = 'none';
+  $('editor').classList.add('on');
+  $('edAv').textContent = iniciais(p.nome);
+  $('edNome').textContent = p.nome;
+  $('edSub').textContent = [p.depto, p.id ? 'crachá ' + p.id : 'sem crachá'].filter(Boolean).join(' · ');
+  $('edId').value = p.id || '';
+  $('edFone').value = p.telefone || '';
+  $('edAviso').className = 'aviso';
+  pinta();
+  $('edId').focus(); $('edId').select();
+}
+
+function fechaEditor(){
+  selecionada = null;
+  $('editor').classList.remove('on');
+  $('semSelecao').style.display = '';
+  pinta();
+  $('busca').focus();
+}
+
+function avisa(txt, tipo = 'alerta'){
+  const a = $('edAviso');
+  a.textContent = txt;
+  a.className = 'aviso on ' + tipo;
+}
+
+/** Confere se o crachá já está com outra pessoa. */
+function donoDoCracha(id, menos){
+  const k = chave(id);
+  return pessoas.find((p,i) => i !== menos && p.id && chave(p.id) === k);
+}
+
+function salvaPessoa(){
+  if (selecionada == null) return;
+  const p = pessoas[selecionada];
+  const id = $('edId').value.trim();
+  const fone = $('edFone').value.trim();
+
+  if (id){
+    const dono = donoDoCracha(id, selecionada);
+    if (dono){ avisa(`Este crachá já está com ${dono.nome}. Tire de lá antes, ou leia outro.`, 'erro'); return; }
+  }
+  if (fone && !foneWhats(fone)){
+    avisa('Telefone incompleto. Use DDD + número, ou deixe em branco.', 'erro');
+    $('edFone').focus(); return;
+  }
+  p.id = id;
+  p.telefone = fone ? foneBonito(fone) : '';   // grava sempre no mesmo formato,
+                                               // mesmo salvando com Enter (sem passar pelo blur)
+  alterado = true;
+  const nome = p.nome;
+  $('busca').value = '';        // pronto para digitar o próximo nome
+  fechaEditor();
+  recado(`${nome} atualizado${id ? ' com o crachá ' + id : ''}. Clique em "Salvar cadastro" para gravar.`);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   GRAVAÇÃO
+   ══════════════════════════════════════════════════════════════════════ */
+function montaCSV(){
+  const cel = v => /[;"\n]/.test(v||'') ? '"' + String(v).replace(/"/g,'""') + '"' : (v||'');
+  return 'ID;Nome;Departamento;Telefone\r\n' +
+    pessoas.map(p => [cel(p.id), cel(p.nome), cel(p.depto), cel(p.telefone)].join(';')).join('\r\n') + '\r\n';
+}
+
+async function salvaTudo(){
+  const csv = montaCSV();
+  if (!/^https?:$/.test(location.protocol)){
+    recado('Sem servidor: use "Baixar CSV" e salve por cima do dados/pessoas.csv.', false);
+    return;
+  }
+  try{
+    const r = await fetch(CFG.apiPessoas, {
+      method:'POST', headers:{'content-type':'text/csv; charset=utf-8'}, body:'\uFEFF' + csv });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    alterado = false; pinta();
+    recado(`Cadastro gravado em dados/pessoas.csv — ${pessoas.length} pessoa(s).`);
+  }catch(e){
+    recado('Não consegui gravar (' + e.message + '). O Iniciar-Painel.bat está aberto?', false);
+  }
+}
+
+function baixaCSV(){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + montaCSV()], { type:'text/csv;charset=utf-8' }));
+  a.download = 'pessoas.csv'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EVENTOS
+   ══════════════════════════════════════════════════════════════════════ */
+$('busca').addEventListener('input', pinta);
+$('busca').addEventListener('keydown', e => {
+  const itens = filtradas();
+  if (e.key === 'Enter' && itens.length){ e.preventDefault(); seleciona(itens[0].i); }
+  if (e.key === 'Escape'){ $('busca').value = ''; pinta(); }
+});
+$('lista').addEventListener('click', e => {
+  const b = e.target.closest('.pessoa'); if (b) seleciona(+b.dataset.i);
+});
+
+// o leitor RFID digita o código e manda Enter: vai daqui para o telefone
+$('edId').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); $('edFone').focus(); $('edFone').select(); }
+  if (e.key === 'Escape') fechaEditor();
+});
+$('edFone').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); salvaPessoa(); }
+  if (e.key === 'Escape') fechaEditor();
+});
+$('edFone').addEventListener('blur', () => {
+  const v = $('edFone').value.trim();
+  if (v && foneWhats(v)) $('edFone').value = foneBonito(v);
+});
+$('edSalvar').onclick = salvaPessoa;
+$('edFechar').onclick = fechaEditor;
+$('edLimpar').onclick = () => { $('edId').value = ''; $('edId').focus(); };
+
+$('btnSalvar').onclick = salvaTudo;
+$('btnBaixar').onclick = baixaCSV;
+$('btnLista').onclick = () => $('arq').click();
+$('solta').onclick = () => $('arq').click();
+$('arq').onchange = e => { if (e.target.files[0]) leArquivoNomes(e.target.files[0]); e.target.value=''; };
+['dragenter','dragover'].forEach(ev => $('solta').addEventListener(ev, e => {
+  e.preventDefault(); $('solta').classList.add('sobre'); }));
+['dragleave','drop'].forEach(ev => $('solta').addEventListener(ev, e => {
+  e.preventDefault(); $('solta').classList.remove('sobre'); }));
+$('solta').addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) leArquivoNomes(f); });
+// soltar em qualquer canto da página também vale — mas sem contar duas vezes
+// o arquivo solto dentro da área tracejada, que já tem o seu próprio ouvinte
+['dragover','drop'].forEach(ev => document.addEventListener(ev, e => {
+  e.preventDefault();
+  if (ev !== 'drop' || $('solta').contains(e.target)) return;
+  if (e.dataTransfer.files[0]) leArquivoNomes(e.dataTransfer.files[0]);
+}));
+window.addEventListener('beforeunload', e => { if (alterado){ e.preventDefault(); e.returnValue=''; } });
+
+/* ══════════════════════════════════════════════════════════════════════
+   ARRANQUE
+   ══════════════════════════════════════════════════════════════════════ */
+(async () => {
+  await carregaCadastro();
+  pinta();
+  $('busca').focus();
+})();
+</script>
+</body>
+</html>

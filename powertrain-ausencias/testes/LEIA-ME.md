@@ -12,6 +12,7 @@ node testes/fonte.js        releitura do arquivo, falha e recuperação
 node testes/ciclo.js        ritmo de 1 h e retentativa em 1 min
 node testes/qr.js           QR do condutor, decodificado da tela com jsQR
 node testes/blocos.js       recolher/esconder blocos e a memória da escolha
+node testes/cadastro.js    tela de cadastro de crachás (lista, filtro, leitor, gravação)
 node testes/pacote.js       o .zip extraído, como o usuário recebe
 python3 testes/servidor.py  estrutura do servir.ps1 (não há PowerShell aqui)
 ```

@@ -9,9 +9,11 @@ nada no dia a dia.
 
 ```
 powertrain-ausencias\
-├── index.html          o painel (também captura o leitor RFID)
-├── Iniciar-Painel.bat  duplo clique no PC do monitor
-├── servir.ps1          servidor local (chamado pelo .bat)
+├── index.html             o painel (também captura o leitor RFID)
+├── cadastro.html          tela para cadastrar os crachás da equipe
+├── Iniciar-Painel.bat     duplo clique no PC do monitor
+├── Cadastrar-Crachas.bat  abre a tela de cadastro
+├── servir.ps1             servidor local (chamado pelos .bat)
 └── dados\
     ├── fonte.txt       ← caminho do arquivo de saídas (aponte aqui, uma vez)
     ├── saidas.csv      ← ausências, se não usar o fonte.txt
@@ -271,13 +273,45 @@ ou incluir um carro, edite ele e pronto — nada para sincronizar:
 valer para o mesmo veículo. Se o arquivo faltar ou estiver com erro de digitação, as telas caem
 na lista de reserva embutida e continuam funcionando.
 
-### Descobrindo o número dos crachás
+## Cadastrando os crachás — `Cadastrar-Crachas.bat`
 
-O `pessoas.csv` que veio no pacote tem códigos de exemplo (`CR-0421`…). Para pegar os números
-reais: com o painel aberto, peça para cada pessoa encostar o crachá e anote o código que aparece
-no aviso (*"código lido: ..."*). Depois é só preencher o `dados/pessoas.csv`. Enquanto um crachá
-não estiver cadastrado, o painel mostra o próprio número e marca *"crachá fora do cadastro"* —
-não trava nada.
+O `pessoas.csv` que veio no pacote tem códigos de exemplo (`CR-0421`…). Para trocar pelos números
+reais **sem editar CSV na mão**, use a tela de cadastro: duplo clique em
+**`Cadastrar-Crachas.bat`** (com o `Iniciar-Painel.bat` já aberto — é ele que grava o arquivo).
+
+**Uma vez só, no começo: carregue a lista de nomes.** Arraste para a área tracejada uma planilha
+**.xlsx** ou **.csv** com a equipe. O nome sai da coluna `Nome` (ou `Colaborador`); se a planilha
+tiver uma coluna só, ela vira o nome. Colunas `Departamento` e `Telefone`, se existirem, são
+aproveitadas.
+
+**Depois, para cada pessoa** — o roteiro é todo pelo teclado, sem tirar a mão do leitor:
+
+1. **Digite parte do nome.** A lista vai filtrando enquanto você digita (não liga para acento nem
+   maiúscula: `erick` acha *Érick Paiva*).
+2. **<kbd>Enter</kbd>** escolhe o primeiro da lista — ou clique no nome. O cursor já cai no campo
+   do crachá, que fica piscando esperando a leitura.
+3. **Encoste o crachá no leitor.** Ele digita o código sozinho e manda <kbd>Enter</kbd>, o que
+   leva o cursor para o telefone. Sem leitor à mão, dá para digitar o número e teclar Enter.
+4. **Telefone é opcional** — é o que alimenta o QR de WhatsApp do painel. Deixe em branco e tecle
+   <kbd>Enter</kbd>: salva do mesmo jeito. Vale escrever como quiser (`19991234567`,
+   `(19) 99123-4567`, `+55 19 99123-4567`); a tela padroniza.
+5. O ID aparece **na coluna ao lado do nome** e a busca se limpa sozinha, pronta para o próximo.
+
+No fim, **"Salvar cadastro"** grava o `dados\pessoas.csv` (o arquivo anterior fica guardado como
+`pessoas.csv.bak`). Enquanto houver mudança pendente, o rodapé avisa e o botão fica aceso.
+
+Detalhes que evitam dor de cabeça:
+
+- **Crachá repetido é recusado**, dizendo de quem ele já é. Para transferir, abra a outra pessoa,
+  clique em **Tirar crachá**, salve — aí o código fica livre.
+- **Carregar a lista de novo não apaga nada**: quem já estava cadastrado mantém crachá e telefone,
+  e só os nomes novos entram.
+- **Telefone pela metade** não passa: ou completo com DDD, ou em branco.
+- Sem o servidor no ar, o botão **Baixar CSV** salva o arquivo em Downloads para você copiar por
+  cima do `dados\pessoas.csv`.
+
+Enquanto um crachá não estiver cadastrado, o painel não trava: mostra o próprio número lido e
+marca *"crachá fora do cadastro"*.
 
 ### QR do condutor — falar por WhatsApp
 

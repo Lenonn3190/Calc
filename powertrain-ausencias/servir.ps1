@@ -25,6 +25,7 @@ $DataFile = Join-Path $DataDir "saidas.csv"
 $HistFile  = Join-Path $DataDir "historico.json"
 $FrotaFile = Join-Path $DataDir "frota.csv"
 $FontePtr  = Join-Path $DataDir "fonte.txt"   # caminho do arquivo de saidas
+$PessoasFile = Join-Path $DataDir "pessoas.csv"
 if (-not (Test-Path $DataDir)) { New-Item -ItemType Directory -Path $DataDir -Force | Out-Null }
 
 $mime = @{
@@ -213,6 +214,30 @@ while ($listener.IsListening) {
         Add-Content -LiteralPath $FrotaFile -Value $linha -Encoding UTF8
         $ctx.Response.StatusCode = 200
         Write-Host "[$now] leitura: $tag" -ForegroundColor Cyan
+      }
+      $ctx.Response.ContentType = "application/json; charset=utf-8"
+      $okMsg = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true}')
+      $ctx.Response.OutputStream.Write($okMsg, 0, $okMsg.Length)
+      $ctx.Response.OutputStream.Close()
+      continue
+    }
+
+    # ---------- API: grava o cadastro de pessoas ----------
+    # Vem da tela cadastro.html. Guarda .bak antes de sobrescrever: e o
+    # cadastro inteiro que esta sendo trocado, nao um acrescimo.
+    if ($path -eq "/api/pessoas" -and ($req.HttpMethod -eq "POST" -or $req.HttpMethod -eq "PUT")) {
+      $ms = New-Object System.IO.MemoryStream
+      $req.InputStream.CopyTo($ms)
+      $bytes = $ms.ToArray()
+      if ($bytes.Length -lt 5) {
+        $ctx.Response.StatusCode = 400
+      } else {
+        if (Test-Path $PessoasFile) { Copy-Item -LiteralPath $PessoasFile -Destination "$PessoasFile.bak" -Force }
+        $tmp = "$PessoasFile.tmp"
+        [System.IO.File]::WriteAllBytes($tmp, $bytes)
+        Move-Item -Force $tmp $PessoasFile
+        $ctx.Response.StatusCode = 200
+        Write-Host "[$now] cadastro de pessoas gravado ($($bytes.Length) b)" -ForegroundColor Green
       }
       $ctx.Response.ContentType = "application/json; charset=utf-8"
       $okMsg = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true}')
