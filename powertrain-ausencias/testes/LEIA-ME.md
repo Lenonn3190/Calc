@@ -17,6 +17,11 @@ node testes/pacote.js       o .zip extraído, como o usuário recebe
 python3 testes/servidor.py  estrutura do servir.ps1 (não há PowerShell aqui)
 ```
 
+`fonte-do-painel.js` tira o JavaScript de dentro do `index.html` na hora de rodar.
+Antes isso era um arquivo gerado à mão no `/tmp`: ele envelheceu sem ninguém notar e o
+`test.js` e o `rfid.js` passaram dias medindo uma cópia velha do painel — davam "PASSOU"
+para código que nem estava mais lá.
+
 `servidor.py` existe porque não dá para executar o `servir.ps1` neste
 ambiente: ele confere que as rotas que o painel chama continuam no script.
 Uma rota inteira já se perdeu numa edição sem ninguém notar, porque os

@@ -295,6 +295,10 @@ reais **sem editar CSV na mão**, use a tela de cadastro. Dois caminhos para che
   `Nome` (ou `Colaborador`); se a planilha tiver uma coluna só, ela vira o nome. Colunas
   `Departamento` e `Telefone`, se existirem, são aproveitadas.
 
+**Quem não estiver em lista nenhuma** — gente que acabou de entrar, ou nome grafado diferente do
+que está nas saídas — é só digitar o nome na busca: aparece o botão *"Cadastrar «Fulano» como
+pessoa nova"*, e <kbd>Enter</kbd> faz o mesmo. Ela entra na lista já com o campo do crachá aberto.
+
 **Depois, para cada pessoa** — o roteiro é todo pelo teclado, sem tirar a mão do leitor:
 
 1. **Digite parte do nome.** A lista vai filtrando enquanto você digita (não liga para acento nem
@@ -306,7 +310,10 @@ reais **sem editar CSV na mão**, use a tela de cadastro. Dois caminhos para che
 4. **Telefone é opcional** — é o que alimenta o QR de WhatsApp do painel. Deixe em branco e tecle
    <kbd>Enter</kbd>: salva do mesmo jeito. Vale escrever como quiser (`19991234567`,
    `(19) 99123-4567`, `+55 19 99123-4567`); a tela padroniza.
-5. O ID aparece **na coluna ao lado do nome** e a busca se limpa sozinha, pronta para o próximo.
+5. **Departamento** também é opcional, e serve para quem foi cadastrado à mão. Quem veio de
+   planilha ou das saídas já chega com o departamento preenchido.
+6. A coluna ao lado do nome passa a dizer **"crachá cadastrado"** e a busca se limpa sozinha,
+   pronta para o próximo.
 
 No fim, **"Salvar cadastro"** grava o `dados\pessoas.csv` (o arquivo anterior fica guardado como
 `pessoas.csv.bak`). Enquanto houver mudança pendente, o rodapé avisa e o botão fica aceso.
@@ -327,8 +334,22 @@ Detalhes que evitam dor de cabeça:
 - Sem o servidor no ar, o botão **Baixar CSV** salva o arquivo em Downloads para você copiar por
   cima do `dados\pessoas.csv`.
 
-Enquanto um crachá não estiver cadastrado, o painel não trava: mostra o próprio número lido e
-marca *"crachá fora do cadastro"*.
+Enquanto um crachá não estiver cadastrado, o painel não trava: o carro entra em uso como
+**"Condutor não cadastrado"**, marcado com *"crachá fora do cadastro"*.
+
+### O número do crachá não aparece em tela nenhuma
+
+Nem no painel, nem na tela de cadastro. O painel fica exposto num monitor de parede e o número do
+crachá é o que abre porta e catraca — quem passar na frente não deve conseguir anotá-lo. Por isso:
+
+- No cadastro, o campo de leitura vem **mascarado** (o leitor digita, aparecem pontinhos) e a
+  lista mostra só *"crachá cadastrado"* ou *"sem crachá"*.
+- No painel, crachá fora do cadastro aparece como *"Condutor não cadastrado"*, e o aviso de
+  leitura não repete mais o código lido.
+
+O número continua gravado normalmente no `dados\pessoas.csv`, no `frota.csv` e no
+`historico.json` — quem precisar conferir abre o arquivo. **Não há como ver um crachá pela tela:**
+para trocar o de alguém, use *"Tirar crachá"* e leia o novo.
 
 ### QR do condutor — falar por WhatsApp
 

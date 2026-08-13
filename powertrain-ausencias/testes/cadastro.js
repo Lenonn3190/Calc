@@ -110,7 +110,10 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   await pg.fill('#busca','ERICK'); await pg.waitForTimeout(200);
   ok((await nomesNaTela())[0]==='Érick Paiva','não liga para maiúsculas nem acento no nome');
   await pg.fill('#busca','zzz'); await pg.waitForTimeout(200);
-  ok((await nomesNaTela()).length===0 && /Nenhum nome/.test(await pg.innerText('#lista')),'texto sem resultado');
+  ok((await nomesNaTela()).length===0,'nada na lista com um texto que não existe');
+  ok(/Ninguém com esse nome/.test(await pg.innerText('#lista')),'a tela diz que não achou',
+     await pg.innerText('#lista'));
+  await pg.fill('#busca',''); await pg.waitForTimeout(200);
 
   console.log('\n— escolher o nome abre o campo do crachá, já com o cursor lá —');
   await pg.fill('#busca','thiego'); await pg.waitForTimeout(200);
@@ -133,7 +136,8 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   let linha=await pg.evaluate(()=>{const b=[...document.querySelectorAll('.pessoa')]
     .find(x=>x.querySelector('.nm').textContent==='Thiego Ferreira'); return b&&b.innerText.replace(/\n/g,' | ');});
   console.log('   ',JSON.stringify(linha));
-  ok(/CR-0421/.test(linha||''),'o ID aparece ao lado do nome',String(linha));
+  ok(/crachá cadastrado/.test(linha||''),'a coluna ao lado mostra que tem crachá',String(linha));
+  ok(!/CR-0421/.test(linha||''),'sem o número do crachá na tela',String(linha));
   ok(/\(19\) 99123-4567/.test(linha||''),'telefone formatado ao lado',String(linha));
   ok(await pg.evaluate(()=>document.getElementById('busca').value==='')," a busca limpa sozinha para o próximo nome");
 
@@ -149,7 +153,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   ok(!(await pg.evaluate(()=>document.getElementById('editor').classList.contains('on'))),'salvou sem telefone');
   linha=await pg.evaluate(()=>{const b=[...document.querySelectorAll('.pessoa')]
     .find(x=>x.querySelector('.nm').textContent==='Nelton M Borges'); return b&&b.innerText.replace(/\n/g,' | ');});
-  ok(/CR-0555/.test(linha||''),'crachá guardado sem telefone',String(linha));
+  ok(/crachá cadastrado/.test(linha||''),'crachá guardado sem telefone',String(linha));
   ok(/6 sem crachá/.test(await placar()),'placar desceu para 6',await placar());
 
   console.log('\n— o mesmo crachá em duas pessoas é recusado —');
@@ -171,7 +175,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   await pg.click('#edSalvar'); await pg.waitForTimeout(300);
   ok(await pg.evaluate(()=>{const b=[...document.querySelectorAll('.pessoa')]
     .find(x=>x.querySelector('.nm').textContent==='William Nakahara');
-    return /CR-0777/.test(b.innerText);}),'crachá livre entra normalmente');
+    return /crachá cadastrado/.test(b.innerText);}),'crachá livre entra normalmente');
 
   console.log('\n— telefone pela metade não passa —');
   await pg.fill('#busca','agenor'); await pg.waitForTimeout(200);
@@ -198,7 +202,69 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   await pg.fill('#edId','CR-0555'); await pg.click('#edSalvar'); await pg.waitForTimeout(250);
   ok(await pg.evaluate(()=>{const b=[...document.querySelectorAll('.pessoa')]
     .find(x=>x.querySelector('.nm').textContent==='Douglas Marciano');
-    return /CR-0555/.test(b.innerText);}),'crachá liberado pode ser reaproveitado');
+    return /crachá cadastrado/.test(b.innerText);}),'crachá liberado pode ser reaproveitado');
+
+  console.log('\n— o número do crachá não aparece em canto nenhum da tela —');
+  const vazando=await pg.evaluate(cods=>{
+    const t=document.body.innerText;
+    const campos=[...document.querySelectorAll('input')]
+      .filter(i=>i.type!=='password' && cods.some(c=>i.value.includes(c))).map(i=>i.id);
+    return {texto:cods.filter(c=>t.includes(c)), campos,
+            tipoDoId:document.getElementById('edId').type};
+  },['CR-0421','CR-0555','CR-0777','CR-0900']);
+  console.log('   ',JSON.stringify(vazando));
+  ok(vazando.texto.length===0,'nenhum código no texto da página',JSON.stringify(vazando.texto));
+  ok(vazando.tipoDoId==='password','o campo de leitura esconde o que o leitor digita',vazando.tipoDoId);
+  ok(vazando.campos.length===0,'nenhum campo visível com o código',JSON.stringify(vazando.campos));
+
+  console.log('\n— quem não está na lista pode ser cadastrado na hora —');
+  await pg.fill('#busca','Renata Y Kobayashi'); await pg.waitForTimeout(250);
+  ok((await nomesNaTela()).length===0,'ninguém com esse nome ainda');
+  const oferta=await pg.innerText('#lista');
+  ok(/Cadastrar/.test(oferta) && /Renata Y Kobayashi/.test(oferta),'a tela oferece cadastrar o nome digitado',oferta.replace(/\n/g,' | '));
+  await pg.click('#btnNovo'); await pg.waitForTimeout(300);
+  ok(await pg.innerText('#edNome')==='Renata Y Kobayashi','entrou na lista e já abriu para o crachá',
+     await pg.innerText('#edNome'));
+  ok(await pg.evaluate(()=>document.activeElement.id)==='edId','com o cursor no campo do crachá',
+     await pg.evaluate(()=>document.activeElement.id));
+  await passaCracha(pg,'CR-0808');
+  await pg.keyboard.press('Enter'); await pg.waitForTimeout(300);
+  ok((await nomesNaTela()).some(n=>n==='Renata Y Kobayashi'),'a pessoa nova está na lista',
+     JSON.stringify(await nomesNaTela()));
+
+  console.log('\n— e dá para cadastrar um nome novo só com o teclado —');
+  await pg.click('#busca');
+  await pg.keyboard.type('Otávio Bertoldo'); await pg.waitForTimeout(250);
+  await pg.keyboard.press('Enter'); await pg.waitForTimeout(300);   // Enter sem resultado = cadastra
+  ok(await pg.innerText('#edNome')==='Otávio Bertoldo','Enter na busca criou a pessoa',
+     await pg.innerText('#edNome'));
+  await passaCracha(pg,'CR-0909');
+  await pg.keyboard.press('Enter');                                  // telefone em branco
+  await pg.waitForTimeout(150);
+  await pg.fill('#busca','otavio'); await pg.waitForTimeout(200);
+  ok((await nomesNaTela())[0]==='Otávio Bertoldo','achável pelo nome sem acento depois de criada',
+     JSON.stringify(await nomesNaTela()));
+
+  console.log('\n— nome repetido não cria uma segunda pessoa —');
+  await pg.fill('#busca','OTAVIO BERTOLDO'); await pg.waitForTimeout(250);
+  ok((await nomesNaTela()).length===1,'o filtro já acha o que existe, mesmo em maiúsculas',
+     JSON.stringify(await nomesNaTela()));
+  await pg.keyboard.press('Enter'); await pg.waitForTimeout(300);
+  ok(await pg.innerText('#edNome')==='Otávio Bertoldo','Enter abriu a pessoa que já existia');
+  ok((await pg.evaluate(()=>[...document.querySelectorAll('.pessoa .nm')]
+      .map(e=>e.textContent))).filter(n=>/Bertoldo/.test(n)).length===1,'sem duplicata');
+  await pg.click('#edFechar'); await pg.fill('#busca',''); await pg.waitForTimeout(200);
+
+  console.log('\n— departamento pode ser preenchido à mão —');
+  await pg.fill('#busca','renata'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  await pg.fill('#edDepto','nmg');
+  await pg.keyboard.press('Enter'); await pg.waitForTimeout(300);
+  await pg.fill('#busca','renata'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  ok(/NMG/.test(await pg.innerText('#edSub')),'guardado em maiúsculas',await pg.innerText('#edSub'));
+  ok(!/CR-0808/.test(await pg.innerText('#edSub')),'e sem mostrar o número do crachá',await pg.innerText('#edSub'));
+  await pg.click('#edFechar'); await pg.fill('#busca',''); await pg.waitForTimeout(200);
 
   console.log('\n— gravar manda o cadastro para o servidor —');
   ok(await pg.evaluate(()=>!document.getElementById('btnSalvar').disabled),'botão salvar habilitado com mudanças pendentes');
@@ -209,7 +275,10 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   ok(gravado.charCodeAt(0)===0xFEFF,'com BOM, para o Excel abrir com acento certo');
   const cab=linhasCSV(gravado)[0];
   ok(cab==='ID;Nome;Departamento;Telefone','cabeçalho igual ao que o painel lê',cab);
-  ok(linhasCSV(gravado).length===9,'oito pessoas gravadas','linhas: '+linhasCSV(gravado).length);
+  ok(linhasCSV(gravado).length===11,'as dez pessoas gravadas','linhas: '+linhasCSV(gravado).length);
+  ok(campo(gravado,'ID')['Renata Y Kobayashi']==='CR-0808','a pessoa criada na tela foi para o arquivo',
+     campo(gravado,'ID')['Renata Y Kobayashi']);
+  ok(campo(gravado,'Departamento')['Renata Y Kobayashi']==='NMG','com o departamento digitado');
   const ids=campo(gravado,'ID'), fones=campo(gravado,'Telefone'), deps=campo(gravado,'Departamento');
   ok(ids['Thiego Ferreira']==='CR-0421','ID do Thiego no arquivo',ids['Thiego Ferreira']);
   ok(fones['Thiego Ferreira']==='(19) 99123-4567','telefone gravado',fones['Thiego Ferreira']);
@@ -222,11 +291,13 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   console.log('\n— recarregando, o cadastro continua lá —');
   await pg.reload({waitUntil:'load'}); await pg.waitForTimeout(500);
   nomes=await nomesNaTela();
-  ok(nomes.length===8,'as oito pessoas voltaram','vieram '+nomes.length);
-  ok(/4 com crachá/.test(await placar()),'quatro crachás relidos do arquivo',await placar());
+  ok(nomes.length===10,'as dez pessoas voltaram','vieram '+nomes.length);
+  ok(/6 com crachá/.test(await placar()),'seis crachás relidos do arquivo',await placar());
   linha=await pg.evaluate(()=>{const b=[...document.querySelectorAll('.pessoa')]
     .find(x=>x.querySelector('.nm').textContent==='Thiego Ferreira'); return b.innerText.replace(/\n/g,' | ');});
-  ok(/CR-0421/.test(linha) && /\(19\) 99123-4567/.test(linha),'crachá e telefone relidos',linha);
+  ok(/crachá cadastrado/.test(linha) && /\(19\) 99123-4567/.test(linha),'crachá e telefone relidos',linha);
+  ok(campo(fs.readFileSync(PESSOAS,'utf8'),'ID')['Thiego Ferreira']==='CR-0421',
+     'e o número continua no arquivo, que é onde ele deve estar');
 
   console.log('\n— carregar a lista de novo não apaga o que já foi cadastrado —');
   const csv=path.join(TMP,'equipe2.csv');
@@ -234,12 +305,12 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   await pg.setInputFiles('#arq',csv); await pg.waitForTimeout(500);
   nomes=await nomesNaTela();
   console.log('   ',JSON.stringify(nomes));
-  ok(nomes.length===10,'dois nomes novos entraram, um já existia','vieram '+nomes.length);
+  ok(nomes.length===12,'dois nomes novos entraram, um já existia','vieram '+nomes.length);
   ok(nomes.includes('Lenonn') && nomes.includes('Carlos Eduardo'),'nomes novos na lista');
   ok(nomes.filter(n=>n==='Thiego Ferreira').length===1,'ninguém duplicado');
   linha=await pg.evaluate(()=>{const b=[...document.querySelectorAll('.pessoa')]
     .find(x=>x.querySelector('.nm').textContent==='Thiego Ferreira'); return b.innerText.replace(/\n/g,' | ');});
-  ok(/CR-0421/.test(linha),'o crachá de quem já estava cadastrado foi preservado',linha);
+  ok(/crachá cadastrado/.test(linha),'o crachá de quem já estava cadastrado foi preservado',linha);
   ok(/2 nome\(s\) novo\(s\)/.test(await pg.innerText('#recado')),'recado conta o que entrou',await pg.innerText('#recado'));
 
   console.log('\n— uma planilha de coluna única também serve —');
@@ -257,7 +328,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
     const t=await (await fetch(u)).text();
     return matrizDeCSV(t).length;
   },'dados/pessoas.csv?t='+Date.now());
-  ok(visto===13,'o arquivo gravado é lido de volta inteiro (cabeçalho + 12)','linhas: '+visto);
+  ok(visto===15,'o arquivo gravado é lido de volta inteiro (cabeçalho + 14)','linhas: '+visto);
   await pg2.close();
 
   console.log('\n— trazer os nomes direto do arquivo de saídas —');
@@ -274,7 +345,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   ok(nomes.filter(n=>n==='Thiego Ferreira').length===1,'quem já existia não duplicou');
   linha=await pg.evaluate(()=>{const b=[...document.querySelectorAll('.pessoa')]
     .find(x=>x.querySelector('.nm').textContent==='Thiego Ferreira'); return b.innerText.replace(/\n/g,' | ');});
-  ok(/CR-0421/.test(linha),'e manteve o crachá que já tinha',linha);
+  ok(/crachá cadastrado/.test(linha),'e manteve o crachá que já tinha',linha);
   await pg.fill('#busca','jefferson vilela'); await pg.waitForTimeout(200);
   await pg.click('.pessoa'); await pg.waitForTimeout(200);
   const dep=await pg.innerText('#edSub');
@@ -294,7 +365,18 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
     .find(x=>x.veiculo.tag==='C3FE4090'); return {status:e.status, condutor:e.condutor&&e.condutor.nome,
     conhecido:!!(e.condutor&&!e.condutor.naoCadastrado)};});
   console.log('   antes:',JSON.stringify(antes));
-  ok(antes.status==='uso' && !antes.conhecido,'o painel mostra o crachá cru, fora do cadastro',JSON.stringify(antes));
+  ok(antes.status==='uso' && !antes.conhecido,'o carro entra em uso mesmo com o crachá fora do cadastro',
+     JSON.stringify(antes));
+  // o painel fica num monitor de parede: o número do crachá não pode aparecer
+  const vaza=await painel.evaluate(()=>({
+    texto:document.body.innerText.includes('CR-9001'),
+    html:document.documentElement.innerHTML.includes('CR-9001'),
+    card:(document.querySelector('.veic.uso')||{}).innerText||'',
+  }));
+  console.log('   ',JSON.stringify(vaza).slice(0,220));
+  ok(!vaza.texto,'o número do crachá não aparece na tela do painel');
+  ok(!vaza.html,'nem escondido no HTML da página');
+  ok(/não cadastrado/i.test(vaza.card),'o card diz que o crachá não está cadastrado',vaza.card.replace(/\n/g,' | '));
 
   // sem tocar no painel, cadastra esse crachá na outra tela e salva
   await pg.fill('#busca','erick'); await pg.waitForTimeout(200);

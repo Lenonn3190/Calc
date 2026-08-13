@@ -172,14 +172,21 @@ input{font:inherit}
 
         <div class="campo">
           <label for="edId">ID do crachá</label>
-          <input id="edId" class="esperando" placeholder="Encoste o crachá no leitor…" autocomplete="off" />
-          <div class="dica">O leitor digita sozinho. Sem leitor, dá para <b>digitar o número</b> e teclar Enter.</div>
+          <input id="edId" class="esperando" type="password" placeholder="Encoste o crachá no leitor…"
+                 autocomplete="new-password" />
+          <div class="dica">O leitor digita sozinho — o número fica <b>escondido</b> de propósito.
+            Sem leitor, dá para digitar e teclar Enter.</div>
         </div>
 
         <div class="campo">
           <label for="edFone">Telefone <span style="color:var(--faint);font-weight:600">(opcional)</span></label>
           <input id="edFone" placeholder="(19) 99123-4567" autocomplete="off" inputmode="tel" />
           <div class="dica">Usado no QR de WhatsApp do painel. Pode deixar em branco.</div>
+        </div>
+
+        <div class="campo">
+          <label for="edDepto">Departamento <span style="color:var(--faint);font-weight:600">(opcional)</span></label>
+          <input id="edDepto" placeholder="I/H, NMG, OUTSOURCE…" autocomplete="off" />
         </div>
 
         <div class="acoes">
@@ -486,16 +493,44 @@ function filtradas(){
   return pessoas.map((p,i) => ({p,i})).filter(({p}) => chave(p.nome).includes(t));
 }
 
+/** O texto da busca, quando dá para virar um nome novo. */
+function novoNome(){
+  const t = ($('busca').value || '').trim().replace(/\s+/g,' ');
+  return t.length >= 2 ? t : '';
+}
+
+/** Cadastra quem não veio em lista nenhuma — gente nova na equipe, ou nome
+    grafado diferente do que está no arquivo de saídas. */
+function criaPessoa(){
+  const nome = novoNome();
+  if (!nome){ recado('Digite o nome antes de cadastrar.', false); return; }
+  const acha = () => pessoas.findIndex(p => chave(p.nome) === chave(nome));
+  if (acha() < 0){
+    pessoas.push({ nome, id:'', depto:'', telefone:'' });
+    pessoas.sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR'));
+    alterado = true;
+    recado(`“${nome}” entrou na lista. Encoste o crachá e salve o cadastro.`);
+  }
+  pinta();
+  seleciona(acha());          // já abre o campo do crachá, como ao escolher da lista
+}
+
 function pinta(){
   const itens = filtradas();
   $('lista').innerHTML = itens.length ? itens.map(({p,i}) => `
     <button class="pessoa ${i===selecionada?'marcada':''}" data-i="${i}">
       <span class="nm">${esc(p.nome)}</span>
-      <span class="id ${p.id?'':'sem'}">${p.id ? esc(p.id) : 'sem crachá'}</span>
+      <span class="id ${p.id?'':'sem'}">${p.id ? 'crachá cadastrado' : 'sem crachá'}</span>
       <span class="fone">${p.telefone ? esc(foneBonito(p.telefone)) : ''}</span>
     </button>`).join('')
-    : `<div class="nada">${pessoas.length ? 'Nenhum nome com esse texto.'
-        : 'Nenhuma pessoa ainda — carregue uma lista de nomes abaixo.'}</div>`;
+    : (novoNome()
+        ? `<div class="nada">Ninguém com esse nome na lista.
+             <div style="margin-top:.8rem"><button class="btn primario" id="btnNovo"
+               >+ Cadastrar “${esc(novoNome())}” como pessoa nova</button></div>
+             <div style="margin-top:.5rem;font-size:.78rem">Ou tecle <b>Enter</b>.</div></div>`
+        : `<div class="nada">${pessoas.length ? 'Nenhum nome com esse texto.'
+            : 'Nenhuma pessoa ainda — carregue uma lista de nomes abaixo, ou digite o nome aqui em cima.'}</div>`);
+  const bn = $('btnNovo'); if (bn) bn.onclick = criaPessoa;
 
   const com = pessoas.filter(p => p.id).length;
   $('placar').innerHTML =
@@ -516,9 +551,10 @@ function seleciona(i){
   $('editor').classList.add('on');
   $('edAv').textContent = iniciais(p.nome);
   $('edNome').textContent = p.nome;
-  $('edSub').textContent = [p.depto, p.id ? 'crachá ' + p.id : 'sem crachá'].filter(Boolean).join(' · ');
+  $('edSub').textContent = [p.depto, p.id ? 'crachá cadastrado' : 'sem crachá'].filter(Boolean).join(' · ');
   $('edId').value = p.id || '';
   $('edFone').value = p.telefone || '';
+  $('edDepto').value = p.depto || '';
   $('edAviso').className = 'aviso';
   pinta();
   $('edId').focus(); $('edId').select();
@@ -549,6 +585,7 @@ function salvaPessoa(){
   const p = pessoas[selecionada];
   const id = $('edId').value.trim();
   const fone = $('edFone').value.trim();
+  const depto = $('edDepto').value.trim().toUpperCase();
 
   if (id){
     const dono = donoDoCracha(id, selecionada);
@@ -561,11 +598,13 @@ function salvaPessoa(){
   p.id = id;
   p.telefone = fone ? foneBonito(fone) : '';   // grava sempre no mesmo formato,
                                                // mesmo salvando com Enter (sem passar pelo blur)
+  p.depto = depto;
   alterado = true;
   const nome = p.nome;
   $('busca').value = '';        // pronto para digitar o próximo nome
   fechaEditor();
-  recado(`${nome} atualizado${id ? ' com o crachá ' + id : ''}. Clique em "Salvar cadastro" para gravar.`);
+  // sem repetir o número do crachá: ele não aparece em tela nenhuma
+  recado(`${nome} ${id ? 'está com crachá' : 'ficou sem crachá'}. Clique em "Salvar cadastro" para gravar.`);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -617,7 +656,11 @@ function baixaCSV(){
 $('busca').addEventListener('input', pinta);
 $('busca').addEventListener('keydown', e => {
   const itens = filtradas();
-  if (e.key === 'Enter' && itens.length){ e.preventDefault(); seleciona(itens[0].i); }
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    if (itens.length) seleciona(itens[0].i);
+    else if (novoNome()) criaPessoa();      // ninguém com esse nome: cadastra
+  }
   if (e.key === 'Escape'){ $('busca').value = ''; pinta(); }
 });
 $('lista').addEventListener('click', e => {
@@ -630,6 +673,10 @@ $('edId').addEventListener('keydown', e => {
   if (e.key === 'Escape') fechaEditor();
 });
 $('edFone').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); salvaPessoa(); }
+  if (e.key === 'Escape') fechaEditor();
+});
+$('edDepto').addEventListener('keydown', e => {
   if (e.key === 'Enter'){ e.preventDefault(); salvaPessoa(); }
   if (e.key === 'Escape') fechaEditor();
 });

@@ -29,8 +29,7 @@ global.URL = { createObjectURL:()=> 'blob:x', revokeObjectURL(){} };
 global.Blob = function(){};
 global.FileReader = function(){};
 
-const fs = require('fs');
-const src = fs.readFileSync('/tmp/claude-0/-home-user/c4ebad73-ed38-57bd-ad0e-0ec4f3b99b0c/scratchpad/all.js','utf8');
+const src = require('./fonte-do-painel')();
 // expõe o escopo interno para inspeção
 eval(src + '\nglobal.__api = { importar, parseData, duracaoTxt, diasEntre, iniciais, norm, infoMotivo, parseCSV, importar, estado, render, agora, prepara };');
 

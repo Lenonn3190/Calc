@@ -361,8 +361,6 @@ footer .legend{display:flex;flex-wrap:wrap;gap:.4rem}
 .leitura .t{font-size:2.1rem;font-weight:800;line-height:1.15;color:var(--c);letter-spacing:-.5px}
 .leitura .d{font-size:1.15rem;font-weight:700;color:var(--txt);margin-top:.3rem;line-height:1.35}
 .leitura .d b{color:var(--c)}
-.leitura .cod{font-family:ui-monospace,Consolas,monospace;font-size:.85rem;font-weight:700;
-  color:var(--muted);margin-top:.45rem;letter-spacing:1px}
 .leitura .cont{font-size:2.4rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--c);
   flex:none;opacity:.85}
 .leitura.pisca{animation:baque .5s ease-out}
@@ -632,7 +630,6 @@ const DADOS = [
   <div class="txt">
     <div class="t" id="avisoT">—</div>
     <div class="d" id="avisoD"></div>
-    <div class="cod" id="avisoC"></div>
   </div>
   <div class="cont" id="avisoN"></div>
 </div>
@@ -1180,7 +1177,7 @@ function desenhaFrota(){
         : (c.naoCadastrado ? `<span class="tagm">crachá fora do cadastro</span>` : '');
       corpo = `
         <div class="lin quem">
-          <span class="av2">${esc(iniciais(c.nome))}</span>${esc(c.nome)}
+          <span class="av2">${(c.semCracha || c.naoCadastrado) ? '?' : esc(iniciais(c.nome))}</span>${esc(c.nome)}
           ${c.depto ? `<span class="chip" style="--cb:${corDepto(c.depto)}22;--cf:${corDepto(c.depto)}">${esc(c.depto)}</span>` : ''}
           ${alerta}
         </div>
@@ -1854,10 +1851,15 @@ function achaVeiculo(tag){
     chaveTag(v.tag) === k || (v.apelidos||[]).some(a => chaveTag(a) === k)) || null;
 }
 
-/** Resolve um crachá em pessoa. Fora do cadastro, usa o próprio número. */
+/** Resolve um crachá em pessoa.
+    Fora do cadastro NÃO mostramos o número: o painel fica exposto num monitor
+    de parede e o número do crachá é o que abre porta e catraca. O código fica
+    só no frota.csv e no historico.json, para quem precisar conferir. */
+const SEM_CADASTRO = 'Condutor não cadastrado';
 function resolveCracha(tag){
   const p = pessoas.get(norm(tag));
-  return p ? { ...p, cracha:tag } : { nome:tag, depto:'', telefone:'', cracha:tag, naoCadastrado:true };
+  return p ? { ...p, cracha:tag }
+           : { nome:SEM_CADASTRO, depto:'', telefone:'', cracha:tag, naoCadastrado:true };
 }
 
 /** Reprocessa o log e devolve o estado atual da frota.
@@ -1944,10 +1946,10 @@ function montaViagem(v, ini, fim, condutor){
     veiculo: v.tag,
     modelo: v.modelo,
     placa: v.placa,
-    condutor: c.nome || null,
-    cracha: c.naoCadastrado ? c.nome : (c.cracha || null),
+    condutor: (c.naoCadastrado || c.semCracha) ? null : (c.nome || null),
+    cracha: c.cracha || null,
     departamento: c.depto || null,
-    identificado: !!(c.nome && !c.semCracha),
+    identificado: !!(c.nome && !c.semCracha && !c.naoCadastrado),
     saida: iso(ini),
     retorno: fim ? iso(fim) : null,
     duracao_min: fim ? Math.round((fim - ini)/60000) : null,
@@ -2322,13 +2324,12 @@ function ligaBlocos(){
    ══════════════════════════════════════════════════════════════════════ */
 let _avisoTimer = null, _avisoConta = null;
 
-function mostraAviso({ cor, titulo, detalhe, codigo, ate }){
+function mostraAviso({ cor, titulo, detalhe, ate }){
   const el = $('aviso');
   el.style.setProperty('--c', cor);
   $('avisoIc').innerHTML = { leitura:ICO.cracha, carro:ICO.carro, ok:ICO.ok, erro:ICO.relogio }[titulo.ico] || ICO.cracha;
   $('avisoT').textContent = titulo.txt;
   $('avisoD').innerHTML = detalhe || '';
-  $('avisoC').textContent = codigo ? 'código lido: ' + codigo : '';
   el.classList.add('on','pisca');
   setTimeout(() => el.classList.remove('pisca'), 500);
 
@@ -2370,7 +2371,7 @@ async function registraLeitura(tag){
 
   if (!/^https?:$/.test(location.protocol)){
     mostraAviso({ cor:'#ef4444', titulo:{txt:'Sem servidor', ico:'erro'},
-      detalhe:'Abra o painel pelo <b>Iniciar-Painel.bat</b> para registrar leituras.', codigo:tag });
+      detalhe:'Abra o painel pelo <b>Iniciar-Painel.bat</b> para registrar leituras.' });
     return;
   }
 
@@ -2380,8 +2381,7 @@ async function registraLeitura(tag){
     if (!r.ok) throw new Error('HTTP ' + r.status);
   }catch(e){
     mostraAviso({ cor:'#ef4444', titulo:{txt:'Não consegui gravar', ico:'erro'},
-      detalhe:`A leitura não entrou no log (${esc(e.message)}). Confira se a janela do servidor está aberta.`,
-      codigo:tag });
+      detalhe:`A leitura não entrou no log (${esc(e.message)}). Confira se a janela do servidor está aberta.` });
     return;
   }
 
@@ -2398,16 +2398,14 @@ async function registraLeitura(tag){
     if (!e) return;
     if (e.status === 'aguardando'){
       mostraAviso({ cor:'#38bdf8', titulo:{txt:v.modelo + ' lido', ico:'carro'},
-        detalhe:'Agora encoste o <b>crachá do condutor</b> para registrar a saída.',
-        codigo:tag, ate:janelaAte(+e.desde) });
+        detalhe:'Agora encoste o <b>crachá do condutor</b> para registrar a saída.', ate:janelaAte(+e.desde) });
     } else if (e.status === 'uso'){
       mostraAviso({ cor:'#22c55e', titulo:{txt:'Saída registrada', ico:'ok'},
-        detalhe:`<b>${esc((e.condutor||{}).nome || '—')}</b> saiu com o <b>${esc(v.modelo)}</b>.`,
-        codigo:tag });
+        detalhe:`<b>${esc((e.condutor||{}).nome || '—')}</b> saiu com o <b>${esc(v.modelo)}</b>.` });
     } else {
       const ult = e.ultimoCondutor ? ` — <b>${esc(e.ultimoCondutor.nome)}</b> devolveu` : '';
       mostraAviso({ cor:'#22c55e', titulo:{txt:v.modelo + ' devolvido', ico:'ok'},
-        detalhe:`Disponível de novo${ult}.`, codigo:tag });
+        detalhe:`Disponível de novo${ult}.` });
     }
     return;
   }
@@ -2415,16 +2413,13 @@ async function registraLeitura(tag){
   const emUso = lista.find(x => x.status === 'uso' && x.condutor && chaveTag(x.condutor.cracha||'') === chaveTag(tag));
   if (emUso){
     mostraAviso({ cor:'#22c55e', titulo:{txt:'Saída registrada', ico:'ok'},
-      detalhe:`<b>${esc(emUso.condutor.nome)}</b> saiu com o <b>${esc(emUso.veiculo.modelo)}</b>.`,
-      codigo:tag });
+      detalhe:`<b>${esc(emUso.condutor.nome)}</b> saiu com o <b>${esc(emUso.veiculo.modelo)}</b>.` });
   } else if (cracha){
     mostraAviso({ cor:'#14b8a6', titulo:{txt:cracha.nome, ico:'leitura'},
-      detalhe:'Agora encoste a <b>tag do carro</b> para registrar a saída.',
-      codigo:tag, ate:janelaAte(+cracha.quando) });
+      detalhe:'Agora encoste a <b>tag do carro</b> para registrar a saída.', ate:janelaAte(+cracha.quando) });
   } else {
     mostraAviso({ cor:'#f59e0b', titulo:{txt:'Leitura registrada', ico:'leitura'},
-      detalhe:'Não casou com nenhum carro. Encoste a <b>tag do carro</b> logo em seguida.',
-      codigo:tag });
+      detalhe:'Não casou com nenhum carro. Encoste a <b>tag do carro</b> logo em seguida.' });
   }
 }
 

@@ -13,8 +13,8 @@ global.indexedDB=undefined; global.location={protocol:'file:'};
 global.fetch=()=>Promise.reject(new Error('sem rede'));
 global.URL={createObjectURL:()=>'b',revokeObjectURL(){}}; global.Blob=function(){}; global.FileReader=function(){};
 
-const fs=require('fs');
-eval(fs.readFileSync('/tmp/claude-0/-home-user/c4ebad73-ed38-57bd-ad0e-0ec4f3b99b0c/scratchpad/all.js','utf8')
+const src=require('./fonte-do-painel')();
+eval(src
   + '\nglobal.__f={carregaLeiturasRfid,carregaPessoas,calculaFrota,achaVeiculo,CONFIG,desenhaFrota,FonteFrota,parseTabela};');
 const F=global.__f;
 
@@ -66,10 +66,14 @@ e = estado(T(9,0));
 ok(e['13B780FA'].s==='uso' && e['13B780FA'].c==='Jefferson Vilela', 'Civic com o condutor certo', JSON.stringify(e['13B780FA']));
 ok(e['C3FE4090'].s==='uso' && e['C3FE4090'].c==='Thiego Ferreira', 'HR-V com o condutor certo', JSON.stringify(e['C3FE4090']));
 
-console.log('\n— crachá desconhecido: mostra o número, não trava —');
+console.log('\n— crachá desconhecido: não trava, e não expõe o número —');
 F.carregaLeiturasRfid(log([T(8,0),'HRV'],[T(8,0),'CR-9999']));
 e = estado(T(9,0));
-ok(e['C3FE4090'].s==='uso' && e['C3FE4090'].c==='CR-9999', 'usa o próprio id como nome', JSON.stringify(e['C3FE4090']));
+ok(e['C3FE4090'].s==='uso', 'o carro entra em uso mesmo assim', JSON.stringify(e['C3FE4090']));
+ok(!/CR-9999/.test(e['C3FE4090'].c||''), 'o número do crachá não vira o nome na tela', e['C3FE4090'].c);
+ok(/não cadastrado/i.test(e['C3FE4090'].c||''), 'aparece como não cadastrado', e['C3FE4090'].c);
+ok(F.calculaFrota(T(9,0)).lista.find(x=>x.veiculo.tag==='C3FE4090').condutor.cracha==='CR-9999',
+   'mas o código continua disponível internamente, para o histórico');
 
 console.log('\n— crachá solto: fica pendente, mas não abre uso sozinho —');
 F.carregaLeiturasRfid(log([T(8,0),'CR-0421']));
