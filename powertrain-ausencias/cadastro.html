@@ -68,6 +68,8 @@ input{font:inherit}
 .busca svg{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);width:1.1rem;height:1.1rem;color:var(--faint)}
 
 .lista{max-height:26rem;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem}
+/* com o teclado virtual no ar, a lista encolhe para não ficar atrás dele */
+body.tecl-aberto .lista{max-height:max(9rem, calc(100vh - var(--tecl-alt, 0px) - 19rem))}
 .pessoa{display:grid;grid-template-columns:1fr auto auto;gap:.8rem;align-items:center;
   padding:.6rem .8rem;border-radius:.6rem;background:var(--panel-2);border:1px solid transparent;
   cursor:pointer;transition:.12s;text-align:left;width:100%}
@@ -145,7 +147,8 @@ input{font:inherit}
     <div class="dentro">
       <div class="busca">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input id="busca" placeholder="Digite o nome para filtrar…" autocomplete="off" autofocus />
+        <input id="busca" placeholder="Digite o nome para filtrar…" autocomplete="off" autofocus
+               data-rotulo="Nome da pessoa" />
       </div>
       <div class="lista" id="lista"></div>
     </div>
@@ -173,14 +176,15 @@ input{font:inherit}
         <div class="campo">
           <label for="edId">ID do crachá</label>
           <input id="edId" class="esperando" type="password" placeholder="Encoste o crachá no leitor…"
-                 autocomplete="new-password" />
+                 autocomplete="new-password" data-rotulo="ID do crachá" />
           <div class="dica">O leitor digita sozinho — o número fica <b>escondido</b> de propósito.
             Sem leitor, dá para digitar e teclar Enter.</div>
         </div>
 
         <div class="campo">
           <label for="edFone">Telefone <span style="color:var(--faint);font-weight:600">(opcional)</span></label>
-          <input id="edFone" placeholder="(19) 99123-4567" autocomplete="off" inputmode="tel" />
+          <input id="edFone" placeholder="(19) 99123-4567" autocomplete="off" inputmode="tel"
+                 data-teclado="numero" data-rotulo="Telefone" />
           <div class="dica">Usado no QR de WhatsApp do painel. Pode deixar em branco.</div>
         </div>
 
@@ -718,5 +722,6 @@ window.addEventListener('beforeunload', e => { if (alterado){ e.preventDefault()
   $('busca').focus();
 })();
 </script>
+<script src="teclado.js"></script>
 </body>
 </html>

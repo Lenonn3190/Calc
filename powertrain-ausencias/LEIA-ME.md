@@ -11,6 +11,7 @@ nada no dia a dia.
 powertrain-ausencias\
 ├── index.html             o painel (também captura o leitor RFID)
 ├── cadastro.html          tela para cadastrar os crachás da equipe
+├── teclado.js             teclado virtual, para PC sem teclado físico
 ├── Iniciar-Painel.bat     duplo clique no PC do monitor
 ├── Cadastrar-Crachas.bat  abre a tela de cadastro
 ├── servir.ps1             servidor local (chamado pelos .bat)
@@ -336,6 +337,29 @@ Detalhes que evitam dor de cabeça:
 
 Enquanto um crachá não estiver cadastrado, o painel não trava: o carro entra em uso como
 **"Condutor não cadastrado"**, marcado com *"crachá fora do cadastro"*.
+
+### Sem teclado físico: o teclado é o da tela
+
+O PC do painel não precisa de teclado. **Toque num campo e o teclado sobe** da parte de baixo da
+tela, com teclas grandes o bastante para dedo. Vale nas duas telas — no cadastro e nos campos do
+⚙ do painel.
+
+- **Nome:** letras, `ç` e uma fileira só de acentos (`á à â ã é ê í ó ô õ ú`). A **primeira letra
+  já vem maiúscula**, e volta a vir depois de cada espaço — que é como se digita nome de gente.
+  O **⇧** força maiúscula quando precisar.
+- **Telefone:** abre um **teclado numérico**, sem letras para atrapalhar.
+- **OK** vale como Enter: escolhe a pessoa da lista, ou passa para o campo seguinte, ou salva —
+  o mesmo caminho de sempre. O teclado **acompanha o foco**, então dá para ir do crachá ao
+  telefone e salvar sem tocar em mais nada.
+- **⌫** apaga uma letra, **limpar** esvazia o campo, **✕** (ou tocar fora) fecha.
+- O campo em uso aparece espelhado no alto do teclado, porque o teclado ocupa parte da tela — e
+  no campo do crachá esse espelho mostra **pontinhos**, nunca o número.
+
+O teclado **nunca rouba o foco do campo**: o leitor RFID continua digitando normalmente enquanto
+ele está aberto. E fechar o teclado **solta o foco**, senão a próxima tag lida iria parar dentro
+do campo em vez de virar leitura no painel.
+
+Para desligar o teclado num campo específico, `data-teclado="nao"` no `<input>`.
 
 ### O número do crachá não aparece em tela nenhuma
 

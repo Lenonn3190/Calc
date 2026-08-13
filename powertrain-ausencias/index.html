@@ -2633,7 +2633,13 @@ function abreCfg(){
   pintaBoxFonte();
   $('cfgModal').classList.add('on');
 }
-const fechaCfg = () => $('cfgModal').classList.remove('on');
+const fechaCfg = () => {
+  $('cfgModal').classList.remove('on');
+  // sem isso o cursor ficaria parado num campo e a próxima tag lida seria
+  // digitada lá dentro, em vez de virar leitura
+  if (window.TecladoVirtual) window.TecladoVirtual.fecha();
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+};
 
 $('btnCfg').onclick = abreCfg;
 $('btnFechar').onclick = fechaCfg;
@@ -2758,5 +2764,6 @@ setInterval(tique, 1000);
 setInterval(render, Math.max(15, CONFIG.atualizarSeg) * 1000);
 quiosque();
 </script>
+<script src="teclado.js"></script>
 </body>
 </html>

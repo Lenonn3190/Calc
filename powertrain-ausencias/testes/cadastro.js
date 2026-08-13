@@ -77,6 +77,12 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   await new Promise(r=>srv.listen(8083,r));
   const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',args:['--no-sandbox']});
   const pg=await b.newPage({viewport:{width:1500,height:1000}});
+  // Aqui o teclado é o FÍSICO de propósito: é assim que o leitor RFID digita.
+  // Desliga o teclado virtual pelo mesmo data-teclado="nao" que a página
+  // oferece, senão ele fica no ar cobrindo a lista. O teclado virtual tem a
+  // suíte dele em testes/teclado.js.
+  await pg.addInitScript(() => addEventListener('DOMContentLoaded',
+    () => document.querySelectorAll('input,textarea').forEach(i => i.dataset.teclado = 'nao')));
   const erros=[]; pg.on('pageerror',e=>erros.push(e.message));
   pg.on('dialog',d=>d.accept());
   await pg.goto('http://localhost:8083/cadastro.html',{waitUntil:'load'});
@@ -117,7 +123,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
 
   console.log('\n— escolher o nome abre o campo do crachá, já com o cursor lá —');
   await pg.fill('#busca','thiego'); await pg.waitForTimeout(200);
-  await pg.click('.pessoa'); await pg.waitForTimeout(250);
+  await pg.click('.pessoa'); await pg.waitForTimeout(220);
   ok(await pg.evaluate(()=>document.getElementById('editor').classList.contains('on')),'editor aberto');
   ok(await pg.innerText('#edNome')==='Thiego Ferreira','mostra de quem é',await pg.innerText('#edNome'));
   ok(await pg.evaluate(()=>document.activeElement.id)==='edId','cursor já no campo do crachá',
@@ -158,7 +164,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
 
   console.log('\n— o mesmo crachá em duas pessoas é recusado —');
   await pg.fill('#busca','william'); await pg.waitForTimeout(200);
-  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(220);
   await passaCracha(pg,'cr-0421');                      // o de outra pessoa, em minúsculas
   await pg.keyboard.press('Enter');
   await pg.waitForTimeout(300);
@@ -179,7 +185,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
 
   console.log('\n— telefone pela metade não passa —');
   await pg.fill('#busca','agenor'); await pg.waitForTimeout(200);
-  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(220);
   await pg.fill('#edId','CR-0900'); await pg.fill('#edFone','9912');
   await pg.click('#edSalvar'); await pg.waitForTimeout(250);
   ok(/incompleto/i.test(await pg.innerText('#edAviso')),'recusa o telefone truncado',await pg.innerText('#edAviso'));
@@ -189,7 +195,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
 
   console.log('\n— tirar o crachá de alguém —');
   await pg.fill('#busca','nelton'); await pg.waitForTimeout(200);
-  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(220);
   await pg.click('#edLimpar'); await pg.waitForTimeout(150);
   ok(await pg.inputValue('#edId')==='','campo esvaziou');
   await pg.click('#edSalvar'); await pg.waitForTimeout(250);
@@ -198,7 +204,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
     return /sem crachá/.test(b.innerText);}),'voltou a ficar sem crachá');
   // e agora o CR-0555 está livre para outra pessoa
   await pg.fill('#busca','douglas'); await pg.waitForTimeout(200);
-  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(220);
   await pg.fill('#edId','CR-0555'); await pg.click('#edSalvar'); await pg.waitForTimeout(250);
   ok(await pg.evaluate(()=>{const b=[...document.querySelectorAll('.pessoa')]
     .find(x=>x.querySelector('.nm').textContent==='Douglas Marciano');
@@ -257,11 +263,11 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
 
   console.log('\n— departamento pode ser preenchido à mão —');
   await pg.fill('#busca','renata'); await pg.waitForTimeout(200);
-  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(220);
   await pg.fill('#edDepto','nmg');
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(300);
   await pg.fill('#busca','renata'); await pg.waitForTimeout(200);
-  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(220);
   ok(/NMG/.test(await pg.innerText('#edSub')),'guardado em maiúsculas',await pg.innerText('#edSub'));
   ok(!/CR-0808/.test(await pg.innerText('#edSub')),'e sem mostrar o número do crachá',await pg.innerText('#edSub'));
   await pg.click('#edFechar'); await pg.fill('#busca',''); await pg.waitForTimeout(200);
@@ -347,7 +353,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
     .find(x=>x.querySelector('.nm').textContent==='Thiego Ferreira'); return b.innerText.replace(/\n/g,' | ');});
   ok(/crachá cadastrado/.test(linha),'e manteve o crachá que já tinha',linha);
   await pg.fill('#busca','jefferson vilela'); await pg.waitForTimeout(200);
-  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(220);
   const dep=await pg.innerText('#edSub');
   ok(/OUTSOURCE/.test(dep),'departamento veio junto das saídas',dep);
   await pg.click('#edFechar'); await pg.waitForTimeout(150);
@@ -358,6 +364,8 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   fs.writeFileSync(LOG,'Data/Hora;Tag\r\n'+
     `${fmt(atras(30))};C3FE4090\r\n${fmt(atras(30))};CR-9001\r\n`);
   const painel=await b.newPage({viewport:{width:1440,height:2560}});
+  await painel.addInitScript(() => addEventListener('DOMContentLoaded',
+    () => document.querySelectorAll('input,textarea').forEach(i => i.dataset.teclado = 'nao')));
   const errosP=[]; painel.on('pageerror',e=>errosP.push(e.message));
   await painel.goto('http://localhost:8083/',{waitUntil:'load'});
   await painel.waitForTimeout(1200);
@@ -380,7 +388,7 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
 
   // sem tocar no painel, cadastra esse crachá na outra tela e salva
   await pg.fill('#busca','erick'); await pg.waitForTimeout(200);
-  await pg.click('.pessoa'); await pg.waitForTimeout(200);
+  await pg.click('.pessoa'); await pg.waitForTimeout(220);
   const escolhido=await pg.innerText('#edNome');   // o nome como está na lista de saídas
   await passaCracha(pg,'CR-9001'); await pg.keyboard.press('Enter');
   await pg.waitForTimeout(250);

@@ -14,6 +14,7 @@ RAIZ   = 'Powertrain-Monitor'          # pasta que aparece ao descompactar
 ARQUIVOS = [
     'index.html',
     'cadastro.html',
+    'teclado.js',
     'Iniciar-Painel.bat',
     'Cadastrar-Crachas.bat',
     'servir.ps1',

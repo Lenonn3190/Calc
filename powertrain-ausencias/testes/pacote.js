@@ -5,7 +5,7 @@ const RAIZ='/tmp/claude-0/-home-user/c4ebad73-ed38-57bd-ad0e-0ec4f3b99b0c/scratc
 const LOG=path.join(RAIZ,'dados/frota.csv'), HIST=path.join(RAIZ,'dados/historico.json');
 
 let gravou=0;
-const tipos={'.html':'text/html; charset=utf-8','.csv':'text/csv; charset=utf-8','.json':'application/json; charset=utf-8','.md':'text/plain; charset=utf-8'};
+const tipos={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.csv':'text/csv; charset=utf-8','.json':'application/json; charset=utf-8','.md':'text/plain; charset=utf-8'};
 const srv=http.createServer((q,s)=>{
   const rel=decodeURIComponent(q.url.split('?')[0]).replace(/^\//,'')||'index.html';
   if (rel==='api/saidas'){                       // rota do servir.ps1
@@ -105,6 +105,21 @@ const ok=(c,m,e='')=>{console.log((c?'  ok  ':'FALHA ')+m+(c?'':'  << '+e));if(!
   ok(cad.n===10,'as 10 pessoas do pessoas.csv aparecem para editar','vieram '+cad.n);
   ok(errosC.length===0,'nenhum erro de JS na tela de cadastro',errosC.join(' | '));
   await pgc.close();
+
+  console.log('\n— o teclado virtual veio junto e funciona no pacote —');
+  const pgt=await b.newPage({viewport:{width:1500,height:1000}, hasTouch:true});
+  const errosT=[]; pgt.on('pageerror',e=>errosT.push(e.message));
+  const rt=await pgt.goto('http://localhost:8088/cadastro.html',{waitUntil:'load'});
+  await pgt.waitForTimeout(500);
+  ok(rt.status()===200 && await pgt.evaluate(()=>typeof window.TecladoVirtual)==='object',
+     'teclado.js está no zip e carregou');
+  await pgt.click('#busca'); await pgt.waitForTimeout(300);
+  await pgt.click('#tecladoVirtual button.k[data-valor="t"]'); await pgt.waitForTimeout(120);
+  await pgt.click('#tecladoVirtual button.k[data-valor="h"]'); await pgt.waitForTimeout(120);
+  ok(await pgt.inputValue('#busca')==='Th','dá para digitar sem teclado físico',
+     await pgt.inputValue('#busca'));
+  ok(errosT.length===0,'nenhum erro de JS com o teclado',errosT.join(' | '));
+  await pgt.close();
 
   console.log('\n— os dois .bat foram para o pacote —');
   ['Iniciar-Painel.bat','Cadastrar-Crachas.bat'].forEach(f=>{
