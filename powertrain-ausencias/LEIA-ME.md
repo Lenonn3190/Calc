@@ -316,6 +316,10 @@ pessoa nova"*, e <kbd>Enter</kbd> faz o mesmo. Ela entra na lista já com o camp
 6. A coluna ao lado do nome passa a dizer **"crachá cadastrado"** e a busca se limpa sozinha,
    pronta para o próximo.
 
+O cabeçalho conta **quantos ficaram sem telefone** — e clicar nesse contador filtra a lista só
+para eles. Vale olhar antes de sair: **sem telefone não há QR de WhatsApp no painel**, e a falta
+só apareceria lá na frente, com o carro já na rua.
+
 No fim, **"Salvar cadastro"** grava o `dados\pessoas.csv` (o arquivo anterior fica guardado como
 `pessoas.csv.bak`). Enquanto houver mudança pendente, o rodapé avisa e o botão fica aceso.
 
@@ -394,7 +398,15 @@ normaliza. Números de 10 ou 11 dígitos ganham o **55** do Brasil automaticamen
 país, escreva o DDI.
 
 Sem telefone cadastrado, o card avisa *"sem telefone no cadastro"* em vez de mostrar um QR que
-não levaria a lugar nenhum.
+não levaria a lugar nenhum. **O QR só aparece com as três coisas juntas:** carro em uso, crachá do
+condutor no cadastro, e telefone preenchido. Quando ele não aparecer, o próprio card diz qual das
+três está faltando:
+
+| O que aparece no lugar do QR | O que falta |
+|---|---|
+| *"sem telefone no cadastro"* | a pessoa está cadastrada, mas sem telefone |
+| *"crachá fora do cadastro"* | o crachá lido não está no `pessoas.csv` |
+| nada (card verde, DISPONÍVEL) | nenhum carro em uso — não há QR a mostrar |
 
 Para desligar o QR, `qrCondutor: false` no `CONFIG`. Para mudar a mensagem, `mensagemWhats` —
 `{nome}`, `{modelo}` e `{placa}` são trocados na hora; deixe vazio para abrir a conversa sem

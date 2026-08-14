@@ -80,6 +80,9 @@ body.tecl-aberto .lista{max-height:max(9rem, calc(100vh - var(--tecl-alt, 0px) -
   padding:.12rem .55rem;border-radius:.35rem;background:rgba(34,197,94,.15);color:#86efac;white-space:nowrap}
 .pessoa .id.sem{background:rgba(245,158,11,.15);color:#fcd34d}
 .pessoa .fone{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pessoa .fone.semfone{color:#fcd34d;font-weight:700}
+.placar #chipSemFone{cursor:pointer}
+.placar #chipSemFone:hover{filter:brightness(1.25)}
 .nada{padding:1.6rem;text-align:center;color:var(--faint);font-weight:600;font-size:.9rem}
 
 /* edição */
@@ -491,10 +494,13 @@ async function leArquivoNomes(file){
 /* ══════════════════════════════════════════════════════════════════════
    TELA
    ══════════════════════════════════════════════════════════════════════ */
+let soSemFone = false;         // filtro do contador "sem telefone"
 function filtradas(){
   const t = chave($('busca').value);
-  if (!t) return pessoas.map((p,i) => ({p,i}));
-  return pessoas.map((p,i) => ({p,i})).filter(({p}) => chave(p.nome).includes(t));
+  let ls = pessoas.map((p,i) => ({p,i}));
+  if (soSemFone) ls = ls.filter(({p}) => p.id && !p.telefone);
+  if (!t) return ls;
+  return ls.filter(({p}) => chave(p.nome).includes(t));
 }
 
 /** O texto da busca, quando dá para virar um nome novo. */
@@ -525,7 +531,8 @@ function pinta(){
     <button class="pessoa ${i===selecionada?'marcada':''}" data-i="${i}">
       <span class="nm">${esc(p.nome)}</span>
       <span class="id ${p.id?'':'sem'}">${p.id ? 'crachá cadastrado' : 'sem crachá'}</span>
-      <span class="fone">${p.telefone ? esc(foneBonito(p.telefone)) : ''}</span>
+      <span class="fone ${p.id && !p.telefone ? 'semfone' : ''}">${
+        p.telefone ? esc(foneBonito(p.telefone)) : (p.id ? 'sem telefone' : '')}</span>
     </button>`).join('')
     : (novoNome()
         ? `<div class="nada">Ninguém com esse nome na lista.
@@ -537,9 +544,18 @@ function pinta(){
   const bn = $('btnNovo'); if (bn) bn.onclick = criaPessoa;
 
   const com = pessoas.filter(p => p.id).length;
+  // quem tem crachá mas não tem telefone não gera o QR de WhatsApp no painel:
+  // esse buraco só aparecia lá na frente, com o carro já na rua
+  const semFone = pessoas.filter(p => p.id && !p.telefone).length;
   $('placar').innerHTML =
     `<span class="pronto">${com} com crachá</span>` +
-    (pessoas.length - com ? `<span class="falta">${pessoas.length-com} sem crachá</span>` : '');
+    (pessoas.length - com ? `<span class="falta">${pessoas.length-com} sem crachá</span>` : '') +
+    (semFone ? `<span class="falta" id="chipSemFone" title="Sem telefone não há QR de WhatsApp no painel"
+                  >${semFone} sem telefone</span>` : '');
+  const cs = $('chipSemFone');
+  if (cs) cs.onclick = () => {          // mostra quem são, sem procurar um por um
+    soSemFone = !soSemFone; $('busca').value = ''; pinta();
+  };
   $('contaLista').textContent = itens.length === pessoas.length
     ? `${pessoas.length} pessoa(s)` : `${itens.length} de ${pessoas.length}`;
   $('rodape').textContent = alterado
@@ -657,7 +673,10 @@ function baixaCSV(){
 /* ══════════════════════════════════════════════════════════════════════
    EVENTOS
    ══════════════════════════════════════════════════════════════════════ */
-$('busca').addEventListener('input', pinta);
+$('busca').addEventListener('input', () => {
+  soSemFone = false;        // digitar um nome sai do filtro de "sem telefone"
+  pinta();
+});
 $('busca').addEventListener('keydown', e => {
   const itens = filtradas();
   if (e.key === 'Enter'){

@@ -272,6 +272,26 @@ const campo = (t,nome) => {                       // valor de uma coluna, por pe
   ok(!/CR-0808/.test(await pg.innerText('#edSub')),'e sem mostrar o número do crachá',await pg.innerText('#edSub'));
   await pg.click('#edFechar'); await pg.fill('#busca',''); await pg.waitForTimeout(200);
 
+  console.log('\n— a tela avisa quem ficou sem telefone (sem telefone, sem QR no painel) —');
+  const placarTxt=await placar();
+  console.log('   ',JSON.stringify(placarTxt));
+  ok(/sem telefone/.test(placarTxt),'contador de "sem telefone" no cabeçalho',placarTxt);
+  const semFoneNaLista=await pg.evaluate(()=>[...document.querySelectorAll('.pessoa')]
+    .filter(b=>/sem telefone/.test(b.innerText)).map(b=>b.querySelector('.nm').textContent));
+  console.log('   ',JSON.stringify(semFoneNaLista));
+  ok(semFoneNaLista.includes('Agenor Rodrigo'),'quem tem crachá e não tem telefone fica marcado',
+     JSON.stringify(semFoneNaLista));
+  ok(!semFoneNaLista.includes('Thiego Ferreira'),'quem tem telefone não é marcado');
+  ok(!semFoneNaLista.includes('Nelton M Borges') && !semFoneNaLista.includes('Érick Paiva'),
+     'quem ainda nem tem crachá não é cobrado por telefone',JSON.stringify(semFoneNaLista));
+  await pg.click('#chipSemFone'); await pg.waitForTimeout(250);
+  const soFalta=await nomesNaTela();
+  console.log('   ',JSON.stringify(soFalta));
+  ok(soFalta.length>0 && soFalta.every(n=>semFoneNaLista.includes(n)),
+     'clicar no contador mostra só quem falta',JSON.stringify(soFalta));
+  await pg.click('#chipSemFone'); await pg.waitForTimeout(250);
+  ok((await nomesNaTela()).length>soFalta.length,'clicar de novo volta a lista inteira');
+
   console.log('\n— gravar manda o cadastro para o servidor —');
   ok(await pg.evaluate(()=>!document.getElementById('btnSalvar').disabled),'botão salvar habilitado com mudanças pendentes');
   ok(/não salvas/.test(await pg.innerText('#rodape')),'rodapé avisa das mudanças',await pg.innerText('#rodape'));
