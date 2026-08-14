@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testes — Calculadora de Precificação 3D</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .t { padding: 10px 14px; border-bottom: 1px solid var(--borda); display: flex; gap: 10px; font-size: 0.88rem; }
+  .t .marca { font-weight: 700; flex: none; }
+  .t.ok .marca { color: var(--ok); }
+  .t.falha .marca { color: var(--erro); }
+  .t small { display: block; color: var(--suave); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Testes do motor de cálculo</h1>
+    <p id="placar"></p>
+  </header>
+  <div class="card"><div id="lista"></div></div>
+</div>
+<script src="core.js"></script>
+<script src="tests.js"></script>
+<script>
+  var res = Tests.run();
+  var falhas = res.filter(function (r) { return !r.passou; }).length;
+  document.getElementById('placar').textContent =
+    (res.length - falhas) + '/' + res.length + ' testes passaram' + (falhas ? ' — ' + falhas + ' falha(s)' : ' ✓');
+  document.getElementById('lista').innerHTML = res.map(function (r) {
+    return '<div class="t ' + (r.passou ? 'ok' : 'falha') + '">' +
+      '<span class="marca">' + (r.passou ? '✓' : '✕') + '</span>' +
+      '<span>' + r.nome + (r.detalhe ? '<small>' + r.detalhe + '</small>' : '') + '</span></div>';
+  }).join('');
+</script>
+</body>
+</html>

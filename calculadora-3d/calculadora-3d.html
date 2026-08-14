@@ -1,0 +1,1975 @@
+<title>Precificador 3D</title>
+<style>
+/* Calculadora de Precificação 3D — estilos mobile-first. */
+
+:root {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --card-2: #fafbfc;
+  --texto: #16181d;
+  --suave: #5b6472;
+  --borda: #e3e6eb;
+  --acento: #ff5a1f;
+  --acento-suave: #fff1eb;
+  --ok: #12805c;
+  --ok-suave: #e6f5ef;
+  --alerta: #b45309;
+  --alerta-suave: #fff5e5;
+  --erro: #c02626;
+  --erro-suave: #fdecec;
+  --shopee: #ee4d2d;
+  --ml: #f2c200;
+  --tiktok: #111827;
+  --raio: 14px;
+  --sombra: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 14px rgba(16, 24, 40, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216;
+    --card: #171b21;
+    --card-2: #1d222a;
+    --texto: #eceef2;
+    --suave: #98a2b3;
+    --borda: #2a313b;
+    --acento: #ff7a45;
+    --acento-suave: #2a1a12;
+    --ok: #34d399;
+    --ok-suave: #10261f;
+    --alerta: #fbbf24;
+    --alerta-suave: #2a2110;
+    --erro: #f87171;
+    --erro-suave: #2b1414;
+    --tiktok: #e5e7eb;
+    --sombra: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0 0 96px;
+  background: var(--bg);
+  color: var(--texto);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 12px;
+}
+
+/* ---------- Cabeçalho ---------- */
+
+header {
+  padding: 18px 0 10px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+
+header p {
+  margin: 4px 0 0;
+  color: var(--suave);
+  font-size: 0.82rem;
+}
+
+/* ---------- Cartões / seções ---------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  margin: 12px 0;
+  box-shadow: var(--sombra);
+  overflow: hidden;
+}
+
+.card > summary,
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.card > summary::after {
+  content: '⌄';
+  margin-left: auto;
+  color: var(--suave);
+  font-size: 1.2rem;
+  line-height: 1;
+  transform: translateY(-3px);
+  transition: transform 0.15s;
+}
+
+.card[open] > summary::after {
+  transform: rotate(180deg) translateY(2px);
+}
+
+.card > summary .num {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: var(--acento-suave);
+  color: var(--acento);
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex: none;
+}
+
+.card > summary .resumo {
+  margin-left: auto;
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--suave);
+}
+
+.card[open] > summary .resumo {
+  display: none;
+}
+
+.corpo {
+  padding: 0 16px 16px;
+}
+
+/* ---------- Campos ---------- */
+
+.linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.linha.tres {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* Reserva duas linhas para o rótulo: assim os inputs vizinhos ficam
+   alinhados mesmo quando um dos rótulos quebra. */
+.linha > .campo > span:first-child {
+  min-height: 2.9em; /* duas linhas de 1.45 */
+}
+
+.campo {
+  display: block;
+  margin: 10px 0 0;
+}
+
+.campo > span {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--suave);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.campo input,
+.campo select {
+  width: 100%;
+  padding: 11px 12px;
+  font-size: 16px; /* evita zoom automático no iOS */
+  font-family: inherit;
+  color: var(--texto);
+  background: var(--card-2);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  appearance: none;
+}
+
+.campo input:focus,
+.campo select:focus {
+  outline: 2px solid var(--acento);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.campo .dica {
+  font-size: 0.72rem;
+  color: var(--suave);
+  margin-top: 4px;
+  display: block;
+}
+
+/* Prefixo "R$" colado ao input, e não ao rodapé do campo — assim ele não
+   escorrega quando o rótulo quebra em duas linhas ou existe uma dica. */
+.pre {
+  position: relative;
+  display: block;
+}
+
+.pre input {
+  padding-left: 34px;
+}
+
+.pre::before {
+  content: attr(data-prefixo);
+  position: absolute;
+  left: 12px;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--suave);
+  pointer-events: none;
+}
+
+/* ---------- Chips / segmentado ---------- */
+
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.chips button {
+  flex: 1 1 auto;
+  min-width: 72px;
+  padding: 9px 10px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--suave);
+  background: var(--card-2);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.chips button[aria-pressed='true'] {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+}
+
+/* ---------- Switch ---------- */
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.switch input {
+  appearance: none;
+  width: 42px;
+  height: 24px;
+  border-radius: 99px;
+  background: var(--borda);
+  position: relative;
+  flex: none;
+  transition: background 0.15s;
+  cursor: pointer;
+  margin: 0;
+}
+
+.switch input::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.switch input:checked {
+  background: var(--ok);
+}
+
+.switch input:checked::after {
+  transform: translateX(18px);
+}
+
+.switch .sub {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--suave);
+}
+
+/* ---------- Materiais ---------- */
+
+.material {
+  display: grid;
+  grid-template-columns: 1fr 1fr 34px;
+  gap: 8px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.material .remover {
+  height: 43px;
+  border: 1px solid var(--borda);
+  background: var(--card-2);
+  color: var(--suave);
+  border-radius: 10px;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--acento);
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
+  padding: 8px 0 0;
+  cursor: pointer;
+}
+
+/* ---------- Resultados ---------- */
+
+.resultado {
+  border-radius: var(--raio);
+  border: 1px solid var(--borda);
+  background: var(--card);
+  box-shadow: var(--sombra);
+  margin: 12px 0;
+  overflow: hidden;
+}
+
+.resultado > .topo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-left: 4px solid var(--borda);
+}
+
+.resultado.shopee > .topo { border-left-color: var(--shopee); }
+.resultado.mercadolivre > .topo { border-left-color: var(--ml); }
+.resultado.tiktokshop > .topo { border-left-color: var(--tiktok); }
+
+.resultado .nome {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.resultado .selo {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--ok-suave);
+  color: var(--ok);
+}
+
+.resultado .preco {
+  margin-left: auto;
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--borda);
+}
+
+.metricas div {
+  padding: 10px 12px;
+  border-right: 1px solid var(--borda);
+}
+
+.metricas div:last-child {
+  border-right: none;
+}
+
+.metricas b {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.metricas span {
+  font-size: 0.7rem;
+  color: var(--suave);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.metricas .neg b {
+  color: var(--erro);
+}
+
+.aviso {
+  margin: 0;
+  padding: 10px 16px;
+  font-size: 0.82rem;
+  background: var(--alerta-suave);
+  color: var(--alerta);
+  border-top: 1px solid var(--borda);
+}
+
+.aviso.ruim {
+  background: var(--erro-suave);
+  color: var(--erro);
+}
+
+.aviso button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  padding: 0;
+  cursor: pointer;
+}
+
+.detalhe {
+  border-top: 1px solid var(--borda);
+  font-size: 0.85rem;
+}
+
+.detalhe > summary {
+  padding: 10px 16px;
+  color: var(--suave);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.detalhe > summary::-webkit-details-marker {
+  display: none;
+}
+
+.detalhe ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px 12px;
+}
+
+.detalhe li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--borda);
+}
+
+.detalhe li:last-child {
+  border-bottom: none;
+}
+
+.detalhe li.total {
+  font-weight: 700;
+  padding-top: 8px;
+}
+
+.detalhe li span:first-child {
+  color: var(--suave);
+}
+
+/* ---------- Barra fixa ---------- */
+
+.barra {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--card);
+  border-top: 1px solid var(--borda);
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  box-shadow: 0 -4px 18px rgba(16, 24, 40, 0.08);
+  z-index: 10;
+}
+
+.barra .interno {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.barra .bloco {
+  min-width: 0;
+}
+
+.barra .bloco span {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--suave);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barra .bloco b {
+  font-size: 1rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.barra .acoes {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.barra button {
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 1px solid var(--borda);
+  background: var(--card-2);
+  color: var(--texto);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.barra button.principal {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+}
+
+/* ---------- Diversos ---------- */
+
+.nota {
+  font-size: 0.76rem;
+  color: var(--suave);
+  margin: 10px 0 0;
+}
+
+.nota a {
+  color: var(--acento);
+}
+
+.salvas {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+}
+
+.salvas::-webkit-scrollbar {
+  display: none;
+}
+
+.salvas button {
+  flex: none;
+  padding: 8px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--borda);
+  background: var(--card);
+  color: var(--texto);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--texto);
+  color: var(--bg);
+  padding: 10px 16px;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 20;
+}
+
+.toast.on {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (min-width: 620px) {
+  .linha.quatro {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+</style>
+
+<div class="wrap">
+
+  <header>
+    <h1>Calculadora de Precificação 3D</h1>
+    <p id="cabecalhoRegras">Shopee · Mercado Livre · TikTok Shop</p>
+    <div class="salvas" id="salvas"></div>
+  </header>
+
+  <!-- 1. A peça ------------------------------------------------------ -->
+  <details class="card" id="secPeca" open>
+    <summary><span class="num">1</span> A peça <span class="resumo" id="resumoPeca"></span></summary>
+    <div class="corpo">
+
+      <label class="campo">
+        <span>Nome da peça</span>
+        <input id="nome" type="text" placeholder="Ex.: Suporte de fone" autocomplete="off">
+      </label>
+
+      <div id="materiais"></div>
+      <button class="link-btn" id="addMaterial" type="button">+ adicionar material</button>
+
+      <div class="linha tres">
+        <label class="campo">
+          <span>Horas</span>
+          <input id="horas" type="number" inputmode="decimal" step="any" min="0" value="4">
+        </label>
+        <label class="campo">
+          <span>Minutos</span>
+          <input id="minutos" type="number" inputmode="numeric" step="any" min="0" value="0">
+        </label>
+        <label class="campo">
+          <span>Peças/placa</span>
+          <input id="pecasPorImpressao" type="number" inputmode="numeric" step="1" min="1" value="1">
+        </label>
+      </div>
+
+      <div class="linha tres">
+        <label class="campo">
+          <span>Acabamento (min)</span>
+          <input id="minutosTrabalho" type="number" inputmode="decimal" step="any" min="0" value="5">
+        </label>
+        <label class="campo">
+          <span>Insumos extras</span>
+          <span class="pre" data-prefixo="R$"><input id="extras" type="number" inputmode="decimal" step="any" min="0" value="0"></span>
+        </label>
+        <label class="campo">
+          <span>Embalagem</span>
+          <span class="pre" data-prefixo="R$"><input id="embalagem" type="number" inputmode="decimal" step="any" min="0" value="1"></span>
+        </label>
+      </div>
+
+    </div>
+  </details>
+
+  <!-- 2. Minha operação ---------------------------------------------- -->
+  <details class="card" id="secOperacao">
+    <summary><span class="num">2</span> Minha operação <span class="resumo" id="resumoOperacao"></span></summary>
+    <div class="corpo">
+      <p class="nota">Preenche uma vez — fica salvo no aparelho.</p>
+
+      <div class="linha">
+        <label class="campo">
+          <span>Potência (W)</span>
+          <input id="potenciaW" type="number" inputmode="decimal" step="any" min="0" value="150">
+        </label>
+        <label class="campo">
+          <span>Energia (kWh)</span>
+          <span class="pre" data-prefixo="R$"><input id="tarifaKwh" type="number" inputmode="decimal" step="any" min="0" value="0.95"></span>
+        </label>
+      </div>
+
+      <div class="linha tres">
+        <label class="campo">
+          <span>Valor da impressora</span>
+          <span class="pre" data-prefixo="R$"><input id="valorImpressora" type="number" inputmode="decimal" step="any" min="0" value="3000"></span>
+        </label>
+        <label class="campo">
+          <span>Vida útil (h)</span>
+          <input id="vidaUtilHoras" type="number" inputmode="decimal" step="any" min="0" value="6000">
+        </label>
+        <label class="campo">
+          <span>Manutenção/h</span>
+          <span class="pre" data-prefixo="R$"><input id="manutencaoHora" type="number" inputmode="decimal" step="any" min="0" value="0.20"></span>
+        </label>
+      </div>
+
+      <div class="linha tres">
+        <label class="campo">
+          <span>Sua hora de trabalho</span>
+          <span class="pre" data-prefixo="R$"><input id="valorHoraTrabalho" type="number" inputmode="decimal" step="any" min="0" value="30"></span>
+        </label>
+        <label class="campo">
+          <span>Taxa de falha (%)</span>
+          <input id="taxaFalhaPct" type="number" inputmode="decimal" step="any" min="0" max="95" value="7">
+        </label>
+        <label class="campo">
+          <span>Custo fixo/h</span>
+          <span class="pre" data-prefixo="R$"><input id="custoFixoHora" type="number" inputmode="decimal" step="any" min="0" value="0"></span>
+          <span class="dica">Aluguel, internet etc. rateados por hora de máquina.</span>
+        </label>
+      </div>
+
+    </div>
+  </details>
+
+  <!-- 3. Objetivo de venda ------------------------------------------- -->
+  <details class="card" id="secVenda" open>
+    <summary><span class="num">3</span> Objetivo de venda <span class="resumo" id="resumoVenda"></span></summary>
+    <div class="corpo">
+
+      <div class="campo">
+        <span>Quero definir por</span>
+        <div class="chips" id="modoObjetivo">
+          <button type="button" data-modo="margem" aria-pressed="true">Margem %</button>
+          <button type="button" data-modo="markup">Markup %</button>
+          <button type="button" data-modo="lucro">Lucro R$</button>
+          <button type="button" data-modo="preco">Preço fixo</button>
+        </div>
+      </div>
+
+      <label class="campo" id="wrapObjetivo">
+        <span id="rotuloObjetivo">Margem desejada sobre a venda (%)</span>
+        <input id="valorObjetivo" type="number" inputmode="decimal" step="any" value="30">
+        <span class="dica" id="dicaObjetivo">Margem líquida: o que sobra sobre o preço final, já sem taxas e custos.</span>
+      </label>
+
+      <div class="linha tres">
+        <label class="campo">
+          <span>Imposto (%)</span>
+          <input id="impostoPct" type="number" inputmode="decimal" step="any" min="0" value="0">
+          <span class="dica">MEI: 0. Simples: use sua alíquota.</span>
+        </label>
+        <label class="campo">
+          <span>Ads (%)</span>
+          <input id="adsPct" type="number" inputmode="decimal" step="any" min="0" value="0">
+        </label>
+        <label class="campo">
+          <span>Antecipação (%)</span>
+          <input id="antecipacaoPct" type="number" inputmode="decimal" step="any" min="0" value="0">
+        </label>
+      </div>
+
+      <label class="campo">
+        <span>Arredondar preço para</span>
+        <select id="terminacao">
+          <option value="">Não arredondar</option>
+          <option value="90" selected>Terminar em ,90</option>
+          <option value="99">Terminar em ,99</option>
+          <option value="50">Terminar em ,50</option>
+        </select>
+      </label>
+
+    </div>
+  </details>
+
+  <!-- 4. Marketplaces ------------------------------------------------- -->
+  <details class="card" id="secMarketplaces">
+    <summary><span class="num">4</span> Marketplaces <span class="resumo" id="resumoMp"></span></summary>
+    <div class="corpo">
+
+      <label class="switch">
+        <input type="checkbox" id="mpShopee" checked>
+        <span>Shopee <span class="sub">20% até R$79,99 · 14% + taxa fixa acima</span></span>
+      </label>
+      <div class="linha">
+        <label class="campo">
+          <span>Frete que você paga</span>
+          <span class="pre" data-prefixo="R$"><input id="shopeeFrete" type="number" inputmode="decimal" step="any" min="0" value="0"></span>
+        </label>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="shopeeCpf">
+        <span>Vendo como CPF com +450 pedidos/90 dias <span class="sub">soma R$3 por item</span></span>
+      </label>
+
+      <hr style="border:none;border-top:1px solid var(--borda);margin:16px 0 0">
+
+      <label class="switch">
+        <input type="checkbox" id="mpMl" checked>
+        <span>Mercado Livre <span class="sub">comissão + custo por unidade abaixo de R$79</span></span>
+      </label>
+      <div class="linha tres">
+        <label class="campo">
+          <span>Tipo de anúncio</span>
+          <select id="mlTipo">
+            <option value="classico" selected>Clássico</option>
+            <option value="premium">Premium</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Comissão (%)</span>
+          <input id="mlPct" type="number" inputmode="decimal" step="any" min="0" value="12">
+        </label>
+        <label class="campo">
+          <span>Frete que você paga</span>
+          <span class="pre" data-prefixo="R$"><input id="mlFrete" type="number" inputmode="decimal" step="any" min="0" value="0"></span>
+          <span class="dica">Acima de R$79 o frete grátis sai do seu bolso.</span>
+        </label>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--borda);margin:16px 0 0">
+
+      <label class="switch">
+        <input type="checkbox" id="mpTiktok" checked>
+        <span>TikTok Shop <span class="sub">10% + R$4 abaixo de R$50 · 6% + R$6 acima</span></span>
+      </label>
+      <div class="linha">
+        <label class="campo">
+          <span>Afiliado (%)</span>
+          <input id="tkAfiliado" type="number" inputmode="decimal" step="any" min="0" value="0">
+        </label>
+        <label class="campo">
+          <span>Frete que você paga</span>
+          <span class="pre" data-prefixo="R$"><input id="tkFrete" type="number" inputmode="decimal" step="any" min="0" value="0"></span>
+        </label>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="tkFreteGratis" checked>
+        <span>Programa de Frete Grátis <span class="sub">soma 6% sobre o preço</span></span>
+      </label>
+
+    </div>
+  </details>
+
+  <!-- Resultados ------------------------------------------------------ -->
+  <section id="resultados" aria-live="polite"></section>
+
+  <details class="card" id="secCusto">
+    <summary><span class="num">R$</span> Como o custo foi formado <span class="resumo" id="resumoCusto"></span></summary>
+    <div class="corpo">
+      <ul id="detalheCusto" style="list-style:none;margin:0;padding:0;font-size:0.9rem"></ul>
+    </div>
+  </details>
+
+  <p class="nota" id="rodapeRegras"></p>
+
+</div>
+
+<div class="barra">
+  <div class="interno">
+    <div class="bloco">
+      <span>Custo</span>
+      <b id="barraCusto">R$ 0,00</b>
+    </div>
+    <div class="bloco">
+      <span id="barraMelhorRotulo">Melhor preço</span>
+      <b id="barraMelhor">—</b>
+    </div>
+    <div class="acoes">
+      <button type="button" id="btnSalvar">Salvar</button>
+      <button type="button" id="btnCompartilhar" class="principal">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+window.CALC3D_SINGLE = true;
+/*
+ * core.js — Motor de cálculo da Calculadora de Precificação 3D.
+ *
+ * Sem dependências e sem DOM: dá para rodar no navegador (window.Core)
+ * e nos testes. Toda regra de marketplace vive em REGRAS, para poder
+ * ser editada pelo usuário quando o marketplace mudar a tabela.
+ */
+(function (global) {
+  'use strict';
+
+  /* ------------------------------------------------------------------ *
+   * Regras de cobrança dos marketplaces (vigentes em agosto/2026)
+   * ------------------------------------------------------------------ */
+
+  var REGRAS = {
+    versao: 3,
+    atualizadoEm: '2026-08',
+
+    shopee: {
+      nome: 'Shopee',
+      // Tabela única desde 01/03/2026. O percentual já inclui o Programa
+      // de Frete Grátis (14% de comissão + 6% do programa na 1ª faixa).
+      // O teto de R$100 de comissão por item foi extinto em 28/02/2026.
+      faixas: [
+        { ate: 7.99, pct: 50, fixo: 0 },
+        { ate: 79.99, pct: 20, fixo: 4 },
+        { ate: 99.99, pct: 14, fixo: 16 },
+        { ate: 199.99, pct: 14, fixo: 20 },
+        { ate: Infinity, pct: 14, fixo: 26 }
+      ],
+      // CPF com mais de 450 pedidos em 90 dias paga R$3 a mais por item.
+      adicionalCpfAltoVolume: 3
+    },
+
+    mercadolivre: {
+      nome: 'Mercado Livre',
+      // Comissão por tipo de anúncio; varia por categoria dentro da faixa.
+      tiposAnuncio: {
+        classico: { rotulo: 'Clássico', pct: 12, min: 11, max: 14 },
+        premium: { rotulo: 'Premium (12x sem juros)', pct: 17, min: 16, max: 19 }
+      },
+      // Custo por unidade vendida, cobrado só em itens abaixo de R$79.
+      // Desde 02/03/2026 varia por peso/dimensão da embalagem — estes são
+      // os valores de referência; confira no Simulador de Custos do ML.
+      limiteCustoUnidade: 79,
+      custoPorUnidade: [
+        { ate: 12.49, tipo: 'pct', valor: 50 }, // até 50% do preço
+        { ate: 28.99, tipo: 'fixo', valor: 6.25 },
+        { ate: 49.99, tipo: 'fixo', valor: 6.5 },
+        { ate: 78.99, tipo: 'fixo', valor: 6.75 }
+      ]
+    },
+
+    tiktokshop: {
+      nome: 'TikTok Shop',
+      // Estrutura vigente desde 15/07/2026.
+      faixas: [
+        { ate: 49.99, pct: 10, fixo: 4 },
+        { ate: Infinity, pct: 6, fixo: 6 }
+      ],
+      // Programa de Frete Grátis: 6% sobre o valor do produto.
+      pctFreteGratis: 6
+    }
+  };
+
+  /* ------------------------------------------------------------------ *
+   * Utilidades
+   * ------------------------------------------------------------------ */
+
+  function num(v, padrao) {
+    var n = typeof v === 'string' ? parseFloat(v.replace(',', '.')) : v;
+    return isFinite(n) ? n : (padrao || 0);
+  }
+
+  function round2(v) {
+    return Math.round((v + Number.EPSILON) * 100) / 100;
+  }
+
+  /** Arredonda para cima no centavo — usado no preço sugerido. */
+  function ceil2(v) {
+    return Math.ceil((v - 1e-9) * 100) / 100;
+  }
+
+  function moeda(v) {
+    return (isFinite(v) ? v : 0).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  }
+
+  function pct(v, casas) {
+    return (isFinite(v) ? v * 100 : 0).toFixed(casas == null ? 1 : casas).replace('.', ',') + '%';
+  }
+
+  /** Converte a lista de faixas em intervalos [min, max] fechados. */
+  function intervalos(faixas) {
+    var min = 0.01;
+    return faixas.map(function (f) {
+      var faixa = { min: min, max: f.ate, pct: f.pct, fixo: f.fixo };
+      min = round2(f.ate + 0.01);
+      return faixa;
+    });
+  }
+
+  function faixaDoPreco(faixas, preco) {
+    var lista = intervalos(faixas);
+    for (var i = 0; i < lista.length; i++) {
+      if (preco <= lista[i].max) return lista[i];
+    }
+    return lista[lista.length - 1];
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Custo de fabricação
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Calcula o custo de uma peça.
+   *
+   * Entrada (todos os campos opcionais, com padrão 0):
+   *   materiais: [{ nome, gramas, precoKg }]
+   *   horas, minutos      → tempo total da impressão
+   *   pecasPorImpressao   → quantas peças saem dessa impressão (padrão 1)
+   *   potenciaW, tarifaKwh
+   *   valorImpressora, vidaUtilHoras, manutencaoHora
+   *   minutosTrabalho, valorHoraTrabalho
+   *   extras, embalagem   → R$ por peça
+   *   custoFixoHora       → rateio de aluguel/internet por hora de máquina
+   *   taxaFalhaPct        → % de impressões perdidas
+   *
+   * Saída: { total, porPeca, tempoHoras, itens: [...], antesFalha, perdaFalha }
+   */
+  function calcularCusto(e) {
+    e = e || {};
+    var n = Math.max(1, num(e.pecasPorImpressao, 1));
+    var tempoH = num(e.horas) + num(e.minutos) / 60;
+
+    var materiais = (e.materiais || []).map(function (m) {
+      return {
+        nome: m.nome || 'Material',
+        valor: (num(m.gramas) * num(m.precoKg)) / 1000
+      };
+    });
+    var custoMaterial = materiais.reduce(function (s, m) {
+      return s + m.valor;
+    }, 0);
+
+    var custoEnergia = (num(e.potenciaW) / 1000) * tempoH * num(e.tarifaKwh);
+
+    var vidaUtil = num(e.vidaUtilHoras);
+    var depreciacaoHora = vidaUtil > 0 ? num(e.valorImpressora) / vidaUtil : 0;
+    var custoMaquina = (depreciacaoHora + num(e.manutencaoHora)) * tempoH;
+
+    var custoFixo = num(e.custoFixoHora) * tempoH;
+
+    // Mão de obra é por peça (pós-processamento), não se divide pela placa.
+    var custoTrabalho = (num(e.minutosTrabalho) / 60) * num(e.valorHoraTrabalho);
+
+    // Custos da impressão, rateados entre as peças da placa.
+    var porImpressao = (custoMaterial + custoEnergia + custoMaquina + custoFixo) / n;
+
+    var itens = [
+      { chave: 'material', rotulo: 'Material', valor: custoMaterial / n },
+      { chave: 'energia', rotulo: 'Energia', valor: custoEnergia / n },
+      { chave: 'maquina', rotulo: 'Máquina (depreciação + manutenção)', valor: custoMaquina / n },
+      { chave: 'fixo', rotulo: 'Custos fixos rateados', valor: custoFixo / n },
+      { chave: 'trabalho', rotulo: 'Mão de obra', valor: custoTrabalho },
+      { chave: 'extras', rotulo: 'Insumos extras', valor: num(e.extras) },
+      { chave: 'embalagem', rotulo: 'Embalagem', valor: num(e.embalagem) }
+    ];
+
+    var antesFalha = porImpressao + custoTrabalho + num(e.extras) + num(e.embalagem);
+
+    // Rateio de falhas: se p% das impressões são perdidas, cada peça boa
+    // precisa absorver o custo das perdidas → custo / (1 - p).
+    var falha = Math.min(0.95, Math.max(0, num(e.taxaFalhaPct) / 100));
+    var total = falha > 0 ? antesFalha / (1 - falha) : antesFalha;
+
+    return {
+      antesFalha: round2(antesFalha),
+      perdaFalha: round2(total - antesFalha),
+      total: round2(total),
+      tempoHoras: tempoH,
+      tempoHorasPorPeca: tempoH / n,
+      pecasPorImpressao: n,
+      depreciacaoHora: round2(depreciacaoHora),
+      itens: itens.map(function (i) {
+        i.valor = round2(i.valor);
+        return i;
+      })
+    };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Taxas dos marketplaces
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Devolve as taxas do marketplace para um preço, separadas em
+   * componente percentual (fração do preço) e componente fixo (R$).
+   *
+   * cfg.shopee        : { cpfAltoVolume }
+   * cfg.mercadolivre  : { tipoAnuncio|pctComissao, custoUnidadeAuto, custoUnidade,
+   *                       fretePago, freteSomenteAcimaLimite }
+   * cfg.tiktokshop    : { freteGratis, pctAfiliado }
+   * Todos            : { frete } → frete pago pelo vendedor por venda
+   */
+  function taxasMarketplace(mp, preco, cfg, regras) {
+    regras = regras || REGRAS;
+    cfg = cfg || {};
+    var itens = [];
+    var pctTotal = 0;
+    var fixoTotal = 0;
+    var frete = num(cfg.frete);
+
+    if (mp === 'shopee') {
+      var f = faixaDoPreco(regras.shopee.faixas, preco);
+      pctTotal += f.pct / 100;
+      fixoTotal += f.fixo;
+      itens.push({
+        rotulo: 'Comissão + frete grátis (' + f.pct + '%)',
+        valor: (preco * f.pct) / 100
+      });
+      if (f.fixo > 0) itens.push({ rotulo: 'Taxa fixa por item', valor: f.fixo });
+      if (cfg.cpfAltoVolume) {
+        fixoTotal += regras.shopee.adicionalCpfAltoVolume;
+        itens.push({
+          rotulo: 'Adicional CPF (+450 pedidos/90 dias)',
+          valor: regras.shopee.adicionalCpfAltoVolume
+        });
+      }
+      // Na Shopee o frete do Programa de Frete Grátis não é cobrado do
+      // vendedor além do percentual — mas o campo fica disponível.
+    } else if (mp === 'mercadolivre') {
+      var ml = regras.mercadolivre;
+      var p =
+        cfg.pctComissao != null
+          ? num(cfg.pctComissao)
+          : ml.tiposAnuncio[cfg.tipoAnuncio || 'classico'].pct;
+      pctTotal += p / 100;
+      itens.push({ rotulo: 'Comissão (' + p + '%)', valor: (preco * p) / 100 });
+
+      if (preco < ml.limiteCustoUnidade) {
+        var cu = 0;
+        if (cfg.custoUnidadeAuto === false) {
+          cu = num(cfg.custoUnidade);
+          fixoTotal += cu;
+        } else {
+          var regra = null;
+          for (var i = 0; i < ml.custoPorUnidade.length; i++) {
+            if (preco <= ml.custoPorUnidade[i].ate) {
+              regra = ml.custoPorUnidade[i];
+              break;
+            }
+          }
+          regra = regra || ml.custoPorUnidade[ml.custoPorUnidade.length - 1];
+          if (regra.tipo === 'pct') {
+            cu = (preco * regra.valor) / 100;
+            pctTotal += regra.valor / 100;
+          } else {
+            cu = regra.valor;
+            fixoTotal += cu;
+          }
+        }
+        if (cu > 0) itens.push({ rotulo: 'Custo por unidade vendida (< R$79)', valor: cu });
+      }
+      if (frete > 0) {
+        // Acima de R$79 o frete é grátis para o comprador e sai do bolso
+        // do vendedor (com subsídio conforme a reputação da conta).
+        itens.push({
+          rotulo:
+            preco >= ml.limiteCustoUnidade
+              ? 'Frete grátis pago pelo vendedor'
+              : 'Frete pago pelo vendedor',
+          valor: frete
+        });
+      }
+    } else if (mp === 'tiktokshop') {
+      var tk = regras.tiktokshop;
+      var ft = faixaDoPreco(tk.faixas, preco);
+      pctTotal += ft.pct / 100;
+      fixoTotal += ft.fixo;
+      itens.push({ rotulo: 'Comissão (' + ft.pct + '%)', valor: (preco * ft.pct) / 100 });
+      if (ft.fixo > 0) itens.push({ rotulo: 'Taxa fixa por item', valor: ft.fixo });
+      if (cfg.freteGratis !== false) {
+        pctTotal += tk.pctFreteGratis / 100;
+        itens.push({
+          rotulo: 'Programa de Frete Grátis (' + tk.pctFreteGratis + '%)',
+          valor: (preco * tk.pctFreteGratis) / 100
+        });
+      }
+      var afil = num(cfg.pctAfiliado);
+      if (afil > 0) {
+        pctTotal += afil / 100;
+        itens.push({ rotulo: 'Comissão de afiliado (' + afil + '%)', valor: (preco * afil) / 100 });
+      }
+      if (frete > 0) itens.push({ rotulo: 'Frete pago pelo vendedor', valor: frete });
+    }
+
+    return { pct: pctTotal, fixo: fixoTotal, frete: frete, itens: itens };
+  }
+
+  /**
+   * Percentuais que incidem sobre o preço em qualquer canal:
+   * imposto, anúncios (ads) e antecipação de recebíveis.
+   */
+  function pctGlobais(v) {
+    v = v || {};
+    return (num(v.impostoPct) + num(v.adsPct) + num(v.antecipacaoPct)) / 100;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Resultado para um preço dado
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Dado um preço de venda, devolve a composição completa.
+   * venda: { impostoPct, adsPct, antecipacaoPct, custo }
+   */
+  function analisarPreco(mp, preco, custo, venda, cfgMp, regras) {
+    var t = taxasMarketplace(mp, preco, cfgMp, regras);
+    var g = pctGlobais(venda);
+
+    var taxasMp = preco * t.pct + t.fixo + t.frete;
+    var imposto = (preco * num(venda.impostoPct)) / 100;
+    var ads = (preco * num(venda.adsPct)) / 100;
+    var antecipacao = (preco * num(venda.antecipacaoPct)) / 100;
+
+    var totalDeducoes = taxasMp + imposto + ads + antecipacao;
+    var lucro = preco - totalDeducoes - custo;
+
+    return {
+      marketplace: mp,
+      preco: round2(preco),
+      custo: round2(custo),
+      taxasMarketplace: round2(taxasMp),
+      itensTaxas: t.itens.map(function (i) {
+        return { rotulo: i.rotulo, valor: round2(i.valor) };
+      }),
+      imposto: round2(imposto),
+      ads: round2(ads),
+      antecipacao: round2(antecipacao),
+      totalDeducoes: round2(totalDeducoes),
+      lucro: round2(lucro),
+      margem: preco > 0 ? lucro / preco : 0,
+      markup: custo > 0 ? lucro / custo : 0,
+      pctTaxasSobrePreco: preco > 0 ? (taxasMp + imposto + ads + antecipacao) / preco : 0,
+      pctVariavel: t.pct + g,
+      fixo: round2(t.fixo + t.frete)
+    };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Preço sugerido (cálculo reverso, faixa a faixa)
+   * ------------------------------------------------------------------ */
+
+  /** Faixas de preço relevantes do marketplace (para varrer na solução). */
+  function faixasDoMarketplace(mp, regras) {
+    regras = regras || REGRAS;
+    if (mp === 'shopee') return intervalos(regras.shopee.faixas);
+    if (mp === 'tiktokshop') return intervalos(regras.tiktokshop.faixas);
+    if (mp === 'mercadolivre') {
+      // As quebras do ML vêm do custo por unidade vendida e do limite de R$79.
+      var lista = regras.mercadolivre.custoPorUnidade.map(function (c) {
+        return { ate: c.ate };
+      });
+      lista.push({ ate: Infinity });
+      return intervalos(lista);
+    }
+    return intervalos([{ ate: Infinity }]);
+  }
+
+  /**
+   * Resolve o menor preço que atinge o objetivo.
+   *
+   * objetivo: { modo: 'margem' | 'markup' | 'lucro', valor }
+   *   margem → % sobre o preço de venda
+   *   markup → % sobre o custo
+   *   lucro  → R$ de lucro por peça
+   *
+   * Percorre cada faixa, resolve a equação linear dentro dela e valida se a
+   * solução cai na própria faixa. Quando a solução fica abaixo do piso da
+   * faixa, o piso já atende ao objetivo e vira candidato — é isso que faz o
+   * "vender a R$79,99 em vez de R$82" aparecer sozinho.
+   */
+  function precoSugerido(mp, custo, venda, cfgMp, objetivo, regras) {
+    var faixas = faixasDoMarketplace(mp, regras);
+    var g = pctGlobais(venda);
+    var candidatos = [];
+
+    faixas.forEach(function (faixa) {
+      // Avalia no meio da faixa para capturar pct/fixo daquele patamar.
+      var amostra = isFinite(faixa.max) ? (faixa.min + faixa.max) / 2 : faixa.min * 2 + 100;
+      var t = taxasMarketplace(mp, amostra, cfgMp, regras);
+      var pctVar = t.pct + g;
+      var fixo = t.fixo + t.frete;
+
+      var alvoMargem = 0;
+      var custoAlvo = custo;
+      if (objetivo.modo === 'margem') {
+        alvoMargem = num(objetivo.valor) / 100;
+      } else if (objetivo.modo === 'markup') {
+        custoAlvo = custo * (1 + num(objetivo.valor) / 100);
+      } else {
+        custoAlvo = custo + num(objetivo.valor);
+      }
+
+      var denom = 1 - pctVar - alvoMargem;
+      if (denom <= 0.0001) return; // objetivo impossível nesta faixa
+
+      var p = (fixo + custoAlvo) / denom;
+      var preco = ceil2(p);
+
+      if (preco < faixa.min) preco = faixa.min; // o piso da faixa já resolve
+      if (preco > faixa.max) return; // não cabe nesta faixa
+
+      var r = analisarPreco(mp, preco, custo, venda, cfgMp, regras);
+      r.faixa = faixa;
+      candidatos.push(r);
+    });
+
+    if (!candidatos.length) return null;
+
+    // Menor preço que atende; empate desempata pelo maior lucro.
+    candidatos.sort(function (a, b) {
+      return a.preco - b.preco || b.lucro - a.lucro;
+    });
+    var escolhido = candidatos[0];
+    escolhido.alternativas = candidatos;
+    return escolhido;
+  }
+
+  /** Preço de equilíbrio: lucro zero. */
+  function precoMinimo(mp, custo, venda, cfgMp, regras) {
+    return precoSugerido(mp, custo, venda, cfgMp, { modo: 'lucro', valor: 0 }, regras);
+  }
+
+  /**
+   * Arredondamento comercial (…,90 / …,99) sem estourar a faixa de taxa.
+   * Se o valor "bonito" acima cair em outra faixa, mantém o teto da atual.
+   */
+  function arredondarComercial(mp, preco, terminacao, regras) {
+    if (!terminacao) return preco;
+    var cent = num(terminacao) / 100; // ex.: 90 → 0,90
+    var base = Math.floor(preco);
+    var alvo = base + cent;
+    if (alvo < preco - 1e-9) alvo = base + 1 + cent;
+    var faixaAtual = null;
+    var lista = faixasDoMarketplace(mp, regras);
+    for (var i = 0; i < lista.length; i++) {
+      if (preco <= lista[i].max) {
+        faixaAtual = lista[i];
+        break;
+      }
+    }
+    if (faixaAtual && alvo > faixaAtual.max) return faixaAtual.max;
+    return round2(alvo);
+  }
+
+  /**
+   * Compara todos os marketplaces de uma vez.
+   * Devolve lista ordenada por lucro (ou preço, se preço fixo).
+   */
+  function comparar(custo, venda, cfgPorMp, objetivo, regras) {
+    var mps = ['shopee', 'mercadolivre', 'tiktokshop'];
+    return mps.map(function (mp) {
+      var cfg = (cfgPorMp || {})[mp] || {};
+      var r;
+      if (objetivo.modo === 'preco') {
+        r = analisarPreco(mp, num(objetivo.valor), custo, venda, cfg, regras);
+      } else {
+        r = precoSugerido(mp, custo, venda, cfg, objetivo, regras);
+        if (r && objetivo.terminacao) {
+          var novo = arredondarComercial(mp, r.preco, objetivo.terminacao, regras);
+          if (novo !== r.preco) {
+            var alt = analisarPreco(mp, novo, custo, venda, cfg, regras);
+            alt.alternativas = r.alternativas;
+            alt.faixa = r.faixa;
+            alt.arredondado = true;
+            r = alt;
+          }
+        }
+      }
+      if (r) {
+        r.nome = (regras || REGRAS)[mp].nome;
+        r.minimo = precoMinimo(mp, custo, venda, cfg, regras);
+      }
+      return r || { marketplace: mp, nome: (regras || REGRAS)[mp].nome, inviavel: true };
+    });
+  }
+
+  /**
+   * Alerta de faixa: quando o preço está logo acima de uma quebra de taxa,
+   * mostra quanto se ganharia vendendo no teto da faixa anterior.
+   */
+  function alertaFaixa(mp, preco, custo, venda, cfgMp, regras) {
+    var lista = faixasDoMarketplace(mp, regras);
+    var anterior = null;
+    for (var i = 0; i < lista.length; i++) {
+      if (preco <= lista[i].max) break;
+      anterior = lista[i];
+    }
+    if (!anterior) return null;
+    var noTeto = analisarPreco(mp, anterior.max, custo, venda, cfgMp, regras);
+    var atual = analisarPreco(mp, preco, custo, venda, cfgMp, regras);
+    if (noTeto.lucro > atual.lucro) {
+      return {
+        precoAlternativo: anterior.max,
+        lucroAlternativo: noTeto.lucro,
+        lucroAtual: atual.lucro,
+        ganho: round2(noTeto.lucro - atual.lucro)
+      };
+    }
+    return null;
+  }
+
+  var API = {
+    REGRAS: REGRAS,
+    num: num,
+    round2: round2,
+    ceil2: ceil2,
+    moeda: moeda,
+    pct: pct,
+    intervalos: intervalos,
+    faixaDoPreco: faixaDoPreco,
+    calcularCusto: calcularCusto,
+    taxasMarketplace: taxasMarketplace,
+    analisarPreco: analisarPreco,
+    precoSugerido: precoSugerido,
+    precoMinimo: precoMinimo,
+    arredondarComercial: arredondarComercial,
+    faixasDoMarketplace: faixasDoMarketplace,
+    comparar: comparar,
+    alertaFaixa: alertaFaixa
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+  global.Core = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/*
+ * app.js — Interface da Calculadora de Precificação 3D.
+ * Lê os campos, chama o Core e desenha o comparativo dos marketplaces.
+ */
+(function () {
+  'use strict';
+
+  var CHAVE = 'calc3d.v1';
+  var CHAVE_PECAS = 'calc3d.pecas.v1';
+
+  var $ = function (id) {
+    return document.getElementById(id);
+  };
+
+  var moeda = Core.moeda;
+  var num = Core.num;
+
+  /* ------------------------------------------------------------------ *
+   * Campos e estado
+   * ------------------------------------------------------------------ */
+
+  // Campos simples: id → tipo ('n' número, 't' texto, 'b' booleano, 's' select)
+  var CAMPOS = {
+    nome: 't',
+    horas: 'n', minutos: 'n', pecasPorImpressao: 'n',
+    minutosTrabalho: 'n', extras: 'n', embalagem: 'n',
+    potenciaW: 'n', tarifaKwh: 'n',
+    valorImpressora: 'n', vidaUtilHoras: 'n', manutencaoHora: 'n',
+    valorHoraTrabalho: 'n', taxaFalhaPct: 'n', custoFixoHora: 'n',
+    valorObjetivo: 'n', impostoPct: 'n', adsPct: 'n', antecipacaoPct: 'n',
+    terminacao: 's',
+    mpShopee: 'b', shopeeFrete: 'n', shopeeCpf: 'b',
+    mpMl: 'b', mlTipo: 's', mlPct: 'n', mlFrete: 'n',
+    mpTiktok: 'b', tkAfiliado: 'n', tkFrete: 'n', tkFreteGratis: 'b'
+  };
+
+  var modoObjetivo = 'margem';
+  var materiais = [];
+
+  function lerCampos() {
+    var o = {};
+    Object.keys(CAMPOS).forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      o[id] = CAMPOS[id] === 'b' ? el.checked : CAMPOS[id] === 'n' ? num(el.value) : el.value;
+    });
+    o.modoObjetivo = modoObjetivo;
+    o.materiais = materiais.slice();
+    return o;
+  }
+
+  function aplicarCampos(o) {
+    if (!o) return;
+    Object.keys(CAMPOS).forEach(function (id) {
+      if (o[id] === undefined || o[id] === null) return;
+      var el = $(id);
+      if (!el) return;
+      if (CAMPOS[id] === 'b') el.checked = !!o[id];
+      else el.value = o[id];
+    });
+    if (o.modoObjetivo) definirModo(o.modoObjetivo, true);
+    if (o.materiais && o.materiais.length) {
+      materiais = o.materiais.slice();
+      desenharMateriais();
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Materiais
+   * ------------------------------------------------------------------ */
+
+  function desenharMateriais() {
+    var box = $('materiais');
+    box.innerHTML = '';
+    materiais.forEach(function (m, i) {
+      var div = document.createElement('div');
+      div.className = 'material';
+      div.innerHTML =
+        '<label class="campo"><span>' +
+        (i === 0 ? 'Gramas usadas' : 'Gramas (material ' + (i + 1) + ')') +
+        '</span><input type="number" inputmode="decimal" step="any" min="0" data-mat="gramas" data-i="' + i + '"></label>' +
+        '<label class="campo"><span>Preço do kg</span>' +
+        '<span class="pre" data-prefixo="R$"><input type="number" inputmode="decimal" step="any" ' +
+        'min="0" data-mat="precoKg" data-i="' + i + '"></span></label>' +
+        (i === 0
+          ? '<span></span>'
+          : '<button type="button" class="remover" data-remover="' + i + '" aria-label="Remover material">×</button>');
+      box.appendChild(div);
+      div.querySelector('[data-mat="gramas"]').value = m.gramas;
+      div.querySelector('[data-mat="precoKg"]').value = m.precoKg;
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Modo do objetivo
+   * ------------------------------------------------------------------ */
+
+  var ROTULOS = {
+    margem: {
+      rotulo: 'Margem desejada sobre a venda (%)',
+      dica: 'Margem líquida: o que sobra sobre o preço final, já sem taxas e custos.',
+      padrao: 30
+    },
+    markup: {
+      rotulo: 'Markup sobre o custo (%)',
+      dica: '100% = o lucro é igual ao custo da peça.',
+      padrao: 100
+    },
+    lucro: {
+      rotulo: 'Lucro desejado por peça (R$)',
+      dica: 'Quanto você quer no bolso depois de todas as taxas.',
+      padrao: 20
+    },
+    preco: {
+      rotulo: 'Preço de venda no anúncio (R$)',
+      dica: 'Mostra quanto sobra vendendo por esse preço em cada marketplace.',
+      padrao: 79.9
+    }
+  };
+
+  function definirModo(modo, semTrocarValor) {
+    modoObjetivo = modo;
+    Array.prototype.forEach.call($('modoObjetivo').children, function (b) {
+      b.setAttribute('aria-pressed', b.dataset.modo === modo ? 'true' : 'false');
+    });
+    $('rotuloObjetivo').textContent = ROTULOS[modo].rotulo;
+    $('dicaObjetivo').textContent = ROTULOS[modo].dica;
+    $('terminacao').closest('.campo').style.display = modo === 'preco' ? 'none' : '';
+    if (!semTrocarValor) $('valorObjetivo').value = ROTULOS[modo].padrao;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Cálculo e desenho
+   * ------------------------------------------------------------------ */
+
+  var ultimo = null;
+
+  function calcular() {
+    var v = lerCampos();
+
+    var custo = Core.calcularCusto({
+      materiais: v.materiais,
+      horas: v.horas,
+      minutos: v.minutos,
+      pecasPorImpressao: v.pecasPorImpressao,
+      potenciaW: v.potenciaW,
+      tarifaKwh: v.tarifaKwh,
+      valorImpressora: v.valorImpressora,
+      vidaUtilHoras: v.vidaUtilHoras,
+      manutencaoHora: v.manutencaoHora,
+      minutosTrabalho: v.minutosTrabalho,
+      valorHoraTrabalho: v.valorHoraTrabalho,
+      extras: v.extras,
+      embalagem: v.embalagem,
+      custoFixoHora: v.custoFixoHora,
+      taxaFalhaPct: v.taxaFalhaPct
+    });
+
+    var venda = {
+      impostoPct: v.impostoPct,
+      adsPct: v.adsPct,
+      antecipacaoPct: v.antecipacaoPct
+    };
+
+    var cfg = {
+      shopee: { cpfAltoVolume: v.shopeeCpf, frete: v.shopeeFrete },
+      mercadolivre: { tipoAnuncio: v.mlTipo, pctComissao: v.mlPct, frete: v.mlFrete },
+      tiktokshop: { freteGratis: v.tkFreteGratis, pctAfiliado: v.tkAfiliado, frete: v.tkFrete }
+    };
+
+    var objetivo = {
+      modo: v.modoObjetivo,
+      valor: v.valorObjetivo,
+      terminacao: v.modoObjetivo === 'preco' ? '' : v.terminacao
+    };
+
+    var ativos = { shopee: v.mpShopee, mercadolivre: v.mpMl, tiktokshop: v.mpTiktok };
+    var lista = Core.comparar(custo.total, venda, cfg, objetivo).filter(function (r) {
+      return ativos[r.marketplace];
+    });
+
+    lista.forEach(function (r) {
+      if (r.inviavel) return;
+      r.alerta = Core.alertaFaixa(r.marketplace, r.preco, custo.total, venda, cfg[r.marketplace]);
+      r.lucroHora = custo.tempoHorasPorPeca > 0 ? r.lucro / custo.tempoHorasPorPeca : 0;
+    });
+
+    ultimo = { v: v, custo: custo, lista: lista };
+
+    // Só redesenha se algo mudou de verdade. Sem isso, o evento `change`
+    // disparado ao sair do campo refaz o HTML no meio de um toque e o
+    // botão some antes de o clique chegar nele.
+    var assinatura = JSON.stringify([
+      custo.total, custo.perdaFalha, custo.tempoHoras, custo.depreciacaoHora,
+      custo.itens.map(function (i) { return i.valor; }),
+      v.modoObjetivo, v.valorObjetivo, v.materiais,
+      lista.map(function (r) {
+        return [
+          r.marketplace, r.inviavel, r.preco, r.lucro, r.margem, r.lucroHora,
+          r.minimo && r.minimo.preco, r.alerta && r.alerta.ganho,
+          r.itensTaxas && r.itensTaxas.map(function (i) { return [i.rotulo, i.valor]; }),
+          r.imposto, r.ads, r.antecipacao
+        ];
+      })
+    ]);
+    if (assinatura !== calcular._assinatura) {
+      calcular._assinatura = assinatura;
+      desenhar(ultimo);
+    }
+    salvarLocal(v);
+  }
+
+  function desenhar(dados) {
+    var custo = dados.custo;
+    var lista = dados.lista;
+    var box = $('resultados');
+    box.innerHTML = '';
+
+    var melhorLucro = lista.reduce(function (m, r) {
+      return r.inviavel ? m : Math.max(m, r.lucro);
+    }, -Infinity);
+
+    if (!lista.length) {
+      box.innerHTML =
+        '<div class="card"><div class="corpo"><p class="nota" style="margin-top:14px">' +
+        'Ative pelo menos um marketplace na seção 4.</p></div></div>';
+    }
+
+    lista.forEach(function (r) {
+      var el = document.createElement('div');
+      el.className = 'resultado ' + r.marketplace;
+
+      if (r.inviavel) {
+        el.innerHTML =
+          '<div class="topo"><span class="nome">' + r.nome + '</span>' +
+          '<span class="preco">—</span></div>' +
+          '<p class="aviso ruim">Não existe preço que atinja esse objetivo neste canal: as taxas ' +
+          'consomem a margem inteira. Reduza a margem alvo ou o custo.</p>';
+        box.appendChild(el);
+        return;
+      }
+
+      var negativo = r.lucro < 0;
+      var selo = !negativo && r.lucro === melhorLucro && lista.length > 1
+        ? '<span class="selo">melhor lucro</span>' : '';
+
+      var itens = r.itensTaxas
+        .map(function (i) {
+          return '<li><span>' + i.rotulo + '</span><span>− ' + moeda(i.valor) + '</span></li>';
+        })
+        .join('');
+      if (r.imposto > 0) itens += '<li><span>Imposto</span><span>− ' + moeda(r.imposto) + '</span></li>';
+      if (r.ads > 0) itens += '<li><span>Anúncios</span><span>− ' + moeda(r.ads) + '</span></li>';
+      if (r.antecipacao > 0) itens += '<li><span>Antecipação</span><span>− ' + moeda(r.antecipacao) + '</span></li>';
+
+      el.innerHTML =
+        '<div class="topo">' +
+          '<span class="nome">' + r.nome + '</span>' + selo +
+          '<span class="preco">' + moeda(r.preco) + '</span>' +
+        '</div>' +
+        '<div class="metricas">' +
+          '<div' + (negativo ? ' class="neg"' : '') + '><b>' + moeda(r.lucro) + '</b><span>Lucro/peça</span></div>' +
+          '<div' + (negativo ? ' class="neg"' : '') + '><b>' + Core.pct(r.margem) + '</b><span>Margem</span></div>' +
+          '<div><b>' + moeda(r.lucroHora) + '</b><span>Lucro/h máq.</span></div>' +
+        '</div>' +
+        (negativo
+          ? '<p class="aviso ruim">Esse preço dá prejuízo. O mínimo para empatar aqui é ' +
+            moeda(r.minimo ? r.minimo.preco : 0) + '.</p>'
+          : '') +
+        (r.alerta && !negativo
+          ? '<p class="aviso">Degrau de taxa: vendendo a <b>' + moeda(r.alerta.precoAlternativo) +
+            '</b> você lucra <b>' + moeda(r.alerta.ganho) + ' a mais</b> do que a ' + moeda(r.preco) +
+            '. <button type="button" data-usar="' + r.alerta.precoAlternativo + '">usar esse preço</button></p>'
+          : '') +
+        '<details class="detalhe"><summary>Ver a conta desta venda</summary><ul>' +
+          '<li><span>Preço de venda</span><span>' + moeda(r.preco) + '</span></li>' +
+          itens +
+          '<li><span>Custo da peça</span><span>− ' + moeda(r.custo) + '</span></li>' +
+          '<li class="total"><span>Sobra no bolso</span><span>' + moeda(r.lucro) + '</span></li>' +
+          '<li><span>Preço mínimo (lucro zero)</span><span>' + moeda(r.minimo ? r.minimo.preco : 0) + '</span></li>' +
+        '</ul></details>';
+
+      box.appendChild(el);
+    });
+
+    // Detalhamento do custo
+    var lin = custo.itens
+      .filter(function (i) { return i.valor > 0; })
+      .map(function (i) {
+        return '<li style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--borda)">' +
+          '<span style="color:var(--suave)">' + i.rotulo + '</span><span>' + moeda(i.valor) + '</span></li>';
+      })
+      .join('');
+    if (custo.perdaFalha > 0) {
+      lin += '<li style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--borda)">' +
+        '<span style="color:var(--suave)">Rateio de falhas</span><span>' + moeda(custo.perdaFalha) + '</span></li>';
+    }
+    lin += '<li style="display:flex;justify-content:space-between;padding:8px 0;font-weight:700">' +
+      '<span>Custo por peça</span><span>' + moeda(custo.total) + '</span></li>';
+    $('detalheCusto').innerHTML = lin;
+
+    // Resumos e barra fixa
+    var g = (dados.v.materiais || []).reduce(function (s, m) { return s + num(m.gramas); }, 0);
+    $('resumoPeca').textContent = g + ' g · ' + formatarTempo(custo.tempoHoras);
+    $('resumoOperacao').textContent = moeda(custo.depreciacaoHora + num(dados.v.manutencaoHora)) + '/h de máquina';
+    $('resumoVenda').textContent = ROTULOS[modoObjetivo].rotulo.replace(/ \(.*\)/, '') + ': ' + dados.v.valorObjetivo;
+    $('resumoMp').textContent = lista.length + ' ativo' + (lista.length === 1 ? '' : 's');
+    $('resumoCusto').textContent = moeda(custo.total);
+    $('barraCusto').textContent = moeda(custo.total);
+
+    var viaveis = lista.filter(function (r) { return !r.inviavel; });
+    if (viaveis.length) {
+      var melhor = viaveis.reduce(function (a, b) { return b.lucro > a.lucro ? b : a; });
+      $('barraMelhorRotulo').textContent = melhor.nome;
+      $('barraMelhor').textContent = moeda(melhor.preco);
+    } else {
+      $('barraMelhorRotulo').textContent = 'Melhor preço';
+      $('barraMelhor').textContent = '—';
+    }
+  }
+
+  function formatarTempo(h) {
+    var horas = Math.floor(h);
+    var min = Math.round((h - horas) * 60);
+    return horas + 'h' + (min ? String(min).padStart(2, '0') : '');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Persistência
+   * ------------------------------------------------------------------ */
+
+  function salvarLocal(v) {
+    try {
+      localStorage.setItem(CHAVE, JSON.stringify(v));
+    } catch (e) { /* modo privado: segue sem salvar */ }
+  }
+
+  function carregarLocal() {
+    try {
+      return JSON.parse(localStorage.getItem(CHAVE) || 'null');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function pecasSalvas() {
+    try {
+      return JSON.parse(localStorage.getItem(CHAVE_PECAS) || '[]');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function desenharSalvas() {
+    var lista = pecasSalvas();
+    var box = $('salvas');
+    box.innerHTML = '';
+    lista.forEach(function (p, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = p.nome || 'Peça ' + (i + 1);
+      b.dataset.carregar = i;
+      box.appendChild(b);
+    });
+    if (lista.length) {
+      var limpar = document.createElement('button');
+      limpar.type = 'button';
+      limpar.textContent = '✕ limpar';
+      limpar.dataset.limpar = '1';
+      box.appendChild(limpar);
+    }
+  }
+
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('on');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () {
+      t.classList.remove('on');
+    }, 2200);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Compartilhar
+   * ------------------------------------------------------------------ */
+
+  function textoResumo() {
+    if (!ultimo) return '';
+    var l = ['*' + (ultimo.v.nome || 'Peça 3D') + '*'];
+    l.push('Custo por peça: ' + moeda(ultimo.custo.total));
+    ultimo.lista.forEach(function (r) {
+      if (r.inviavel) {
+        l.push(r.nome + ': objetivo inviável');
+      } else {
+        l.push(
+          r.nome + ': ' + moeda(r.preco) + ' → lucro ' + moeda(r.lucro) + ' (' + Core.pct(r.margem) + ')'
+        );
+      }
+    });
+    l.push('');
+    l.push('Calculado com a Calculadora de Precificação 3D · regras ' + Core.REGRAS.atualizadoEm);
+    return l.join('\n');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Eventos
+   * ------------------------------------------------------------------ */
+
+  function ligarEventos() {
+    document.addEventListener('input', function (e) {
+      if (e.target.dataset && e.target.dataset.mat) {
+        var i = +e.target.dataset.i;
+        materiais[i][e.target.dataset.mat] = num(e.target.value);
+      }
+      calcular();
+    });
+
+    document.addEventListener('change', calcular);
+
+    $('modoObjetivo').addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      definirModo(b.dataset.modo);
+      calcular();
+    });
+
+    $('addMaterial').addEventListener('click', function () {
+      materiais.push({ nome: 'Material ' + (materiais.length + 1), gramas: 0, precoKg: materiais[0] ? materiais[0].precoKg : 120 });
+      desenharMateriais();
+      calcular();
+    });
+
+    $('materiais').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-remover]');
+      if (!b) return;
+      materiais.splice(+b.dataset.remover, 1);
+      desenharMateriais();
+      calcular();
+    });
+
+    $('resultados').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-usar]');
+      if (!b) return;
+      definirModo('preco', true);
+      $('valorObjetivo').value = b.dataset.usar;
+      calcular();
+      toast('Preço aplicado — veja quanto sobra');
+    });
+
+    $('mlTipo').addEventListener('change', function () {
+      var t = Core.REGRAS.mercadolivre.tiposAnuncio[this.value];
+      if (t) $('mlPct').value = t.pct;
+      calcular();
+    });
+
+    $('btnSalvar').addEventListener('click', function () {
+      var v = lerCampos();
+      if (!v.nome) {
+        toast('Dê um nome à peça primeiro');
+        $('nome').focus();
+        return;
+      }
+      var lista = pecasSalvas().filter(function (p) { return p.nome !== v.nome; });
+      lista.unshift(v);
+      try {
+        localStorage.setItem(CHAVE_PECAS, JSON.stringify(lista.slice(0, 30)));
+      } catch (e) { /* ignora */ }
+      desenharSalvas();
+      toast('Peça salva');
+    });
+
+    $('salvas').addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.limpar) {
+        if (!confirm('Apagar todas as peças salvas?')) return;
+        localStorage.removeItem(CHAVE_PECAS);
+        desenharSalvas();
+        return;
+      }
+      aplicarCampos(pecasSalvas()[+b.dataset.carregar]);
+      calcular();
+      toast('Peça carregada');
+    });
+
+    $('btnCompartilhar').addEventListener('click', function () {
+      var txt = textoResumo();
+      if (navigator.share) {
+        navigator.share({ title: 'Precificação 3D', text: txt }).catch(function () {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(txt).then(function () {
+          toast('Resumo copiado');
+        });
+      } else {
+        alert(txt);
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Início
+   * ------------------------------------------------------------------ */
+
+  function iniciar() {
+    materiais = [{ nome: 'Filamento', gramas: 60, precoKg: 120 }];
+    desenharMateriais();
+    definirModo('margem', true);
+
+    var salvo = carregarLocal();
+    if (salvo) aplicarCampos(salvo);
+
+    var r = Core.REGRAS;
+    $('cabecalhoRegras').textContent =
+      'Shopee · Mercado Livre · TikTok Shop — regras de ' + r.atualizadoEm;
+    $('rodapeRegras').innerHTML =
+      'Tabelas vigentes em ' + r.atualizadoEm + ': Shopee (tabela única desde 01/03/2026, sem teto de comissão), ' +
+      'Mercado Livre (custo por unidade abaixo de R$79 varia por peso e dimensão desde 02/03/2026 — confira no Simulador de Custos) ' +
+      'e TikTok Shop (estrutura de 15/07/2026). Confira sempre o extrato do seu canal: as taxas mudam.';
+
+    desenharSalvas();
+    ligarEventos();
+    calcular();
+
+    // No arquivo único (Artifact / abrir direto) não há sw.js para registrar.
+    if (!window.CALC3D_SINGLE && 'serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciar);
+  } else {
+    iniciar();
+  }
+})();
+
+</script>
