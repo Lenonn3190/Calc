@@ -24,8 +24,10 @@
   --sombra: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 14px rgba(16, 24, 40, 0.06);
 }
 
+/* O tema escuro vale tanto quando o sistema pede quanto quando o
+   visualizador marca data-theme="dark" na raiz. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #0f1216;
     --card: #171b21;
     --card-2: #1d222a;
@@ -43,6 +45,26 @@
     --tiktok: #e5e7eb;
     --sombra: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
+}
+
+/* Escolha explícita de tema escuro no visualizador. */
+:root[data-theme='dark'] {
+  --bg: #0f1216;
+  --card: #171b21;
+  --card-2: #1d222a;
+  --texto: #eceef2;
+  --suave: #98a2b3;
+  --borda: #2a313b;
+  --acento: #ff7a45;
+  --acento-suave: #2a1a12;
+  --ok: #34d399;
+  --ok-suave: #10261f;
+  --alerta: #fbbf24;
+  --alerta-suave: #2a2110;
+  --erro: #f87171;
+  --erro-suave: #2b1414;
+  --tiktok: #e5e7eb;
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -631,6 +653,31 @@ header p {
 @media (min-width: 620px) {
   .linha.quatro {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Números alinhados: preços e taxas são lidos em coluna. */
+.resultado .preco,
+.metricas b,
+.detalhe li span:last-child,
+.barra .bloco b,
+#detalheCusto span:last-child,
+.campo input {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Foco visível também nos botões, para navegação por teclado. */
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
   }
 }
 
