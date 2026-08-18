@@ -33,6 +33,17 @@ set "URL=http://localhost:8080/?v=%RANDOM%%RANDOM%"
 REM Zoom do quiosque (0.67 = 67%%). Altere aqui se quiser outro zoom.
 set "ZOOM=0.67"
 
+REM ===== MONITOR onde o painel deve abrir (numero do Windows: Config ^> Sistema ^>
+REM Video). Aqui esta o monitor 1 (mesmo que NAO seja o principal). Troque se preciso.
+set "MONITOR=1"
+REM Descobre a posicao/tamanho desse monitor (via monitor-pos.ps1) e monta as flags.
+set "POS="
+for /f "usebackq tokens=1-4" %%a in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0monitor-pos.ps1" %MONITOR%`) do (
+  set "MX=%%a" & set "MY=%%b" & set "MW=%%c" & set "MH=%%d"
+)
+if defined MX set "POS=--window-position=%MX%,%MY% --window-size=%MW%,%MH%"
+echo     Monitor %MONITOR%: posicao %MX%,%MY% tamanho %MW%x%MH%
+
 REM Perfil DEDICADO do quiosque. Sem isto, se ja houver um Chrome/Edge aberto,
 REM o Windows so abre uma aba no navegador existente e IGNORA as flags
 REM (--kiosk, --force-device-scale-factor). Com um user-data-dir proprio, o
@@ -45,10 +56,10 @@ if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "CHROME=
 if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "CHROME=%LocalAppData%\Google\Chrome\Application\chrome.exe"
 
 if defined CHROME (
-  start "" "%CHROME%" --user-data-dir="%PROFILE%" --kiosk --start-fullscreen --force-device-scale-factor=%ZOOM% --disable-session-crashed-bubble --disable-infobars --overscroll-history-navigation=0 --autoplay-policy=no-user-gesture-required "%URL%"
+  start "" "%CHROME%" --user-data-dir="%PROFILE%" %POS% --kiosk --start-fullscreen --force-device-scale-factor=%ZOOM% --disable-session-crashed-bubble --disable-infobars --overscroll-history-navigation=0 --autoplay-policy=no-user-gesture-required "%URL%"
 ) else (
   echo    Chrome nao encontrado. Tentando Microsoft Edge...
-  start "" msedge --user-data-dir="%PROFILE%" --kiosk "%URL%" --edge-kiosk-type=fullscreen --force-device-scale-factor=%ZOOM% --no-first-run
+  start "" msedge --user-data-dir="%PROFILE%" %POS% --kiosk "%URL%" --edge-kiosk-type=fullscreen --force-device-scale-factor=%ZOOM% --no-first-run
 )
 
 echo.

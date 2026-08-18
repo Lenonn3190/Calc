@@ -222,6 +222,13 @@ das colunas não importa**: o painel localiza cada uma pelo nome do cabeçalho
 > mudar, edite a linha `set "ZOOM=0.67"` no `Iniciar-Painel-TV.bat` (ex.: `0.75`,
 > `0.9`, `1.0`).
 
+> **Monitor:** o quiosque abre no **monitor 1** (mesmo que não seja o principal).
+> O `Iniciar-Painel-TV.bat` descobre a posição desse monitor (via `monitor-pos.ps1`)
+> e abre o navegador já nele. Para usar outro, mude `set "MONITOR=1"` no `.bat`
+> (o número é o mesmo de *Configurações ▸ Sistema ▸ Vídeo*). Se abrir na tela
+> errada, tente `2` ou `3` — a numeração do Windows nem sempre bate com a ordem
+> interna das telas. Mantenha o `monitor-pos.ps1` na mesma pasta.
+
 > Para sair do quiosque: **Alt+F4**. Deixe todos os arquivos na **mesma pasta**
 > (`index.html`, `estoque.xlsx`, `metas.json`, `servir.ps1`, `Iniciar-Painel-TV.bat`).
 > Se a energia não mudar, rode o `.bat` como **Administrador**.
