@@ -53,21 +53,39 @@ e o painel se **atualiza sozinho a cada 1 hora**, mostrando a **data e hora da
   Para garantia total, configure também o Windows para **nunca suspender** e
   **desativar o bloqueio de tela/protetor** (veja abaixo).
 
-## Atualizar a base (`estoque.xlsx`) automaticamente
+## Atualizar a base automaticamente
 
-O painel relê o `estoque.xlsx` **de hora em hora, no minuto :00**, mas o
-**arquivo em si** precisa ser atualizado antes disso. A tarefa agendada abaixo
-regrava o arquivo no minuto **:50** (10 min antes da releitura do painel). Formas:
+O painel relê a base **de hora em hora, no minuto :00**, mas o **arquivo em si**
+precisa ser atualizado antes disso. A tarefa agendada regrava o arquivo no minuto
+**:50** (10 min antes da releitura do painel).
 
-**A) Tarefa agendada (recomendado)** — mantém tudo automático mesmo com a TV sozinha:
-1. Deixe na pasta a sua **planilha de consulta** (a que puxa do sistema/JDE) e abra
-   **`Atualizar-Base.ps1`**, ajustando a variável **`$origem`** com o caminho dela.
-   *(A consulta precisa atualizar sem pedir login/senha nem abrir caixas de diálogo —
-   deixe as credenciais salvas na conexão.)*
-2. Dê duplo clique em **`Agendar-Atualizacao.bat`** (se pedir, rode como Administrador).
-   Ele cria uma tarefa no Windows que roda o script **a cada 1 hora** (no minuto :50),
-   abre a consulta, atualiza (`RefreshAll`) e **regrava o `estoque.xlsx`** de forma segura.
-3. O painel pega a base nova sozinho no próximo ciclo. (Log em `atualizar-base.log`.)
+O painel aceita **os dois formatos** e escolhe sozinho:
+
+| Modo | Script | Gera | Precisa de Excel? |
+|---|---|---|:--:|
+| **ODBC** (recomendado) | `Atualizar-Base-ODBC.ps1` | `estoque.csv` | **Não** |
+| **EXCEL** | `Atualizar-Base.ps1` | `estoque.xlsx` | Sim |
+
+> Se os **dois** arquivos existirem na pasta, o painel usa o **mais recente** — então
+> dá para alternar entre ODBC e Excel sem editar o `index.html`. O rodapé mostra
+> qual base está em uso.
+
+**A) Tarefa agendada (recomendado)**
+1. Abra o **`Agendar-Atualizacao.bat`** e confira a linha `set "MODO=ODBC"`.
+   **Para voltar ao Excel**, troque para `set "MODO=EXCEL"` e rode o `.bat` de novo.
+2. Dê duplo clique nele (se pedir, rode como Administrador). Ele cria a tarefa que
+   roda **a cada 1 hora** (no minuto :50). (Log em `atualizar-base.log`.)
+
+**No modo ODBC:** o **`Atualizar-Base-ODBC.ps1`** consulta o banco direto pelo DSN
+**`DPN-Producao`** e já traz a coluna **`LILOCN` ajustada** — a mesma lógica que
+estava no Power Query (`ESTUSI OP_OFF`, `ESTUSI OP140`, `ESTFND`, …) foi traduzida
+para um **`CASE` em SQL** dentro do script, junto com a coluna original
+`LOCAL_AS400`. Para incluir ou mudar uma regra, mexa só no bloco `CASE`. Se o DSN
+não guardar usuário/senha, preencha `UID`/`PWD` em `$conn`.
+
+**No modo EXCEL:** abra o **`Atualizar-Base.ps1`** e ajuste `$origem` com o caminho
+da sua planilha de consulta. *(A consulta precisa atualizar sem pedir login/senha
+nem abrir caixas de diálogo.)*
 
 **B) Só dentro do Excel** — se o PC ficar com o Excel aberto: em *Dados → Consultas e
 Conexões → Propriedades*, marque **"Atualizar a cada N minutos"** e **"Atualizar ao abrir"**.

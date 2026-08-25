@@ -447,7 +447,13 @@ const SVG_TRANSMISSAO = `<svg viewBox="0 0 48 48" fill="none" stroke="currentCol
    CONFIGURAÇÃO
    ============================================================ */
 const CONFIG = {
-  arquivo: 'estoque.xlsx',   // base lida na mesma pasta (Excel; aceita .csv tbm)
+  // Base lida na mesma pasta. O painel aceita OS DOIS formatos e escolhe sozinho:
+  //   estoque.csv  -> gerado pelo ODBC direto (Atualizar-Base-ODBC.ps1, sem Excel)
+  //   estoque.xlsx -> gerado via Excel (Atualizar-Base.ps1)
+  // Se os dois existirem, usa o MAIS RECENTE — assim dá para alternar entre ODBC e
+  // Excel sem mexer aqui.
+  arquivo: 'estoque.csv',
+  arquivos: ['estoque.csv','estoque.xlsx'],
   intervaloMin: 60,          // atualização automática (minutos)
   unidade: 'un',             // unidade exibida ao lado da quantidade
   relatorio: { horarios: ['08:30','12:30'] },  // horários que geram o HTML de e-mail na pasta mapeada
@@ -1538,13 +1544,33 @@ function renderFromCache(cache){
   }catch(e){ console.warn('cache inválido',e); return false; }
 }
 
+/* Descobre qual base usar: percorre CONFIG.arquivos e fica com a que existe.
+   Se mais de uma existir (ex.: sobrou um estoque.xlsx antigo depois de migrar
+   para o ODBC), usa a MAIS RECENTE pelo Last-Modified. */
+async function escolherArquivo(){
+  const lista=(CONFIG.arquivos&&CONFIG.arquivos.length)?CONFIG.arquivos:[CONFIG.arquivo];
+  if(lista.length===1) return lista[0];
+  let escolhido=null, maisNovo=-1;
+  for(const nome of lista){
+    try{
+      const r=await fetch(nome+'?h='+Date.now(),{method:'HEAD',cache:'no-store'});
+      if(!r.ok) continue;
+      const lm=Date.parse(r.headers.get('Last-Modified')||'')||0;
+      if(lm>maisNovo){ maisNovo=lm; escolhido=nome; }
+    }catch(e){}
+  }
+  return escolhido||lista[0];   // nenhum respondeu ao HEAD: tenta o primeiro
+}
 async function loadFromServer(){
-  const url=CONFIG.arquivo+(CONFIG.arquivo.includes('?')?'&':'?')+'t='+Date.now();
+  const nome=await escolherArquivo();
+  CONFIG.arquivo=nome;                       // reflete no rodapé qual base está em uso
+  const el=$('#stFile'); if(el) el.textContent=nome;
+  const url=nome+(nome.includes('?')?'&':'?')+'t='+Date.now();
   const r=await fetch(url,{cache:'no-store'});
   if(!r.ok) throw new Error('HTTP '+r.status);
   const buf=await r.arrayBuffer();
-  // aceita .csv (ex.: gerado direto do ODBC) ou .xlsx conforme o nome do arquivo
-  if(/\.csv(\?|$)/i.test(CONFIG.arquivo)) return parseCsv(new TextDecoder('utf-8').decode(new Uint8Array(buf)));
+  // aceita .csv (ODBC direto) ou .xlsx (via Excel) conforme o nome do arquivo
+  if(/\.csv(\?|$)/i.test(nome)) return parseCsv(new TextDecoder('utf-8').decode(new Uint8Array(buf)));
   return parseXlsx(buf);
 }
 

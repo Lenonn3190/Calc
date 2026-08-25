@@ -86,14 +86,23 @@ while ($listener.IsListening) {
     }
 
     if (Test-Path -LiteralPath $path -PathType Leaf) {
-      $bytes = [System.IO.File]::ReadAllBytes($path)
       $ext = [System.IO.Path]::GetExtension($path).ToLower()
       if ($mime.ContainsKey($ext)) { $ctx.Response.ContentType = $mime[$ext] }
       $ctx.Response.Headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
       $ctx.Response.Headers['Pragma'] = 'no-cache'
       $ctx.Response.Headers['Expires'] = '0'
-      $ctx.Response.ContentLength64 = $bytes.Length
-      $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
+      # Last-Modified: o painel usa para escolher a base mais recente quando
+      # existem estoque.csv (ODBC) e estoque.xlsx (Excel) na mesma pasta.
+      $lm = (Get-Item -LiteralPath $path).LastWriteTimeUtc
+      $ctx.Response.Headers['Last-Modified'] = $lm.ToString('R')
+      if ($ctx.Request.HttpMethod -eq 'HEAD') {
+        # HEAD: so os cabecalhos, sem corpo
+        $ctx.Response.ContentLength64 = (Get-Item -LiteralPath $path).Length
+      } else {
+        $bytes = [System.IO.File]::ReadAllBytes($path)
+        $ctx.Response.ContentLength64 = $bytes.Length
+        $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
+      }
     } else {
       $ctx.Response.StatusCode = 404
       $msg = [System.Text.Encoding]::UTF8.GetBytes("404 - nao encontrado: $rel")
