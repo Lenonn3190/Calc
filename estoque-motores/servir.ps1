@@ -66,6 +66,25 @@ while ($listener.IsListening) {
     $rel = $rel.Split('?')[0].Replace('..','')
     $path = Join-Path $root $rel
 
+    # POST /salvar-relatorio -> grava o estoque_email.html NESTA pasta (raiz do
+    # painel). E o que o painel usa quando nao ha pasta mapeada: o navegador nao
+    # escreve no disco sozinho, entao ele manda o HTML para ca.
+    if ($ctx.Request.HttpMethod -eq 'POST' -and $rel -eq 'salvar-relatorio') {
+      $sr = New-Object System.IO.StreamReader($ctx.Request.InputStream, [System.Text.Encoding]::UTF8)
+      $body = $sr.ReadToEnd(); $sr.Close()
+      $destino = Join-Path $root 'estoque_email.html'
+      $tmp = "$destino.tmp"
+      [System.IO.File]::WriteAllText($tmp, $body, (New-Object System.Text.UTF8Encoding($false)))
+      Move-Item -LiteralPath $tmp -Destination $destino -Force
+      $ctx.Response.StatusCode = 200
+      $ctx.Response.ContentType = 'text/plain; charset=utf-8'
+      $ok = [System.Text.Encoding]::UTF8.GetBytes("OK")
+      $ctx.Response.OutputStream.Write($ok, 0, $ok.Length)
+      $ctx.Response.OutputStream.Close()
+      Write-Host ("  relatorio gravado: {0}  ({1:HH:mm:ss})" -f $destino, (Get-Date)) -ForegroundColor Green
+      continue
+    }
+
     if (Test-Path -LiteralPath $path -PathType Leaf) {
       $bytes = [System.IO.File]::ReadAllBytes($path)
       $ext = [System.IO.Path]::GetExtension($path).ToLower()

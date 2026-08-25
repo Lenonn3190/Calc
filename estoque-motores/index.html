@@ -45,6 +45,14 @@ body{
 body.cursor-hidden{cursor:none}
 .wrap{ height:100vh; display:flex; flex-direction:column; padding:clamp(10px,1.5vh,22px) clamp(14px,2vw,40px); gap:clamp(8px,1.3vh,18px); }
 
+/* ZOOM do painel (?zoom=0.67 na URL). O zoom encolhe o desenho, mas as unidades
+   vh/vw continuam valendo a tela real — por isso compensamos a largura/altura
+   dividindo por --z, para o conteudo ocupar a tela inteira e caber MAIS coisa. */
+:root{ --z:1; }
+html[data-zoom]{ zoom:var(--z); }
+html[data-zoom] body{ width:calc(100vw / var(--z)); }
+html[data-zoom] .wrap{ height:calc(100vh / var(--z)); }
+
 /* ============ HEADER ============ */
 header{ display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
 .brand{ display:flex; align-items:center; gap:16px; min-width:0; }
@@ -1352,22 +1360,35 @@ function previewReport(){
   const html=buildEmailHtml(lastData); const w=window.open('','_blank');
   if(w){ w.document.write(html); w.document.close(); } else { download('relatorio_estoque.html', new Blob([html],{type:'text/html'})); }
 }
+/* Sem pasta mapeada: manda o HTML para o SERVIDOR gravar na pasta raiz (onde
+   está o index.html). O navegador não escreve direto no disco por segurança —
+   quem grava é o servir.ps1, que atende POST em /salvar-relatorio. */
+async function saveReportToServer(html){
+  const r=await fetch('salvar-relatorio',{ method:'POST', cache:'no-store',
+    headers:{'Content-Type':'text/html; charset=utf-8'}, body:html });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return true;
+}
 async function generateEmailReport(motivo){
   if(!lastData) return;
   const html=buildEmailHtml(lastData);
   try{ localStorage.setItem('estoque-email-ultimo', html); }catch(e){}
+  // grava SEMPRE só o estoque_email.html (sem cópia com data/hora, que enchia a pasta)
   if(dirHandle){
     try{
-      const n=new Date(), stamp=n.getFullYear()+pad(n.getMonth()+1)+pad(n.getDate())+'_'+pad(n.getHours())+pad(n.getMinutes());
-      await writeFileToFolder('estoque_email_'+stamp+'.html', html,'text/html');
-      await writeFileToFolder('estoque_email.html', html,'text/html');   // sempre o último
+      await writeFileToFolder('estoque_email.html', html,'text/html');
       await saveMetasToFolder();
       toast('Relatório gerado na pasta ('+motivo+')');
     }catch(e){ console.warn(e); toast('Falha ao gravar na pasta: '+(e.message||e),'err'); }
-  } else if(motivo==='manual'){
-    previewReport(); toast('Pasta não mapeada — abri a pré-visualização');
-  } else {
-    console.warn('Relatório ('+motivo+') gerado, mas nenhuma pasta está mapeada.');
+    return;
+  }
+  // sem pasta mapeada -> pasta raiz do painel, via servidor
+  try{
+    await saveReportToServer(html);
+    toast('Relatório gerado na pasta do painel ('+motivo+')');
+  }catch(e){
+    console.warn('Não consegui gravar na pasta do painel:',e);
+    if(motivo==='manual'){ previewReport(); toast('Não gravou na pasta — abri a pré-visualização','err'); }
   }
 }
 /* dispara os relatórios nos horários configurados */
@@ -1636,8 +1657,25 @@ async function keepAwake(){
    ============================================================ */
 function applyIntervalLabels(){ /* atualização é sempre no minuto :00 (rótulos fixos no HTML) */ }
 
+/* zoom do painel: ?zoom=0.67 na URL (o quiosque passa isso). Vale só por essa
+   URL — assim abrir o painel normal no mesmo PC/celular continua em tamanho
+   cheio. 1 = tamanho normal. */
+function aplicarZoom(){
+  let z=null;
+  try{
+    const q=new URLSearchParams(location.search).get('zoom');
+    if(q!=null) z=parseFloat(String(q).replace(',','.'));
+  }catch(e){}
+  if(!(z>0.2 && z<=3)) z=1;
+  const el=document.documentElement;
+  if(z===1){ el.removeAttribute('data-zoom'); el.style.removeProperty('--z'); }
+  else { el.style.setProperty('--z', z); el.setAttribute('data-zoom',''); }
+  return z;
+}
+
 function init(){
   try{ const t=localStorage.getItem('estoque-theme'); if(t) document.documentElement.setAttribute('data-theme',t); }catch(e){}
+  aplicarZoom();
 
   // metas + histórico
   METAS = loadMetas() || defaultMetas();

@@ -123,8 +123,14 @@ No cadastro de metas (🎯), seção **"Pasta & Relatório por e-mail"**, clique
 
 - **`metas.json`** — a configuração (sempre que você salvar as metas);
 - **`estoque_email.html`** — o **relatório mais recente**, pronto para o **corpo de
-  um e-mail** (documento autônomo, com acentos corretos);
-- **`estoque_email_AAAAMMDD_HHMM.html`** — uma cópia com carimbo de data/hora.
+  um e-mail** (documento autônomo, com acentos corretos). É **sempre o mesmo
+  arquivo**, sobrescrito a cada geração — não são criadas cópias com data/hora.
+
+> **Sem pasta mapeada:** o relatório vai para a **pasta do próprio painel** (onde
+> está o `index.html`). Como o navegador não escreve no disco sozinho, o painel
+> manda o HTML para o servidor (`servir.ps1`), que grava o `estoque_email.html`
+> ali. Ou seja: rodando pelo `Iniciar-Painel-TV.bat`, funciona sem configurar nada
+> — e o `Enviar-Email.ps1` já lê dessa mesma pasta por padrão.
 
 O relatório é gerado **automaticamente nos horários configurados** (por padrão
 **08:30** e **12:30**), e também pelos botões **"Gerar relatório agora"** e
@@ -218,9 +224,12 @@ das colunas não importa**: o painel localiza cada uma pelo nome do cabeçalho
 3. abre o **Chrome/Edge em tela cheia (quiosque)** apontando para o painel, já
    com **zoom de 67%** (para caber mais conteúdo na TV).
 
-> **Zoom:** o quiosque abre com **67%** (`--force-device-scale-factor=0.67`). Para
-> mudar, edite a linha `set "ZOOM=0.67"` no `Iniciar-Painel-TV.bat` (ex.: `0.75`,
-> `0.9`, `1.0`).
+> **Zoom:** o quiosque abre com **67%**. O zoom é aplicado pelo **próprio painel**,
+> pelo parâmetro **`?zoom=0.67`** na URL — não mais pela flag `--force-device-scale-factor`
+> do Chrome, que era ignorada em várias situações (perfil com zoom salvo, escala do
+> Windows, instância já aberta). Para mudar, edite `set "ZOOM=0.67"` no
+> `Iniciar-Painel-TV.bat` (ex.: `0.75`, `0.9`, `1.0`). Abrindo o painel sem esse
+> parâmetro (celular, PC normal), ele fica em tamanho cheio.
 
 > **Monitor:** o quiosque abre no **monitor 1** (mesmo que não seja o principal).
 > O `Iniciar-Painel-TV.bat` descobre a posição desse monitor (via `monitor-pos.ps1`)
