@@ -153,10 +153,12 @@ header{ display:flex; align-items:center; justify-content:space-between; gap:24p
 .locchip.imp{ border-color:color-mix(in srgb,#c084fc 45%,transparent); background:color-mix(in srgb,#c084fc 14%,transparent); }
 .locchip.imp .lv{ color:#c084fc; }
 /* local + seus sublocais (ex.: USI e, abaixo, OP140) */
-.locgrp{ display:inline-flex; flex-direction:column; gap:4px; align-items:flex-start; }
-.subwrap{ display:inline-flex; flex-wrap:wrap; gap:4px; padding-left:12px; }
-.locchip.sub{ padding:5px 11px; border-style:dashed; background:transparent;
-  font-size:clamp(12px,1.05vw,17px); gap:6px; }
+.locgrp{ display:inline-flex; flex-direction:column; gap:3px; align-items:flex-start; }
+.subwrap{ display:inline-flex; flex-wrap:wrap; gap:3px; padding-left:10px; }
+/* sublocais (OP10, OP140, OP_OFF...) sao detalhe: ficam compactos para o card
+   caber mesmo quando um local tem varias operacoes */
+.locchip.sub{ padding:3px 9px; border-style:dashed; background:transparent;
+  font-size:clamp(11px,.92vw,15px); gap:5px; }
 .locchip.sub .lk{ color:var(--faint); font-weight:700; }
 .locchip.sub .lv{ color:var(--muted); }
 .locchip.sub.dec{ border-color:color-mix(in srgb,var(--bad) 40%,transparent); }
