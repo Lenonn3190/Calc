@@ -267,12 +267,20 @@ das colunas não importa**: o painel localiza cada uma pelo nome do cabeçalho
 > `Iniciar-Painel-TV.bat` (ex.: `0.75`, `0.9`, `1.0`). Abrindo o painel sem esse
 > parâmetro (celular, PC normal), ele fica em tamanho cheio.
 
-> **Monitor:** o quiosque abre no **monitor 1** (mesmo que não seja o principal).
-> O `Iniciar-Painel-TV.bat` descobre a posição desse monitor (via `monitor-pos.ps1`)
-> e abre o navegador já nele. Para usar outro, mude `set "MONITOR=1"` no `.bat`
-> (o número é o mesmo de *Configurações ▸ Sistema ▸ Vídeo*). Se abrir na tela
-> errada, tente `2` ou `3` — a numeração do Windows nem sempre bate com a ordem
-> interna das telas. Mantenha o `monitor-pos.ps1` na mesma pasta.
+> **Monitor:** o painel abre no **monitor 2** (mesmo não sendo o principal) — mude
+> em `set "MONITOR=2"` no `Iniciar-Painel-TV.bat`.
+>
+> O Chrome **ignora `--window-position` quando está em `--kiosk`**: ele sempre entra
+> em tela cheia no **monitor principal**. Por isso o `.bat` usa `set "MODO_TELA=APP"`:
+> abre uma janela **sem barras** (`--app`) e o **`kiosk-monitor.ps1`** move essa
+> janela para o monitor escolhido, em **tela cheia sem bordas** (API do Windows).
+> Visualmente fica igual ao quiosque; para sair é **Alt+F4**. Se algum dia quiser o
+> `--kiosk` clássico, troque para `set "MODO_TELA=KIOSK"` (aí ele vai para o monitor
+> principal).
+>
+> Se abrir na tela errada, veja as coordenadas de cada monitor com
+> `powershell -File monitor-pos.ps1 1` (e `2`, `3`) e ajuste o `MONITOR`.
+> Mantenha o `monitor-pos.ps1` e o `kiosk-monitor.ps1` na mesma pasta.
 
 > Para sair do quiosque: **Alt+F4**. Deixe todos os arquivos na **mesma pasta**
 > (`index.html`, `estoque.xlsx`, `metas.json`, `servir.ps1`, `Iniciar-Painel-TV.bat`).
