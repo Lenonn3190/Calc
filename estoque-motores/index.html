@@ -808,8 +808,47 @@ function recordHist(data){
    A cada leitura o valor do dia é SOBRESCRITO, então ao virar o dia sobra a
    última leitura daquele dia (o valor "das 23:59"). ---- */
 let HISTD = {};
-const HISTD_KEY='estoque-hist-dia', HISTD_DIAS=12;
+const HISTD_KEY='estoque-hist-dia', HISTD_DIAS=12, HISTD_FILE='historico.json';
 function loadHistD(){ try{ return JSON.parse(localStorage.getItem(HISTD_KEY)||'{}')||{}; }catch(e){ return {}; } }
+/* O histórico diário também vai para um ARQUIVO (historico.json) na pasta do
+   painel. Só o localStorage não bastava: ele se perde se o Chrome fechar sem
+   gravar (reinício/queda de energia) ou se o perfil do quiosque for limpo — e o
+   relatório de e-mail depende desse histórico. O arquivo é a fonte durável;
+   o localStorage segue como cache local. */
+async function fetchHistDFile(){
+  try{
+    const r=await fetch(HISTD_FILE+'?t='+Date.now(),{cache:'no-store'});
+    if(!r.ok) return null;
+    const j=await r.json();
+    return (j && j.dias) ? j.dias : (j||null);
+  }catch(e){ return null; }
+}
+async function saveHistDFile(h){
+  try{
+    await fetch('salvar-historico',{ method:'POST', cache:'no-store',
+      headers:{'Content-Type':'application/json; charset=utf-8'},
+      body:JSON.stringify({ atualizado:new Date().toISOString(), dias:h }, null, 1) });
+  }catch(e){ /* sem servidor que grave: segue só com o localStorage */ }
+}
+/* junta dois históricos por dia; o segundo (local, mais fresco) sobrepõe */
+function mergeHistD(a,b){
+  const out={}, cats=new Set([...Object.keys(a||{}),...Object.keys(b||{})]);
+  cats.forEach(c=>{
+    const m={};
+    ((a&&a[c])||[]).forEach(p=>{ if(p&&p.d) m[p.d]=p.v; });
+    ((b&&b[c])||[]).forEach(p=>{ if(p&&p.d) m[p.d]=p.v; });
+    out[c]=Object.keys(m).sort().map(d=>({d:d,v:m[d]})).slice(-HISTD_DIAS);
+  });
+  return out;
+}
+/* na abertura: traz o arquivo e funde com o que houver no navegador */
+async function restaurarHistD(){
+  const doArquivo=await fetchHistDFile();
+  if(!doArquivo) return false;
+  HISTD=mergeHistD(doArquivo, loadHistD());
+  try{ localStorage.setItem(HISTD_KEY, JSON.stringify(HISTD)); }catch(e){}
+  return true;
+}
 function diaKey(t){ const d=new Date(t); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
 function recordHistD(data){
   const h=loadHistD(), k=diaKey(Date.now());
@@ -1586,6 +1625,7 @@ async function refresh(manualRows){
     const data=interpret(rows);
     HIST=recordHist(data);                  // registra ponto no histórico
     HISTD=recordHistD(data);                // fechamento diário (evolução n-5)
+    saveHistDFile(HISTD);                   // grava no historico.json (não espera)
     render(data);
     lastUpdate=new Date();
     $('#stLast').textContent=fmtDateTime(lastUpdate);
@@ -1709,6 +1749,9 @@ function init(){
   METAS = loadMetas() || defaultMetas();
   HIST  = loadHist();
   HISTD = loadHistD();
+  // restaura o histórico diário do arquivo (sobrevive a fechar o navegador /
+  // reiniciar o PC / perfil limpo) e funde com o que houver no navegador
+  restaurarHistD();
 
   $('#stFile').textContent=CONFIG.arquivo;
   $('#dlgFile').textContent=CONFIG.arquivo;

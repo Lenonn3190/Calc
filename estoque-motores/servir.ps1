@@ -66,13 +66,20 @@ while ($listener.IsListening) {
     $rel = $rel.Split('?')[0].Replace('..','')
     $path = Join-Path $root $rel
 
-    # POST /salvar-relatorio -> grava o estoque_email.html NESTA pasta (raiz do
-    # painel). E o que o painel usa quando nao ha pasta mapeada: o navegador nao
-    # escreve no disco sozinho, entao ele manda o HTML para ca.
-    if ($ctx.Request.HttpMethod -eq 'POST' -and $rel -eq 'salvar-relatorio') {
+    # POSTs que o painel usa para GRAVAR na pasta (o navegador nao escreve no
+    # disco sozinho, entao ele manda o conteudo para ca):
+    #   /salvar-relatorio -> estoque_email.html  (usado quando nao ha pasta mapeada)
+    #   /salvar-historico -> historico.json      (fechamento diario; sobrevive a
+    #                        fechar o navegador / reiniciar o PC)
+    $gravar = $null
+    if ($ctx.Request.HttpMethod -eq 'POST') {
+      if     ($rel -eq 'salvar-relatorio') { $gravar = 'estoque_email.html' }
+      elseif ($rel -eq 'salvar-historico') { $gravar = 'historico.json' }
+    }
+    if ($gravar) {
       $sr = New-Object System.IO.StreamReader($ctx.Request.InputStream, [System.Text.Encoding]::UTF8)
       $body = $sr.ReadToEnd(); $sr.Close()
-      $destino = Join-Path $root 'estoque_email.html'
+      $destino = Join-Path $root $gravar
       $tmp = "$destino.tmp"
       [System.IO.File]::WriteAllText($tmp, $body, (New-Object System.Text.UTF8Encoding($false)))
       Move-Item -LiteralPath $tmp -Destination $destino -Force
@@ -81,7 +88,7 @@ while ($listener.IsListening) {
       $ok = [System.Text.Encoding]::UTF8.GetBytes("OK")
       $ctx.Response.OutputStream.Write($ok, 0, $ok.Length)
       $ctx.Response.OutputStream.Close()
-      Write-Host ("  relatorio gravado: {0}  ({1:HH:mm:ss})" -f $destino, (Get-Date)) -ForegroundColor Green
+      Write-Host ("  gravado: {0}  ({1:HH:mm:ss})" -f $destino, (Get-Date)) -ForegroundColor Green
       continue
     }
 

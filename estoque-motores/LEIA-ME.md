@@ -164,14 +164,32 @@ O relatório é gerado **automaticamente nos horários configurados** (por padr�
 **Sparkline de 5 dias (n-5), dentro de cada card:** mostra o **fechamento (23:59)
 dos 5 dias anteriores** mais o valor atual, com **rótulo de dados em todos os
 dias**, a data de cada ponto e a variação do período (▲/▼). Os cards ficam em
-**2 por linha** justamente para caber esses rótulos sem se sobrepor. O painel grava
-esse fechamento sozinho (`estoque-hist-dia` no navegador): a cada leitura o valor
-do dia é sobrescrito, então ao virar o dia sobra a última leitura daquele dia. O
-gráfico usa **marcadores posicionados** (não barras) com **escala ampliada na
+**2 por linha** justamente para caber esses rótulos sem se sobrepor. A cada leitura
+o valor do dia é sobrescrito, então ao virar o dia sobra a última leitura daquele
+dia. O gráfico usa **marcadores posicionados** (não barras) com **escala ampliada na
 faixa dos dados** — a variação diária costuma ser pequena (~15%) e, com posição em
 vez de comprimento, a escala ampliada mostra a evolução sem distorcer a leitura.
 O histórico se forma com o uso: com o painel aberto todo dia, em 5 dias o gráfico
 fica completo (até lá o relatório avisa no lugar do gráfico).
+
+### Onde o histórico fica guardado (`historico.json`)
+
+O fechamento diário é gravado **em arquivo**, no **`historico.json`** da pasta do
+painel — não só no navegador. Só o `localStorage` não bastava: ele se perde quando
+o Chrome fecha sem gravar (reinício do PC, queda de energia) ou se o perfil do
+quiosque é limpo, e aí o gráfico do e-mail voltava a mostrar sempre o mesmo valor.
+
+Como funciona: a cada leitura o painel manda o histórico para o servidor
+(`servir.ps1`), que grava o `historico.json`; na abertura o painel **lê esse arquivo
+e funde** com o que houver no navegador (os dias anteriores vêm do arquivo, o de
+hoje vem da leitura ao vivo). O `localStorage` continua como cache local.
+
+> Só isso exige que o painel seja aberto **pelo servidor** (`Iniciar-Painel-TV.bat`).
+> Aberto via `file://` ele não consegue gravar, e o histórico volta a depender só do
+> navegador. O `historico.json` é um arquivo comum — dá para copiar/versionar/editar.
+>
+> O registro é feito **pelo painel**: se ele ficar fechado um dia inteiro, aquele dia
+> não entra no histórico. Com o quiosque ligado 24/7 isso não acontece.
 
 > Requisitos: funciona no **Chrome/Edge** servindo em **localhost** ou **https**
 > (recurso *File System Access API*). A pasta escolhida fica lembrada entre
